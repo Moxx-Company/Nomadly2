@@ -1,0 +1,186 @@
+1007:                register_buttons.append(InlineKeyboardButton(f"Get {domain}", callback_data=f"register_{clean_domain}"))
+1016:                keyboard.append([InlineKeyboardButton(f"Get {alternatives[0]}", callback_data=f"register_{alt_domain}")])
+1242:                    InlineKeyboardButton("☁️ Switch to Cloudflare", callback_data=f"switch_cloudflare_{domain_name}"),
+1243:                    InlineKeyboardButton("🔧 Update Custom NS", callback_data=f"update_custom_ns_{domain_name}")
+1246:                    InlineKeyboardButton("📊 Check Propagation", callback_data=f"check_propagation_{domain_name}"),
+1247:                    InlineKeyboardButton("🔍 NS Lookup", callback_data=f"ns_lookup_{domain_name}")
+1250:                    InlineKeyboardButton("📋 Current Settings", callback_data=f"current_ns_{domain_name}"),
+1251:                    InlineKeyboardButton("🎯 Test DNS", callback_data=f"test_dns_{domain_name}")
+1254:                    InlineKeyboardButton(f"← Back to {domain_name}", callback_data=f"manage_domain_{domain_name}"),
+1344:                        InlineKeyboardButton("🛡️ Manage DNS Records", callback_data=f"dns_{domain_name}"),
+1345:                        InlineKeyboardButton("📊 Check Status", callback_data=f"cloudflare_status_{domain_name}")
+1348:                        InlineKeyboardButton("📋 View Zone Info", callback_data=f"zone_info_{switch_result['zone_id']}"),
+1349:                        InlineKeyboardButton("🔄 Switch Back", callback_data=f"switch_custom_{domain_name}")
+1352:                        InlineKeyboardButton(f"← Back to {domain_name}", callback_data=f"manage_domain_{domain_name}"),
+1373:                        InlineKeyboardButton("🔄 Retry Switch", callback_data=f"switch_cloudflare_{domain_name}"),
+1377:                        InlineKeyboardButton("🔧 Manual Setup Guide", callback_data=f"manual_cloudflare_{domain_name}"),
+1378:                        InlineKeyboardButton("📊 Check Current NS", callback_data=f"current_ns_{domain_name}")
+1381:                        InlineKeyboardButton(f"← Back to {domain_name}", callback_data=f"manage_domain_{domain_name}"),
+1409:                    InlineKeyboardButton("🔄 Try Again", callback_data=f"switch_cloudflare_{domain_name}"),
+1413:                    InlineKeyboardButton(f"← Back to {domain_name}", callback_data=f"manage_domain_{domain_name}"),
+2007:                [InlineKeyboardButton(texts["check_payment"], callback_data=f"check_wallet_payment_{crypto_type}")],
+2193:                    [InlineKeyboardButton(texts["manage_domain"], callback_data=f"manage_domain_{domain}")],
+2260:                        InlineKeyboardButton(texts["btc"], callback_data=f"crypto_btc_{domain}"),
+2261:                        InlineKeyboardButton(texts["eth"], callback_data=f"crypto_eth_{domain}")
+2264:                        InlineKeyboardButton(texts["ltc"], callback_data=f"crypto_ltc_{domain}"),
+2265:                        InlineKeyboardButton(texts["doge"], callback_data=f"crypto_doge_{domain}")
+2271:                        InlineKeyboardButton(texts["back_registration"], callback_data=f"register_{domain}")
+2330:                    InlineKeyboardButton("🔐 Privacy Settings", callback_data=f"privacy_{domain_name}"),
+2331:                    InlineKeyboardButton("👁️ Visibility Control", callback_data=f"visibility_{domain_name}")
+2334:                    InlineKeyboardButton("🌐 Website Status", callback_data=f"website_{domain_name}"),
+2335:                    InlineKeyboardButton("🛡️ Access Control", callback_data=f"access_{domain_name}")
+2338:                    InlineKeyboardButton("⚙️ DNS Management", callback_data=f"dns_{domain_name}"),
+2339:                    InlineKeyboardButton("🔧 Nameservers", callback_data=f"nameservers_{domain_name}")
+2342:                    InlineKeyboardButton("🔀 Domain Redirect", callback_data=f"redirect_{domain_name}"),
+2343:                    InlineKeyboardButton("🅿️ Parking Page", callback_data=f"parking_{domain_name}")
+2346:                    InlineKeyboardButton("📊 Analytics", callback_data=f"analytics_{domain_name}"),
+2347:                    InlineKeyboardButton("🔄 Domain Transfer", callback_data=f"transfer_{domain_name}")
+2391:                    InlineKeyboardButton("🔒 Toggle WHOIS Privacy", callback_data=f"whois_toggle_{domain_name}"),
+2392:                    InlineKeyboardButton("🤖 Search Engine Settings", callback_data=f"seo_settings_{domain_name}")
+2395:                    InlineKeyboardButton("🌍 Geographic Restrictions", callback_data=f"geo_restrict_{domain_name}"),
+2396:                    InlineKeyboardButton("🚫 Block Specific IPs", callback_data=f"ip_block_{domain_name}")
+2399:                    InlineKeyboardButton("🛡️ Security Level", callback_data=f"security_level_{domain_name}"),
+2400:                    InlineKeyboardButton("⚡ Performance Settings", callback_data=f"performance_{domain_name}")
+2403:                    InlineKeyboardButton("📊 Visitor Analytics", callback_data=f"analytics_{domain_name}"),
+2404:                    InlineKeyboardButton("🔄 Reset to Default", callback_data=f"reset_visibility_{domain_name}")
+2407:                    InlineKeyboardButton(f"← Back to {domain_name}", callback_data=f"manage_domain_{domain_name}"),
+2447:                    InlineKeyboardButton("🔐 Toggle WHOIS Privacy", callback_data=f"whois_toggle_{domain_name}"),
+2448:                    InlineKeyboardButton("📧 Contact Protection", callback_data=f"contact_protect_{domain_name}")
+2451:                    InlineKeyboardButton("🏢 Organization Anonymity", callback_data=f"org_anon_{domain_name}"),
+2452:                    InlineKeyboardButton("📍 Address Shielding", callback_data=f"address_shield_{domain_name}")
+2455:                    InlineKeyboardButton("🛡️ Full Privacy Mode", callback_data=f"full_privacy_{domain_name}"),
+2456:                    InlineKeyboardButton("📊 Privacy Report", callback_data=f"privacy_report_{domain_name}")
+2459:                    InlineKeyboardButton(f"← Back to {domain_name}", callback_data=f"manage_domain_{domain_name}"),
+2495:                    InlineKeyboardButton("🟢 Go Online", callback_data=f"site_online_{domain_name}"),
+2496:                    InlineKeyboardButton("⚫ Go Offline", callback_data=f"site_offline_{domain_name}")
+2499:                    InlineKeyboardButton("🛡️ SSL Management", callback_data=f"ssl_manage_{domain_name}"),
+2500:                    InlineKeyboardButton("⚡ CDN Settings", callback_data=f"cdn_settings_{domain_name}")
+2503:                    InlineKeyboardButton("🤖 Search Visibility", callback_data=f"search_visibility_{domain_name}"),
+2504:                    InlineKeyboardButton("📊 Performance", callback_data=f"performance_{domain_name}")
+2507:                    InlineKeyboardButton("🚧 Maintenance Mode", callback_data=f"maintenance_{domain_name}"),
+2508:                    InlineKeyboardButton("🔄 Force Refresh", callback_data=f"force_refresh_{domain_name}")
+2511:                    InlineKeyboardButton(f"← Back to {domain_name}", callback_data=f"manage_domain_{domain_name}"),
+2547:                    InlineKeyboardButton("🌍 Country Restrictions", callback_data=f"country_restrict_{domain_name}"),
+2548:                    InlineKeyboardButton("🚫 IP Blocking", callback_data=f"ip_blocking_{domain_name}")
+2551:                    InlineKeyboardButton("🤖 Bot Protection", callback_data=f"bot_protection_{domain_name}"),
+2552:                    InlineKeyboardButton("⚡ Rate Limiting", callback_data=f"rate_limiting_{domain_name}")
+2555:                    InlineKeyboardButton("🛡️ Firewall Rules", callback_data=f"firewall_{domain_name}"),
+2556:                    InlineKeyboardButton("🔍 Threat Analysis", callback_data=f"threat_analysis_{domain_name}")
+2559:                    InlineKeyboardButton("✅ Whitelist Mode", callback_data=f"whitelist_{domain_name}"),
+2560:                    InlineKeyboardButton("🚨 Security Alerts", callback_data=f"security_alerts_{domain_name}")
+2563:                    InlineKeyboardButton(f"← Back to {domain_name}", callback_data=f"manage_domain_{domain_name}"),
+2761:                        InlineKeyboardButton("🎯 Set 301 Redirect", callback_data=f"set_301_{domain_name}"),
+2762:                        InlineKeyboardButton("🔄 Set 302 Redirect", callback_data=f"set_302_{domain_name}")
+2765:                        InlineKeyboardButton("👁️ Masked Redirect", callback_data=f"set_masked_{domain_name}"),
+2766:                        InlineKeyboardButton("🖼️ Frame Redirect", callback_data=f"set_frame_{domain_name}")
+2769:                        InlineKeyboardButton("📱 Mobile-Specific", callback_data=f"mobile_redirect_{domain_name}"),
+2770:                        InlineKeyboardButton("🌍 Country-Based", callback_data=f"geo_redirect_{domain_name}")
+2773:                        InlineKeyboardButton("📊 Redirect Analytics", callback_data=f"redirect_stats_{domain_name}"),
+2774:                        InlineKeyboardButton("🚫 Remove Redirect", callback_data=f"remove_redirect_{domain_name}")
+2780:                        InlineKeyboardButton("⚡ Switch to Cloudflare", callback_data=f"switch_cloudflare_{domain_name}"),
+2781:                        InlineKeyboardButton("📖 Manual Setup Guide", callback_data=f"manual_redirect_{domain_name}")
+2784:                        InlineKeyboardButton("🔧 Current NS Options", callback_data=f"current_ns_redirect_{domain_name}"),
+2785:                        InlineKeyboardButton("📋 Export Settings", callback_data=f"export_redirect_{domain_name}")
+2790:                InlineKeyboardButton(f"← Back to {domain_name}", callback_data=f"manage_domain_{domain_name}"),
+2831:                        InlineKeyboardButton("💼 Professional Page", callback_data=f"park_professional_{domain_name}"),
+2832:                        InlineKeyboardButton("🚧 Under Construction", callback_data=f"park_construction_{domain_name}")
+2835:                        InlineKeyboardButton("💰 For Sale Page", callback_data=f"park_forsale_{domain_name}"),
+2836:                        InlineKeyboardButton("🔒 Privacy Mode", callback_data=f"park_privacy_{domain_name}")
+2839:                        InlineKeyboardButton("🎨 Custom HTML", callback_data=f"park_custom_{domain_name}"),
+2840:                        InlineKeyboardButton("📱 Mobile Preview", callback_data=f"park_preview_{domain_name}")
+2843:                        InlineKeyboardButton("📊 Parking Analytics", callback_data=f"park_analytics_{domain_name}"),
+2844:                        InlineKeyboardButton("🚫 Remove Parking", callback_data=f"remove_parking_{domain_name}")
+2850:                        InlineKeyboardButton("⚡ Switch to Cloudflare", callback_data=f"switch_cloudflare_{domain_name}"),
+2851:                        InlineKeyboardButton("📖 Manual Parking Guide", callback_data=f"manual_parking_{domain_name}")
+2854:                        InlineKeyboardButton("🔧 Current NS Parking", callback_data=f"current_ns_parking_{domain_name}"),
+2855:                        InlineKeyboardButton("📋 Export HTML", callback_data=f"export_parking_{domain_name}")
+2860:                InlineKeyboardButton(f"← Back to {domain_name}", callback_data=f"manage_domain_{domain_name}"),
+3169:                    InlineKeyboardButton(f"💰 Pay with Wallet (${current_balance:.2f})", callback_data=f"pay_wallet_{domain}")
+3179:                    InlineKeyboardButton("₿ Bitcoin", callback_data=f"crypto_btc_{domain}"),
+3180:                    InlineKeyboardButton("🔷 Ethereum", callback_data=f"crypto_eth_{domain}")
+3183:                    InlineKeyboardButton("🟢 Litecoin", callback_data=f"crypto_ltc_{domain}"),
+3184:                    InlineKeyboardButton("🐕 Dogecoin", callback_data=f"crypto_doge_{domain}")
+3187:                    InlineKeyboardButton("📧 Change Email", callback_data=f"change_email_{domain}"),
+3188:                    InlineKeyboardButton("🌐 Change Nameservers", callback_data=f"change_ns_{domain}")
+3191:                    InlineKeyboardButton("← Back to Registration", callback_data=f"register_{domain}")
+3434:                    InlineKeyboardButton(crypto_buttons["check_payment"], callback_data=f"check_payment_{crypto_type}_{domain}")
+3437:                    InlineKeyboardButton(crypto_buttons["switch_currency"], callback_data=f"register_{domain}"),
+3438:                    InlineKeyboardButton(crypto_buttons["qr_code"], callback_data=f"generate_qr_{crypto_type}_{domain}")
+3728:                keyboard.append([InlineKeyboardButton(f"{register_text} {full_domain}", callback_data=f"register_{full_domain.replace('.', '_')}")])
+3733:                keyboard.append([InlineKeyboardButton(f"{register_text} {alt}", callback_data=f"register_{clean_alt}")])
+3932:                register_buttons.append(InlineKeyboardButton(f"Get {domain}", callback_data=f"register_{clean_domain}"))
+3943:                    keyboard.append([InlineKeyboardButton(f"Get {alt_domain}", callback_data=f"register_{clean_alt}")])
+4205:                    InlineKeyboardButton(texts["wallet"], callback_data=f"pay_wallet_{domain}")
+4208:                    InlineKeyboardButton("₿ Bitcoin", callback_data=f"crypto_btc_{domain}"),
+4209:                    InlineKeyboardButton("Ξ Ethereum", callback_data=f"crypto_eth_{domain}")
+4212:                    InlineKeyboardButton("Ł Litecoin", callback_data=f"crypto_ltc_{domain}"),
+4213:                    InlineKeyboardButton("Ð Dogecoin", callback_data=f"crypto_doge_{domain}")
+4216:                    InlineKeyboardButton(texts["edit_email"], callback_data=f"change_email_{domain}"),
+4217:                    InlineKeyboardButton(texts["edit_dns"], callback_data=f"change_ns_{domain}")
+4346:                    InlineKeyboardButton(buttons["default"], callback_data=f"email_default_{domain}")
+4349:                    InlineKeyboardButton(buttons["custom"], callback_data=f"email_custom_{domain}")
+4352:                    InlineKeyboardButton(buttons["back"], callback_data=f"register_{domain}")
+4488:                    InlineKeyboardButton(buttons["nomadly"], callback_data=f"ns_nomadly_{domain}")
+4491:                    InlineKeyboardButton(buttons["custom"], callback_data=f"ns_custom_{domain}")
+4494:                    InlineKeyboardButton(buttons["back"], callback_data=f"register_{domain}")
+4712:                            [InlineKeyboardButton(texts["manage_domain"], callback_data=f"manage_domain_{domain}")],
+4761:                            [InlineKeyboardButton(texts["manage_domain"], callback_data=f"manage_domain_{domain}")],
+4809:                            [InlineKeyboardButton(texts["manage_domain"], callback_data=f"manage_domain_{domain}")],
+4873:                        [InlineKeyboardButton(texts["pay_crypto"], callback_data=f"payment_{domain}")],
+4875:                        [InlineKeyboardButton(texts["back_registration"], callback_data=f"register_{domain}")]
+5039:                    InlineKeyboardButton("🔄 Check Status", callback_data=f"check_payment_btc_{domain_name.replace('.', '_')}")
+5071:                    InlineKeyboardButton("🔄 Check Again", callback_data=f"check_payment_{crypto_type}_{domain}")
+5106:                    InlineKeyboardButton("💎 Show Payment Address", callback_data=f"crypto_{crypto_type}_{domain}")
+5109:                    InlineKeyboardButton("🔄 Check Again", callback_data=f"check_payment_{crypto_type}_{domain}"),
+5110:                    InlineKeyboardButton("💰 Switch Currency", callback_data=f"payment_{domain}")
+5195:                    InlineKeyboardButton("✅ I've Sent Payment", callback_data=f"check_payment_{crypto_type}_{domain}")
+5198:                    InlineKeyboardButton("← Back to Payment", callback_data=f"crypto_{crypto_type}_{domain}")
+bulk_geo_rules
+bulk_privacy_off
+bulk_privacy_on
+bulk_reset_all
+bulk_search_allow
+bulk_search_block
+bulk_security_template
+bulk_visibility_report
+change_language
+check_all_nameservers
+cost_analysis
+custom_search
+dns_health_report
+emergency_dns_reset
+export_report
+feature_comparison
+fund_crypto_btc
+fund_crypto_doge
+fund_crypto_eth
+fund_crypto_ltc
+fund_wallet
+geographic_stats
+lang_en
+lang_es
+lang_fr
+lang_hi
+lang_zh
+loyalty
+main_menu
+manage_dns
+manual_setup_guide
+mass_add_a_record
+mass_change_ns
+mass_cloudflare_migrate
+mass_configure_spf
+mass_propagation_check
+mass_update_mx
+migrate_to_cloudflare
+my_domains
+nameservers
+performance_data
+portfolio_stats
+search_domain
+security_report
+show_languages
+support
+traffic_analytics
+transaction_history
+wallet

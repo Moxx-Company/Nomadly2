@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nameword Admin - Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-navy: #1a365d;
+            --secondary-teal: #0d9488;
+            --accent-gold: #d69e2e;
+            --light-blue: #e0f2fe;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--primary-navy) 0%, var(--secondary-teal) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            padding: 50px;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-title {
+            color: var(--primary-navy);
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .login-subtitle {
+            color: var(--secondary-teal);
+            font-size: 1.1rem;
+        }
+
+        .form-control {
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 15px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--secondary-teal);
+            box-shadow: 0 0 0 0.2rem rgba(13, 148, 136, 0.25);
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, var(--secondary-teal), var(--primary-navy));
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .maritime-icon {
+            color: var(--secondary-teal);
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+
+        .form-floating label {
+            color: #64748b;
+        }
+
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <i class="fas fa-anchor maritime-icon"></i>
+            <h1 class="login-title">Nameword</h1>
+            <p class="login-subtitle">Offshore Admin Portal</p>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="form-floating mb-4">
+                <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+                <label for="username"><i class="fas fa-user"></i> Username</label>
+            </div>
+
+            <div class="form-floating mb-4">
+                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                <label for="password"><i class="fas fa-lock"></i> Password</label>
+            </div>
+
+            <button type="submit" class="btn btn-login">
+                <i class="fas fa-sign-in-alt"></i> Access Admin Panel
+            </button>
+        </form>
+
+        <div class="text-center mt-4">
+            <small class="text-muted">
+                <i class="fas fa-shield-alt"></i> Secure Administrative Access
+            </small>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

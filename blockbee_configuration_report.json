@@ -1,0 +1,63 @@
+{
+  "timestamp": "2025-07-22T13:31:30Z",
+  "total_tested": 11,
+  "working_count": 6,
+  "issue_count": 5,
+  "detailed_results": {
+    "btc": {
+      "status": "\u2705 WORKING",
+      "api_crypto": "btc",
+      "address": "3Kuj2H5LggeY4s7UGGJ1..."
+    },
+    "eth": {
+      "status": "\u2705 WORKING",
+      "api_crypto": "eth",
+      "address": "0x84fC3Cad47f2c05655..."
+    },
+    "ltc": {
+      "status": "\u2705 WORKING",
+      "api_crypto": "ltc",
+      "address": "MEvKehEduYkrVVVAF53K..."
+    },
+    "usdt": {
+      "status": "\u274c CONFIGURATION_ISSUE",
+      "api_crypto": "usdt_erc20",
+      "error": "Address not set on admin panel and not sent"
+    },
+    "doge": {
+      "status": "\u2705 WORKING",
+      "api_crypto": "doge",
+      "address": "DMfDS7kVxLcF93DyrT6f..."
+    },
+    "trx": {
+      "status": "\u2705 WORKING",
+      "api_crypto": "trx",
+      "address": "TVvQDGZzkSx4XrkD8Br5..."
+    },
+    "bnb": {
+      "status": "\u274c CONFIGURATION_ISSUE",
+      "api_crypto": "bnb_bsc",
+      "error": "Address not set on admin panel and not sent"
+    },
+    "bch": {
+      "status": "\u2705 WORKING",
+      "api_crypto": "bch",
+      "address": "bitcoincash:qzq7pm4v..."
+    },
+    "dash": {
+      "status": "\u274c CONFIGURATION_ISSUE",
+      "api_crypto": "dash",
+      "error": "Address not set on admin panel and not sent"
+    },
+    "xmr": {
+      "status": "\u274c CONFIGURATION_ISSUE",
+      "api_crypto": "monero",
+      "error": "Address not set on admin panel and not sent"
+    },
+    "matic": {
+      "status": "\u274c CONFIGURATION_ISSUE",
+      "api_crypto": "polygon",
+      "error": "Resource not found"
+    }
+  }
+}

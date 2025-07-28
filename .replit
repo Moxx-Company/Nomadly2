@@ -1,0 +1,61 @@
+modules = ["python-3.11", "postgresql-16", "nodejs-20", "python3"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["cacert", "freetype", "glibcLocales", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "pgbouncer", "sqlite", "tcl", "tk", "zlib"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Nomadly Clean Bot"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Secure Payment Monitor"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Webhook Server"
+
+[[workflows.workflow]]
+name = "Nomadly Clean Bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python nomadly3_clean_bot.py"
+
+[[workflows.workflow]]
+name = "Secure Payment Monitor"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python nomadly_clean/secure_payment_monitor.py"
+
+[[workflows.workflow]]
+name = "Webhook Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python pure_fastapi_server.py"
+waitForPort = 5000
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
+localPort = 8000
+externalPort = 80
+
+[deployment]
+deploymentTarget = "gce"

@@ -1,0 +1,76 @@
+{
+  "overall_success_rate": 78.39285714285714,
+  "working_systems": 5,
+  "total_systems": 8,
+  "duration_seconds": 0.217537,
+  "system_results": {
+    "input_validation": {
+      "success_rate": 50.0,
+      "tests_passed": 7,
+      "total_tests": 14,
+      "typo_correction": true,
+      "email_validation": true,
+      "domain_validation": true,
+      "callback_sanitization": true
+    },
+    "loading_states": {
+      "success_rate": 100.0,
+      "context_awareness": 0.0,
+      "acknowledgment_speed": "immediate",
+      "telegram_compliance": true
+    },
+    "button_behavior": {
+      "success_rate": 100.0,
+      "duplicate_prevention": true,
+      "immediate_feedback": true,
+      "state_validation": true
+    },
+    "network_failure": {
+      "success_rate": 20.0,
+      "service_configs": 4,
+      "retry_mechanisms": false,
+      "circuit_breaker": false
+    },
+    "error_handling": {
+      "success_rate": 57.14285714285714,
+      "categorization": false,
+      "severity_assessment": false,
+      "user_friendly_messages": false
+    },
+    "ui_complexity": {
+      "success_rate": 100.0,
+      "callbacks_analyzed": 807,
+      "duplicates_found": 792,
+      "consolidation_opportunities": 8,
+      "estimated_reduction": 42
+    },
+    "state_persistence": {
+      "success_rate": 100.0,
+      "database_column_fixed": true,
+      "session_management": true,
+      "state_validation": true
+    },
+    "usability": {
+      "success_rate": 100.0,
+      "friendly_messaging": true,
+      "progress_feedback": true,
+      "supportive_guidance": true
+    }
+  },
+  "recommendations": [
+    "Enhance input validation system",
+    "Enhance network failure system",
+    "Enhance error handling system"
+  ],
+  "timestamp": "2025-07-22T00:40:43.106290",
+  "summary": {
+    "input_validation": false,
+    "loading_states": true,
+    "button_behavior": true,
+    "network_failure": false,
+    "error_handling": false,
+    "ui_complexity": true,
+    "state_persistence": true,
+    "usability": true
+  }
+}

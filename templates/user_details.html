@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}User {{ user.telegram_id }} - Nameword Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-user maritime-icon"></i>User Details
+    </h1>
+    <p class="text-muted">Detailed information for user {{ user.telegram_id }}</p>
+</div>
+
+<!-- User Information Card -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-id-card maritime-icon"></i>User Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th>Telegram ID:</th>
+                                <td><code>{{ user.telegram_id }}</code></td>
+                            </tr>
+                            <tr>
+                                <th>Username:</th>
+                                <td>
+                                    {% if user.username %}
+                                        <i class="fab fa-telegram maritime-icon"></i>@{{ user.username }}
+                                    {% else %}
+                                        <span class="text-muted">No username</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Email:</th>
+                                <td>
+                                    {% if user.technical_email %}
+                                        <i class="fas fa-envelope maritime-icon"></i>{{ user.technical_email }}
+                                    {% else %}
+                                        <span class="text-muted">No email</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Wallet Balance:</th>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if user.balance_usd > 0 else 'secondary' }} fs-6">
+                                        ${{ "%.2f"|format(user.balance_usd) }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <th>Created:</th>
+                                <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Last Activity:</th>
+                                <td>{{ (user.last_activity or user.created_at).strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Current State:</th>
+                                <td>
+                                    {% if user_state %}
+                                        <span class="badge bg-{{ 'primary' if user_state.current_state == 'ready' else 'warning' }}">
+                                            {{ user_state.current_state.replace('_', ' ').title() }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Unknown</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Total Domains:</th>
+                                <td>{{ domains|length }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Domains Section -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-globe maritime-icon"></i>Registered Domains ({{ domains|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if domains %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Domain</th>
+                                    <th>Expires</th>
+                                    <th>Provider ID</th>
+                                    <th>Zone ID</th>
+                                    <th>Registered</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for domain in domains %}
+                                <tr>
+                                    <td><strong>{{ domain.domain_name }}</strong></td>
+                                    <td>{{ domain.expires_at.strftime('%Y-%m-%d') if domain.expires_at else 'Unknown' }}</td>
+                                    <td><code>{{ domain.openprovider_domain_id or '-' }}</code></td>
+                                    <td><small>{{ domain.cloudflare_zone_id[:8] + '...' if domain.cloudflare_zone_id else '-' }}</small></td>
+                                    <td>{{ domain.created_at.strftime('%Y-%m-%d') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-globe text-muted fa-2x mb-3"></i>
+                        <p class="text-muted">No domains registered</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Orders Section -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-shopping-cart maritime-icon"></i>Recent Orders ({{ orders|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if orders %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Service</th>
+                                    <th>Amount</th>
+                                    <th>Payment Method</th>
+                                    <th>Status</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                <tr>
+                                    <td><code class="small">{{ order.order_id[:12] }}...</code></td>
+                                    <td>{{ order.service_type.replace('_', ' ').title() }}</td>
+                                    <td><strong>${{ "%.2f"|format(order.amount_usd) }}</strong></td>
+                                    <td><span class="badge bg-primary small">{{ order.payment_method.replace('_', ' ').title() }}</span></td>
+                                    <td><span class="status-badge status-{{ order.payment_status }} small">{{ order.payment_status.title() }}</span></td>
+                                    <td><small>{{ order.created_at.strftime('%m-%d %H:%M') }}</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-shopping-cart text-muted fa-2x mb-3"></i>
+                        <p class="text-muted">No orders found</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transactions Section -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-credit-card maritime-icon"></i>Wallet Transactions ({{ transactions|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Amount</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tx in transactions %}
+                                <tr>
+                                    <td><code class="small">{{ tx.transaction_id[:12] }}...</code></td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if tx.amount > 0 else 'danger' }}">
+                                            ${{ "%.2f"|format(tx.amount) }}
+                                        </span>
+                                    </td>
+                                    <td><span class="badge bg-info small">{{ tx.transaction_type.replace('_', ' ').title() }}</span></td>
+                                    <td><small>{{ tx.description or '-' }}</small></td>
+                                    <td><small>{{ tx.created_at.strftime('%m-%d %H:%M') }}</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-credit-card text-muted fa-2x mb-3"></i>
+                        <p class="text-muted">No transactions found</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Back Button -->
+<div class="row">
+    <div class="col-md-12 text-center">
+        <a href="{{ url_for('users') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Users
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions - Nameword Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-credit-card maritime-icon"></i>Transaction History
+    </h1>
+    <p class="text-muted">Monitor wallet transactions and user payments</p>
+</div>
+
+<!-- Transactions Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Wallet Transactions</h5>
+        <small class="text-muted">{{ transactions|length }} recent transactions</small>
+    </div>
+    <div class="card-body">
+        {% if transactions %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Transaction ID</th>
+                            <th>User</th>
+                            <th>Amount</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Order Reference</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in transactions %}
+                        <tr>
+                            <td>
+                                <code class="small">{{ tx.transaction_id[:12] }}...</code>
+                            </td>
+                            <td>
+                                {% if tx.username %}
+                                    <i class="fab fa-telegram maritime-icon"></i>@{{ tx.username }}
+                                {% else %}
+                                    <i class="fas fa-user maritime-icon"></i>{{ tx.telegram_id }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if tx.amount > 0 else 'danger' }}">
+                                    ${{ "%.2f"|format(tx.amount) }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">
+                                    {{ tx.transaction_type.replace('_', ' ').title() }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if tx.description != 'N/A' %}
+                                    <small>{{ tx.description }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if tx.order_id != 'N/A' %}
+                                    <code class="small">{{ tx.order_id[:8] }}...</code>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ tx.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-credit-card text-muted fa-3x mb-3"></i>
+                <h5 class="text-muted">No Transactions Found</h5>
+                <p class="text-muted">No wallet transactions recorded yet</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

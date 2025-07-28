@@ -1,0 +1,15 @@
+{
+  "order_id": "49385a25-3d5c-49f8-a9d8-ebc64383489e",
+  "webhook_data": {
+    "status": "confirmed",
+    "txid": "0x3ab33a2fcacc5e1f594beaa3660e9b572c4a7e317e388cac88330b33b96b8ccd",
+    "confirmations": 2,
+    "value_coin": "0.0037",
+    "coin": "eth"
+  },
+  "queued_at": "2025-07-21T13:58:21.285236",
+  "attempts": 3,
+  "status": "failed",
+  "last_attempt": "2025-07-21T14:00:27.281068",
+  "failed_at": "2025-07-21T14:00:57.311521"
+}

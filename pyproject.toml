@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nomadly3"
+version = "1.4.0"
+description = "Nomadly3 - Offshore Domain Registration Platform"
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy>=2.0",
+    "psycopg2-binary>=2.9",
+    "aiohttp>=3.8",
+    "requests>=2.31",
+    "python-dotenv>=1.0",
+    "flask>=2.3",
+    "qrcode>=7.4",
+    "pillow>=10.0",
+    "python-dateutil>=2.8",
+    "pymongo>=4.6",
+    "sendgrid>=6.10",
+    "urllib3>=2.0",
+    "werkzeug>=2.3",
+    "fastapi>=0.104.0",
+    "httpx>=0.25.0",
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+ignore_missing_imports = true
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["nomadly3", "app", "database", "services", "apis", "utils", "handlers", "models"]
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+per-file-ignores = [
+    "__init__.py:F401",
+]
+
+[tool.pylsp-mypy]
+enabled = true
+live_mode = true
+strict = false

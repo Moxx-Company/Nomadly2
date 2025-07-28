@@ -1,0 +1,50 @@
+{
+  "pylsp": {
+    "plugins": {
+      "pycodestyle": {
+        "enabled": true,
+        "maxLineLength": 120,
+        "ignore": ["E203", "W503", "E501"]
+      },
+      "pyflakes": {
+        "enabled": true
+      },
+      "jedi_completion": {
+        "enabled": true,
+        "fuzzy": false,
+        "eager": false
+      },
+      "jedi_hover": {
+        "enabled": true
+      },
+      "jedi_references": {
+        "enabled": true
+      },
+      "jedi_signature_help": {
+        "enabled": true
+      },
+      "jedi_symbols": {
+        "enabled": true,
+        "all_scopes": false
+      },
+      "pylint": {
+        "enabled": false
+      },
+      "mypy": {
+        "enabled": false
+      },
+      "autopep8": {
+        "enabled": false
+      },
+      "yapf": {
+        "enabled": false
+      },
+      "rope_completion": {
+        "enabled": false
+      }
+    },
+    "rope": {
+      "ropeFolder": null
+    }
+  }
+}

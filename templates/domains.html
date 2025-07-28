@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Domains - Nameword Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-globe maritime-icon"></i>Domain Management
+    </h1>
+    <p class="text-muted">Monitor registered domains and their status</p>
+</div>
+
+<!-- Domains Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Registered Domains</h5>
+        <small class="text-muted">{{ domains|length }} domains registered</small>
+    </div>
+    <div class="card-body">
+        {% if domains %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Domain Name</th>
+                            <th>Owner</th>
+                            <th>Expires</th>
+                            <th>Status</th>
+                            <th>Provider ID</th>
+                            <th>Zone ID</th>
+                            <th>Nameservers</th>
+                            <th>Registered</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for domain in domains %}
+                        <tr>
+                            <td>
+                                <strong>{{ domain.domain_name }}</strong>
+                                <br>
+                                <small class="text-muted">
+                                    <i class="fas fa-user"></i> {{ domain.telegram_id }}
+                                </small>
+                            </td>
+                            <td>
+                                {% if domain.username %}
+                                    <i class="fab fa-telegram maritime-icon"></i>@{{ domain.username }}
+                                {% else %}
+                                    <span class="text-muted">Unknown User</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if domain.expires_at %}
+                                    {{ domain.expires_at.strftime('%Y-%m-%d') }}
+                                    <br>
+                                    <small class="badge bg-{{ 'danger' if domain.days_until_expiry < 30 else 'warning' if domain.days_until_expiry < 90 else 'success' }}">
+                                        {{ domain.days_until_expiry }} days
+                                    </small>
+                                {% else %}
+                                    <span class="text-muted">Unknown</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if domain.openprovider_domain_id and domain.cloudflare_zone_id %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Incomplete</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if domain.openprovider_domain_id %}
+                                    <code>{{ domain.openprovider_domain_id }}</code>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if domain.cloudflare_zone_id %}
+                                    <code class="small">{{ domain.cloudflare_zone_id[:8] }}...</code>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if domain.nameservers %}
+                                    <small>{{ domain.nameservers[:50] }}{% if domain.nameservers|length > 50 %}...{% endif %}</small>
+                                {% else %}
+                                    <span class="text-muted">Default</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ domain.created_at.strftime('%Y-%m-%d') }}</small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-globe text-muted fa-3x mb-3"></i>
+                <h5 class="text-muted">No Domains Found</h5>
+                <p class="text-muted">No domains have been registered yet</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

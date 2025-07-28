@@ -1,0 +1,796 @@
+"""
+Service Layer for Telegram Domain Bot
+Business Logic Implementation with API Integration
+"""
+
+from typing import Optional, List, Dict, Any, Tuple
+from decimal import Decimal
+from datetime import datetime, timedelta
+import logging
+import asyncio
+import aiohttp
+import json
+import random
+import string
+from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
+
+
+# Data Transfer Objects
+@dataclass
+class DomainSearchResult:
+    domain_name: str
+    tld: str
+    is_available: bool
+    price: Decimal
+    error_message: Optional[str] = None
+
+
+@dataclass
+class DomainRegistrationData:
+    domain_name: str
+    tld: str
+    nameserver_mode: str
+    custom_nameservers: Optional[List[str]] = None
+    auto_setup_dns: bool = True
+
+
+@dataclass
+class DNSRecordData:
+    record_type: str
+    name: str
+    content: str
+    ttl: int = 3600
+    priority: Optional[int] = None
+    proxied: bool = False
+
+
+@dataclass
+class CryptoPaymentData:
+    currency: str
+    amount: Decimal
+    callback_url: str
+    description: str
+
+
+class ContactGenerator:
+    """Generate random contact information for privacy"""
+
+    FIRST_NAMES = [
+        "James",
+        "John",
+        "Robert",
+        "Michael",
+        "William",
+        "David",
+        "Richard",
+        "Joseph",
+        "Thomas",
+        "Christopher",
+        "Charles",
+        "Daniel",
+        "Matthew",
+        "Anthony",
+        "Mark",
+        "Donald",
+        "Steven",
+        "Paul",
+        "Andrew",
+        "Joshua",
+        "Kenneth",
+        "Kevin",
+        "Brian",
+        "Mary",
+        "Patricia",
+        "Jennifer",
+        "Linda",
+        "Elizabeth",
+        "Barbara",
+        "Susan",
+        "Jessica",
+        "Sarah",
+        "Karen",
+        "Nancy",
+        "Lisa",
+        "Betty",
+        "Dorothy",
+        "Sandra",
+    ]
+
+    LAST_NAMES = [
+        "Smith",
+        "Johnson",
+        "Williams",
+        "Brown",
+        "Jones",
+        "Garcia",
+        "Miller",
+        "Davis",
+        "Rodriguez",
+        "Martinez",
+        "Hernandez",
+        "Lopez",
+        "Gonzalez",
+        "Wilson",
+        "Anderson",
+        "Thomas",
+        "Taylor",
+        "Moore",
+        "Jackson",
+        "Martin",
+        "Lee",
+        "Perez",
+        "Thompson",
+        "White",
+        "Harris",
+        "Sanchez",
+        "Clark",
+        "Ramirez",
+        "Lewis",
+        "Robinson",
+        "Walker",
+    ]
+
+    US_CITIES = [
+        ("New York", "NY", "10001"),
+        ("Los Angeles", "CA", "90001"),
+        ("Chicago", "IL", "60601"),
+        ("Houston", "TX", "77001"),
+        ("Phoenix", "AZ", "85001"),
+        ("Philadelphia", "PA", "19101"),
+        ("San Antonio", "TX", "78201"),
+        ("San Diego", "CA", "92101"),
+        ("Dallas", "TX", "75201"),
+        ("San Jose", "CA", "95101"),
+        ("Austin", "TX", "73301"),
+        ("Jacksonville", "FL", "32099"),
+        ("Fort Worth", "TX", "76101"),
+        ("Columbus", "OH", "43085"),
+        ("Charlotte", "NC", "28201"),
+        ("San Francisco", "CA", "94101"),
+        ("Indianapolis", "IN", "46201"),
+        ("Seattle", "WA", "98101"),
+        ("Denver", "CO", "80201"),
+        ("Boston", "MA", "02101"),
+    ]
+
+    def generate_random_contact(self, email: str) -> Dict[str, Any]:
+        """Generate random US contact information"""
+        first_name = random.choice(self.FIRST_NAMES)
+        last_name = random.choice(self.LAST_NAMES)
+        city, state, base_zip = random.choice(self.US_CITIES)
+
+        # Generate street address
+        street_number = random.randint(100, 9999)
+        street_names = [
+            "Main St",
+            "Oak Ave",
+            "Pine St",
+            "Elm Dr",
+            "Park Blvd",
+            "First Ave",
+            "Second St",
+        ]
+        street_name = random.choice(street_names)
+        address = f"{street_number} {street_name}"
+
+        # Generate ZIP code variation
+        zip_code = f"{base_zip[:-2]}{random.randint(10, 99)}"
+
+        # Generate phone number
+        area_codes = ["201", "202", "203", "205", "206", "207", "208", "209", "210"]
+        area_code = random.choice(area_codes)
+        phone = f"+1.{area_code}{random.randint(1000000, 9999999)}"
+
+        # Generate date of birth (21-65 years old)
+        birth_year = datetime.now().year - random.randint(21, 65)
+        birth_month = random.randint(1, 12)
+        birth_day = random.randint(1, 28)
+        date_of_birth = f"{birth_year}-{birth_month:02d}-{birth_day:02d}"
+
+        # Generate passport number (9 digits)
+        passport_number = "".join([str(random.randint(0, 9)) for _ in range(9)])
+
+        return {
+            "first_name": first_name,
+            "last_name": last_name,
+            "address_line1": address,
+            "city": city,
+            "state": state,
+            "postal_code": zip_code,
+            "country_code": "US",
+            "phone": phone,
+            "email": email,
+            "date_of_birth": date_of_birth,
+            "passport_number": passport_number,
+        }
+
+
+class DomainService:
+    """Domain registration and management service"""
+
+    def __init__(
+        self, domain_repo, contact_repo, dns_repo, openprovider_api, cloudflare_api
+    ):
+        self.domain_repo = domain_repo
+        self.contact_repo = contact_repo
+        self.dns_repo = dns_repo
+        self.openprovider = openprovider_api
+        self.cloudflare = cloudflare_api
+        self.contact_generator = ContactGenerator()
+
+    async def search_domain(self, domain_name: str, tld: str) -> DomainSearchResult:
+        """Search domain availability and get pricing"""
+        try:
+            # Validate domain name
+            if not self._validate_domain_name(domain_name):
+                return DomainSearchResult(
+                    domain_name=domain_name,
+                    tld=tld,
+                    is_available=False,
+                    price=Decimal("0.00"),
+                    error_message="Invalid domain name format",
+                )
+
+            # Check availability via OpenProvider
+            is_available, price = await self.openprovider.check_domain_availability(
+                domain_name, tld
+            )
+
+            return DomainSearchResult(
+                domain_name=domain_name,
+                tld=tld,
+                is_available=is_available,
+                price=Decimal(str(price)),
+            )
+
+        except Exception as e:
+            logger.error(f"Domain search error: {e}")
+            return DomainSearchResult(
+                domain_name=domain_name,
+                tld=tld,
+                is_available=False,
+                price=Decimal("0.00"),
+                error_message=str(e),
+            )
+
+    async def register_domain(
+        self,
+        telegram_id: int,
+        domain_data: DomainRegistrationData,
+        price: Decimal,
+        payment_method: str,
+    ) -> Tuple[bool, Optional[str]]:
+        """Complete domain registration workflow"""
+        try:
+            full_domain = f"{domain_data.domain_name}.{domain_data.tld}"
+
+            # Step 1: Get or create OpenProvider contact
+            contact_handle = await self._get_or_create_contact(telegram_id)
+            if not contact_handle:
+                return False, "Failed to create contact information"
+
+            # Step 2: Setup Cloudflare DNS zone if needed
+            cloudflare_zone_id = None
+            nameservers = []
+
+            if domain_data.nameserver_mode == "cloudflare":
+                cloudflare_zone_id, nameservers = await self._setup_cloudflare_zone(full_domain)
+                if not cloudflare_zone_id:
+                    return False, "Failed to setup DNS zone"
+            elif domain_data.nameserver_mode == "custom":
+                nameservers = domain_data.custom_nameservers or []
+
+            # Step 3: Register domain with OpenProvider
+            domain_id = await self.openprovider.register_domain(
+                domain_data.domain_name, domain_data.tld, contact_handle, nameservers
+            )
+
+            if not domain_id:
+                return False, "Domain registration failed"
+
+            # Step 4: Store domain in database
+            domain_record = self.domain_repo.create_domain(
+                telegram_id=telegram_id,
+                domain_name=domain_data.domain_name,
+                tld=domain_data.tld,
+                price_paid=price,
+                payment_method=payment_method,
+                openprovider_domain_id=domain_id,
+                cloudflare_zone_id=cloudflare_zone_id,
+                nameserver_mode=domain_data.nameserver_mode,
+                nameservers=nameservers,
+            )
+
+            # Step 5: Setup default DNS records if auto-setup enabled
+            if domain_data.auto_setup_dns and cloudflare_zone_id:
+                await self._setup_default_dns_records(
+                    domain_record.id, cloudflare_zone_id, full_domain
+                )
+
+            logger.info(
+                f"Domain registered successfully: {full_domain} for user {telegram_id}"
+            )
+            return True, f"Domain {full_domain} registered successfully"
+
+        except Exception as e:
+            logger.error(f"Domain registration error: {e}")
+            return False, f"Registration failed: {str(e)}"
+
+    async def _get_or_create_contact(self, telegram_id: int) -> Optional[str]:
+        """Get existing contact or create new one"""
+        # Check for existing contact
+        existing_contact = self.contact_repo.get_user_contact(telegram_id)
+        if existing_contact:
+            return existing_contact.contact_handle
+
+        # Get user email (would need user repository)
+        user_email = (
+            f"user{telegram_id}@example.com"  # Placeholder - get from user repo
+        )
+
+        # Generate random contact data
+        contact_data = self.contact_generator.generate_random_contact(user_email)
+
+        # Create contact with OpenProvider
+        contact_handle = await self.openprovider.create_contact(contact_data)
+
+        if contact_handle:
+            # Store contact in database
+            self.contact_repo.create_contact(telegram_id, contact_handle, contact_data)
+            return contact_handle
+
+        return None
+
+    async def _setup_cloudflare_zone(
+        self, domain: str
+    ) -> Tuple[Optional[str], List[str]]:
+        """Setup Cloudflare DNS zone"""
+        try:
+            cloudflare_zone_id, nameservers = await self.cloudflare.create_zone(domain)
+            return cloudflare_zone_id, nameservers
+        except Exception as e:
+            logger.error(f"Cloudflare zone setup error: {e}")
+            return None, []
+
+    async def _setup_default_dns_records(
+        self, domain_id: int, cloudflare_zone_id: str, domain: str
+    ):
+        """Setup default DNS records"""
+        try:
+            # Default A record pointing to server IP
+            default_ip = "89.117.27.176"  # This should come from config
+
+            record_id = await self.cloudflare.create_dns_record(
+                cloudflare_zone_id,
+                DNSRecordData(
+                    record_type="A",
+                    name="@",
+                    content=default_ip,
+                    ttl=3600,
+                    proxied=True,
+                ),
+            )
+
+            if record_id:
+                self.dns_repo.create_dns_record(
+                    domain_id=domain_id,
+                    record_type="A",
+                    name="@",
+                    content=default_ip,
+                    ttl=3600,
+                    proxied=True,
+                    cloudflare_record_id=record_id,
+                )
+
+        except Exception as e:
+            logger.error(f"Default DNS setup error: {e}")
+
+    def _validate_domain_name(self, domain_name: str) -> bool:
+        """Validate domain name format"""
+        if not domain_name or len(domain_name) < 2 or len(domain_name) > 63:
+            return False
+
+        # Basic domain name validation
+        import re
+
+        pattern = r"^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$"
+        return bool(re.match(pattern, domain_name))
+
+
+class DNSService:
+    """DNS record management service"""
+
+    def __init__(self, dns_repo, domain_repo, cloudflare_api):
+        self.dns_repo = dns_repo
+        self.domain_repo = domain_repo
+        self.cloudflare = cloudflare_api
+
+    async def create_dns_record(
+        self, domain_id: int, record_data: DNSRecordData
+    ) -> Tuple[bool, Optional[str]]:
+        """Create new DNS record"""
+        try:
+            domain = self.domain_repo.get_domain_by_id(domain_id)
+            if not domain or not domain.cloudflare_zone_id:
+                return False, "Domain not found or DNS not managed by Cloudflare"
+
+            # Create record in Cloudflare
+            cloudflare_record_id = await self.cloudflare.create_dns_record(
+                domain.cloudflare_zone_id, record_data
+            )
+
+            if cloudflare_record_id:
+                # Store in database
+                self.dns_repo.create_dns_record(
+                    domain_id=domain_id,
+                    record_type=record_data.record_type,
+                    name=record_data.name,
+                    content=record_data.content,
+                    ttl=record_data.ttl,
+                    priority=record_data.priority,
+                    proxied=record_data.proxied,
+                    cloudflare_record_id=cloudflare_record_id,
+                )
+                return True, "DNS record created successfully"
+
+            return False, "Failed to create DNS record"
+
+        except Exception as e:
+            logger.error(f"DNS record creation error: {e}")
+            return False, str(e)
+
+    async def update_dns_record(
+        self, record_id: int, record_data: DNSRecordData
+    ) -> Tuple[bool, Optional[str]]:
+        """Update existing DNS record"""
+        try:
+            dns_record = self.dns_repo.get_dns_record_by_id(record_id)
+            if not dns_record:
+                return False, "DNS record not found"
+
+            domain = self.domain_repo.get_domain_by_id(dns_record.domain_id)
+            if not domain or not domain.cloudflare_zone_id:
+                return False, "Domain DNS not managed by Cloudflare"
+
+            # Update in Cloudflare
+            success = await self.cloudflare.update_dns_record(
+                domain.cloudflare_zone_id, dns_record.cloudflare_record_id, record_data
+            )
+
+            if success:
+                # Update in database
+                self.dns_repo.update_dns_record(
+                    record_id=record_id,
+                    content=record_data.content,
+                    ttl=record_data.ttl,
+                    priority=record_data.priority,
+                    proxied=record_data.proxied,
+                )
+                return True, "DNS record updated successfully"
+
+            return False, "Failed to update DNS record"
+
+        except Exception as e:
+            logger.error(f"DNS record update error: {e}")
+            return False, str(e)
+
+    async def delete_dns_record(self, record_id: int) -> Tuple[bool, Optional[str]]:
+        """Delete DNS record"""
+        try:
+            dns_record = self.dns_repo.get_dns_record_by_id(record_id)
+            if not dns_record:
+                return False, "DNS record not found"
+
+            domain = self.domain_repo.get_domain_by_id(dns_record.domain_id)
+            if domain and domain.cloudflare_zone_id and dns_record.cloudflare_record_id:
+                # Delete from Cloudflare
+                await self.cloudflare.delete_dns_record(
+                    domain.cloudflare_zone_id, dns_record.cloudflare_record_id
+                )
+
+            # Delete from database
+            self.dns_repo.delete_dns_record(record_id)
+            return True, "DNS record deleted successfully"
+
+        except Exception as e:
+            logger.error(f"DNS record deletion error: {e}")
+            return False, str(e)
+
+    def get_domain_dns_records(
+        self, domain_id: int, record_type: str = None
+    ) -> List[Any]:
+        """Get DNS records for domain"""
+        return self.dns_repo.get_domain_dns_records(domain_id, record_type)
+
+
+class WalletService:
+    """Wallet and payment management service"""
+
+    def __init__(self, wallet_repo, user_repo, blockbee_api):
+        self.wallet_repo = wallet_repo
+        self.user_repo = user_repo
+        self.blockbee = blockbee_api
+
+    def get_user_balance(self, telegram_id: int) -> Decimal:
+        """Get user's current balance"""
+        return self.user_repo.get_user_balance(telegram_id)
+
+    async def create_crypto_payment(
+        self, telegram_id: int, payment_data: CryptoPaymentData
+    ) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """Create cryptocurrency payment request"""
+        try:
+            # Create payment address with BlockBee
+            payment_address = await self.blockbee.create_payment_address(
+                currency=payment_data.currency, callback_url=payment_data.callback_url
+            )
+
+            if not payment_address:
+                return False, None
+
+            # Create transaction record
+            transaction = self.wallet_repo.create_transaction(
+                telegram_id=telegram_id,
+                transaction_type="deposit",
+                amount=payment_data.amount,
+                description=payment_data.description,
+                crypto_currency=payment_data.currency,
+                payment_address=payment_address.get("address"),
+                blockbee_payment_id=payment_address.get("payment_id"),
+            )
+
+            return True, {
+                "transaction_id": transaction.id,
+                "payment_address": payment_address.get("address"),
+                "qr_code_url": payment_address.get("qr_code"),
+                "amount_crypto": payment_address.get("amount_crypto"),
+                "expires_at": payment_address.get("expires_at"),
+            }
+
+        except Exception as e:
+            logger.error(f"Crypto payment creation error: {e}")
+            return False, None
+
+    async def process_payment_webhook(self, webhook_data: Dict[str, Any]) -> bool:
+        """Process payment confirmation webhook"""
+        try:
+            payment_id = webhook_data.get("payment_id")
+            if not payment_id:
+                return False
+
+            transaction = self.wallet_repo.get_transaction_by_blockbee_id(payment_id)
+            if not transaction:
+                logger.warning(f"Transaction not found for payment ID: {payment_id}")
+                return False
+
+            status = webhook_data.get("status")
+            transaction_hash = webhook_data.get("transaction_hash")
+
+            if status == "confirmed":
+                # Update transaction status
+                self.wallet_repo.update_transaction_status(
+                    transaction.id, "confirmed", transaction_hash
+                )
+
+                # Credit user balance
+                current_balance = self.get_user_balance(transaction.telegram_id)
+                new_balance = current_balance + Decimal(str(transaction.amount))
+                self.user_repo.update_user_balance(transaction.telegram_id, new_balance)
+
+                logger.info(
+                    f"Payment confirmed: {transaction.amount} USD for user {transaction.telegram_id}"
+                )
+                return True
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Payment webhook processing error: {e}")
+            return False
+
+    def deduct_balance(
+        self, telegram_id: int, amount: Decimal, description: str
+    ) -> bool:
+        """Deduct amount from user balance"""
+        try:
+            current_balance = self.get_user_balance(telegram_id)
+            if current_balance < amount:
+                return False
+
+            new_balance = current_balance - amount
+            self.user_repo.update_user_balance(telegram_id, new_balance)
+
+            # Create transaction record
+            self.wallet_repo.create_transaction(
+                telegram_id=telegram_id,
+                transaction_type="payment",
+                amount=-amount,  # Negative for deduction
+                description=description,
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Balance deduction error: {e}")
+            return False
+
+    def get_transaction_history(self, telegram_id: int, limit: int = 50) -> List[Any]:
+        """Get user's transaction history"""
+        return self.wallet_repo.get_user_transactions(telegram_id, limit=limit)
+
+
+class LocalizationService:
+    """Multilingual support and translation service"""
+
+    def __init__(self, translation_repo, user_repo):
+        self.translation_repo = translation_repo
+        self.user_repo = user_repo
+        self._translation_cache = {}
+
+    def get_translation(self, key: str, language_code: str, **kwargs) -> str:
+        """Get translation with parameter substitution"""
+        # Check cache first
+        cache_key = f"{key}:{language_code}"
+        if cache_key in self._translation_cache:
+            text = self._translation_cache[cache_key]
+        else:
+            text = self.translation_repo.get_translation(key, language_code)
+            if text:
+                self._translation_cache[cache_key] = text
+            else:
+                # Fallback to English
+                text = self.translation_repo.get_translation(key, "en")
+                if not text:
+                    text = f"[Missing: {key}]"
+
+        # Substitute parameters
+        if kwargs:
+            try:
+                text = text.format(**kwargs)
+            except KeyError:
+                logger.warning(f"Missing parameters for translation key: {key}")
+
+        return text
+
+    def get_user_language(self, telegram_id: int) -> str:
+        """Get user's preferred language"""
+        user = self.user_repo.get_user_by_telegram_id(telegram_id)
+        return user.language_code if user else "en"
+
+    def set_user_language(self, telegram_id: int, language_code: str) -> bool:
+        """Set user's preferred language"""
+        return self.user_repo.update_user_language(telegram_id, language_code)
+
+    def get_supported_languages(self) -> List[Dict[str, str]]:
+        """Get list of supported languages"""
+        return [
+            {"code": "en", "name": "English", "flag": "🇬🇧"},
+            {"code": "fr", "name": "Français", "flag": "🇫🇷"},
+        ]
+
+
+class AdminNotificationService:
+    """Admin notification and monitoring service"""
+
+    def __init__(self, admin_repo):
+        self.admin_repo = admin_repo
+
+    async def notify_domain_search(
+        self, telegram_id: int, domain: str, tld: str, is_available: bool
+    ):
+        """Notify admin of domain search"""
+        self.admin_repo.create_notification(
+            notification_type="domain_search",
+            title="Domain Search",
+            message=f"User {telegram_id} searched for {domain}.{tld} - {'Available' if is_available else 'Unavailable'}",
+            telegram_id=telegram_id,
+            metadata={"domain": domain, "tld": tld, "available": is_available},
+        )
+
+    async def notify_domain_purchase(
+        self, telegram_id: int, domain: str, price: Decimal, payment_method: str
+    ):
+        """Notify admin of domain purchase"""
+        self.admin_repo.create_notification(
+            notification_type="domain_purchase",
+            title="Domain Purchase",
+            message=f"User {telegram_id} purchased {domain} for ${price} via {payment_method}",
+            telegram_id=telegram_id,
+            metadata={
+                "domain": domain,
+                "price": float(price),
+                "payment_method": payment_method,
+            },
+            severity="info",
+        )
+
+    async def notify_wallet_topup(
+        self, telegram_id: int, amount: Decimal, currency: str
+    ):
+        """Notify admin of wallet top-up"""
+        self.admin_repo.create_notification(
+            notification_type="wallet_topup",
+            title="Wallet Top-up",
+            message=f"User {telegram_id} topped up ${amount} via {currency}",
+            telegram_id=telegram_id,
+            metadata={"amount": float(amount), "currency": currency},
+        )
+
+    async def notify_system_error(
+        self, error_type: str, error_message: str, context: Dict[str, Any] = None
+    ):
+        """Notify admin of system errors"""
+        self.admin_repo.create_notification(
+            notification_type="system_error",
+            title=f"System Error: {error_type}",
+            message=error_message,
+            metadata=context or {},
+            severity="error",
+        )
+
+    def get_recent_notifications(self, hours: int = 24) -> List[Any]:
+        """Get recent admin notifications"""
+        return self.admin_repo.get_recent_notifications(hours)
+
+
+# Service Factory for Dependency Injection
+class ServiceFactory:
+    """Factory for creating service instances with proper dependencies"""
+
+    def __init__(self, db_session, config):
+        self.db_session = db_session
+        self.config = config
+
+        # Initialize repositories
+        from DOMAIN_BOT_REPOSITORY_LAYER import (
+            UserRepository,
+            DomainRepository,
+            DNSRepository,
+            WalletRepository,
+            ContactRepository,
+            TranslationRepository,
+            AdminRepository,
+        )
+
+        self.user_repo = UserRepository(db_session)
+        self.domain_repo = DomainRepository(db_session)
+        self.dns_repo = DNSRepository(db_session)
+        self.wallet_repo = WalletRepository(db_session)
+        self.contact_repo = ContactRepository(db_session)
+        self.translation_repo = TranslationRepository(db_session)
+        self.admin_repo = AdminRepository(db_session)
+
+        # Initialize API clients (these would be actual implementations)
+        self.openprovider_api = None  # OpenProviderAPI(config.openprovider_username, config.openprovider_password)
+        self.cloudflare_api = (
+            None  # CloudflareAPI(config.cloudflare_token, config.cloudflare_email)
+        )
+        self.blockbee_api = None  # BlockBeeAPI(config.blockbee_api_key)
+
+    def create_domain_service(self) -> DomainService:
+        """Create domain service"""
+        return DomainService(
+            self.domain_repo,
+            self.contact_repo,
+            self.dns_repo,
+            self.openprovider_api,
+            self.cloudflare_api,
+        )
+
+    def create_dns_service(self) -> DNSService:
+        """Create DNS service"""
+        return DNSService(self.dns_repo, self.domain_repo, self.cloudflare_api)
+
+    def create_wallet_service(self) -> WalletService:
+        """Create wallet service"""
+        return WalletService(self.wallet_repo, self.user_repo, self.blockbee_api)
+
+    def create_localization_service(self) -> LocalizationService:
+        """Create localization service"""
+        return LocalizationService(self.translation_repo, self.user_repo)
+
+    def create_admin_service(self) -> AdminNotificationService:
+        """Create admin notification service"""
+        return AdminNotificationService(self.admin_repo)

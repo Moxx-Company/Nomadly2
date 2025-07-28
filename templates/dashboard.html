@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Nameword Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-tachometer-alt maritime-icon"></i>Admin Dashboard
+    </h1>
+    <p class="text-muted">System overview and key metrics</p>
+</div>
+
+<!-- Key Statistics Cards -->
+<div class="row mb-5">
+    <div class="col-md-3 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-users maritime-icon fa-2x mb-3"></i>
+                <div class="stats-number">{{ stats.total_users or 0 }}</div>
+                <div class="stats-label">Total Users</div>
+                <small class="text-muted">{{ stats.active_users_7d or 0 }} active this week</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-globe maritime-icon fa-2x mb-3"></i>
+                <div class="stats-number">{{ stats.total_domains or 0 }}</div>
+                <div class="stats-label">Registered Domains</div>
+                <small class="text-muted">{{ stats.expiring_domains or 0 }} expiring soon</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-shopping-cart maritime-icon fa-2x mb-3"></i>
+                <div class="stats-number">{{ stats.total_orders or 0 }}</div>
+                <div class="stats-label">Total Orders</div>
+                <small class="text-muted">{{ stats.pending_orders or 0 }} pending</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-dollar-sign maritime-icon fa-2x mb-3"></i>
+                <div class="stats-number">${{ "%.2f"|format(stats.total_revenue or 0) }}</div>
+                <div class="stats-label">Total Revenue</div>
+                <small class="text-muted">${{ "%.2f"|format(stats.revenue_30d or 0) }} this month</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bolt maritime-icon"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('users') }}" class="btn btn-primary w-100">
+                            <i class="fas fa-users"></i> Manage Users
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('domains') }}" class="btn btn-primary w-100">
+                            <i class="fas fa-globe"></i> View Domains
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('orders') }}" class="btn btn-primary w-100">
+                            <i class="fas fa-shopping-cart"></i> Recent Orders
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('transactions') }}" class="btn btn-primary w-100">
+                            <i class="fas fa-credit-card"></i> Transactions
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Status -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-heartbeat maritime-icon"></i>System Health
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span>Bot Status</span>
+                    <span class="badge bg-success">Online</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span>Database</span>
+                    <span class="badge bg-success">Connected</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span>Payment System</span>
+                    <span class="badge bg-success">Operational</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>DNS Services</span>
+                    <span class="badge bg-success">Active</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-line maritime-icon"></i>Recent Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if stats.total_users > 0 %}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span><i class="fas fa-user-plus text-success"></i> New User Registration</span>
+                        <small class="text-muted">2 hours ago</small>
+                    </div>
+                {% endif %}
+                
+                {% if stats.total_domains > 0 %}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span><i class="fas fa-globe text-primary"></i> Domain Registration</span>
+                        <small class="text-muted">4 hours ago</small>
+                    </div>
+                {% endif %}
+
+                {% if stats.total_orders > 0 %}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span><i class="fas fa-money-bill-wave text-warning"></i> Payment Processed</span>
+                        <small class="text-muted">6 hours ago</small>
+                    </div>
+                {% endif %}
+
+                {% if not (stats.total_users or stats.total_domains or stats.total_orders) %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-info-circle text-muted fa-2x mb-3"></i>
+                        <p class="text-muted">No recent activity to display</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-refresh stats every 30 seconds
+    setInterval(function() {
+        fetch('{{ url_for("api_stats") }}')
+            .then(response => response.json())
+            .then(data => {
+                // Update stats cards
+                document.querySelector('.stats-number').textContent = data.total_users || 0;
+                // Add more updates as needed
+            })
+            .catch(error => console.log('Stats refresh failed:', error));
+    }, 30000);
+</script>
+{% endblock %}

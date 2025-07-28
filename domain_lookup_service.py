@@ -1,0 +1,312 @@
+#!/usr/bin/env python3
+"""
+Domain Lookup Service - ID-based domain management
+Provides comprehensive domain lookup and management using database IDs instead of names
+"""
+
+import logging
+from typing import Dict, List, Optional, Tuple
+from database import get_db_manager, RegisteredDomain, User, OpenProviderContact
+from sqlalchemy import text
+import json
+
+logger = logging.getLogger(__name__)
+
+
+class DomainLookupService:
+    """ID-based domain lookup and management service"""
+
+    def __init__(self):
+        self.db = get_db_manager()
+
+    def get_domain_by_id(self, domain_id: int) -> Optional[RegisteredDomain]:
+        """Get domain by database ID"""
+        try:
+            session = self.db.get_session()
+            try:
+                domain = (
+                    session.query(RegisteredDomain)
+                    .filter(RegisteredDomain.id == domain_id)
+                    .first()
+                )
+                return domain
+            finally:
+                session.close()
+        except Exception as e:
+            logger.error(f"Error getting domain by ID {domain_id}: {e}")
+            return None
+
+    def get_domains_by_user_id(self, telegram_id: int) -> List[RegisteredDomain]:
+        """Get all domains for a user using their Telegram ID"""
+        try:
+            session = self.db.get_session()
+            try:
+                domains = (
+                    session.query(RegisteredDomain)
+                    .filter(RegisteredDomain.telegram_id == telegram_id)
+                    .order_by(RegisteredDomain.created_at.desc())
+                    .all()
+                )
+                return domains
+            finally:
+                session.close()
+        except Exception as e:
+            logger.error(f"Error getting domains for user {telegram_id}: {e}")
+            return []
+
+    def get_domain_by_name(
+        self, domain_name: str, telegram_id: int = None
+    ) -> Optional[RegisteredDomain]:
+        """Get domain by name (with optional user filter)"""
+        try:
+            session = self.db.get_session()
+            try:
+                query = session.query(RegisteredDomain).filter(
+                    RegisteredDomain.domain_name == domain_name
+                )
+
+                if telegram_id:
+                    query = query.filter(RegisteredDomain.telegram_id == telegram_id)
+
+                domain = query.first()
+                return domain
+            finally:
+                session.close()
+        except Exception as e:
+            logger.error(f"Error getting domain by name {domain_name}: {e}")
+            return None
+
+    def get_domain_with_cloudflare_zone(
+        self, cloudflare_zone_id: str
+    ) -> Optional[RegisteredDomain]:
+        """Get domain by Cloudflare zone ID"""
+        try:
+            session = self.db.get_session()
+            try:
+                domain = (
+                    session.query(RegisteredDomain)
+                    .filter(RegisteredDomain.cloudflare_zone_id == cloudflare_zone_id)
+                    .first()
+                )
+                return domain
+            finally:
+                session.close()
+        except Exception as e:
+            logger.error(f"Error getting domain by zone ID {cloudflare_zone_id}: {e}")
+            return None
+
+    def get_domain_with_openprovider_domain_id(
+        self, openprovider_domain_id: str
+    ) -> Optional[RegisteredDomain]:
+        """Get domain by OpenProvider domain ID"""
+        try:
+            session = self.db.get_session()
+            try:
+                domain = (
+                    session.query(RegisteredDomain)
+                    .filter(
+                        RegisteredDomain.openprovider_domain_id
+                        == openprovider_domain_id
+                    )
+                    .first()
+                )
+                return domain
+            finally:
+                session.close()
+        except Exception as e:
+            logger.error(
+                f"Error getting domain by OpenProvider ID {openprovider_domain_id}: {e}"
+            )
+            return None
+
+    def update_domain_cloudflare_data(
+        self, domain_id: int, cloudflare_zone_id: str, nameservers: List[str]
+    ) -> bool:
+        """Update domain with Cloudflare zone information"""
+        try:
+            session = self.db.get_session()
+            try:
+                domain = (
+                    session.query(RegisteredDomain)
+                    .filter(RegisteredDomain.id == domain_id)
+                    .first()
+                )
+                if domain:
+                    domain.cloudflare_zone_id = cloudflare_zone_id
+                    domain.nameservers = json.dumps(nameservers)
+                    domain.nameserver_mode = "cloudflare"
+                    session.commit()
+                    logger.info(
+                        f"Updated domain {domain_id} with Cloudflare zone {cloudflare_zone_id}"
+                    )
+                    return True
+                else:
+                    logger.error(f"Domain {domain_id} not found for Cloudflare update")
+                    return False
+            finally:
+                session.close()
+        except Exception as e:
+            logger.error(f"Error updating domain {domain_id} with Cloudflare data: {e}")
+            return False
+
+    def update_domain_openprovider_data(
+        self, domain_id: int, openprovider_domain_id: str, contact_handle: str
+    ) -> bool:
+        """Update domain with OpenProvider registration information"""
+        try:
+            session = self.db.get_session()
+            try:
+                domain = (
+                    session.query(RegisteredDomain)
+                    .filter(RegisteredDomain.id == domain_id)
+                    .first()
+                )
+                if domain:
+                    domain.openprovider_domain_id = openprovider_domain_id
+                    domain.openprovider_contact_handle = contact_handle
+                    domain.status = "active"
+                    session.commit()
+                    logger.info(
+                        f"Updated domain {domain_id} with OpenProvider ID {openprovider_domain_id}"
+                    )
+                    return True
+                else:
+                    logger.error(
+                        f"Domain {domain_id} not found for OpenProvider update"
+                    )
+                    return False
+            finally:
+                session.close()
+        except Exception as e:
+            logger.error(
+                f"Error updating domain {domain_id} with OpenProvider data: {e}"
+            )
+            return False
+
+    def get_domain_summary(self, domain_id: int) -> Dict:
+        """Get comprehensive domain summary by ID"""
+        try:
+            domain = self.get_domain_by_id(domain_id)
+            if not domain:
+                return {"success": False, "error": "Domain not found"}
+
+            nameservers = []
+            if domain.nameservers:
+                try:
+                    nameservers = json.loads(domain.nameservers)
+                except json.JSONDecodeError:
+                    nameservers = []
+
+            return {
+                "success": True,
+                "domain_id": domain.id,
+                "domain_name": domain.domain_name,
+                "status": domain.status,
+                "nameserver_mode": domain.nameserver_mode,
+                "nameservers": nameservers,
+                "cloudflare_zone_id": domain.cloudflare_zone_id,
+                "openprovider_domain_id": domain.openprovider_domain_id,
+                "openprovider_contact_handle": domain.openprovider_contact_handle,
+                "price_paid": float(domain.price_paid) if domain.price_paid else 0.0,
+                "payment_method": domain.payment_method,
+                "registration_date": (
+                    domain.registration_date.isoformat()
+                    if domain.registration_date
+                    else None
+                ),
+                "expiry_date": (
+                    domain.expires_at.isoformat() if domain.expires_at else None
+                ),
+                "created_at": (
+                    domain.created_at.isoformat() if domain.created_at else None
+                ),
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting domain summary for ID {domain_id}: {e}")
+            return {"success": False, "error": str(e)}
+
+    def search_domains_by_user(
+        self, telegram_id: int, search_term: str = None
+    ) -> List[Dict]:
+        """Search user's domains with optional search term"""
+        try:
+            domains = self.get_domains_by_user_id(telegram_id)
+
+            if search_term:
+                domains = [
+                    d for d in domains if search_term.lower() in d.domain_name.lower()
+                ]
+
+            results = []
+            for domain in domains:
+                nameservers = []
+                if domain.nameservers:
+                    try:
+                        nameservers = json.loads(domain.nameservers)
+                    except json.JSONDecodeError:
+                        nameservers = []
+
+                results.append(
+                    {
+                        "domain_id": domain.id,
+                        "domain_name": domain.domain_name,
+                        "status": domain.status,
+                        "nameserver_mode": domain.nameserver_mode,
+                        "price_paid": (
+                            float(domain.price_paid) if domain.price_paid else 0.0
+                        ),
+                        "registration_date": (
+                            domain.registration_date.isoformat()
+                            if domain.registration_date
+                            else None
+                        ),
+                        "has_cloudflare_zone": bool(domain.cloudflare_zone_id),
+                        "has_openprovider_domain_id": bool(domain.openprovider_domain_id),
+                    }
+                )
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Error searching domains for user {telegram_id}: {e}")
+            return []
+
+
+def get_domain_lookup_service():
+    """Get domain lookup service instance"""
+    return DomainLookupService()
+
+
+# Test function for verification
+def test_domain_lookup():
+    """Test domain lookup functionality"""
+    print("🔍 TESTING DOMAIN LOOKUP SERVICE")
+    print("=" * 50)
+
+    lookup_service = get_domain_lookup_service()
+    telegram_id = 5590563715
+
+    # Test getting domains by user
+    domains = lookup_service.get_domains_by_user_id(telegram_id)
+    print(f"Found {len(domains)} domains for user {telegram_id}")
+
+    for domain in domains:
+        print(
+            f"  - ID: {domain.id}, Name: {domain.domain_name}, Status: {domain.status}"
+        )
+
+        # Test domain summary
+        summary = lookup_service.get_domain_summary(domain.id)
+        if summary["success"]:
+            print(
+                f"    Summary: Zone ID: {summary.get('cloudflare_zone_id')}, OpenProvider ID: {summary.get('openprovider_domain_id')}"
+            )
+        else:
+            print(f"    Summary failed: {summary.get('error')}")
+
+    print("\n✅ Domain lookup test completed")
+
+
+if __name__ == "__main__":
+    test_domain_lookup()

@@ -1,0 +1,367 @@
+"""
+Domain Registration Bot - Clean Database Models
+Aligned with Domain Registration Bot Requirements v1.5
+
+This module contains SQLAlchemy models for the domain registration bot
+focusing exclusively on domain registration, DNS management, and wallet functionality.
+Removed: cPanel hosting, URL shortener, email notifications (not needed for domain bot)
+"""
+
+from datetime import datetime
+from typing import Dict, Any, List, Optional
+import json
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    DateTime,
+    Boolean,
+    Text,
+    DECIMAL,
+    ForeignKey,
+    BIGINT,
+    Index,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
+Base = declarative_base()
+
+
+class User(Base):
+    """User accounts with language preference and wallet balance"""
+
+    __tablename__ = "users"
+
+    telegram_id = Column(BIGINT, primary_key=True, index=True)
+    username = Column(String(100))
+    first_name = Column(String(100))
+    last_name = Column(String(100))
+    language_code = Column(String(10), default="en")  # en, fr
+    balance_usd = Column(DECIMAL(10, 2), default=0.00)
+    is_admin = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Relationships
+    domains = relationship(
+        "RegisteredDomain", back_populates="user", cascade="all, delete-orphan"
+    )
+    wallet_transactions = relationship(
+        "WalletTransaction", back_populates="user", cascade="all, delete-orphan"
+    )
+    openprovider_contacts = relationship(
+        "OpenProviderContact", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return f"<User(telegram_id={self.telegram_id}, username={self.username})>"
+
+    def update_balance(self, amount: float) -> None:
+        """Update user balance"""
+        self.balance_usd = float(self.balance_usd) + amount
+        self.updated_at = datetime.utcnow()
+
+    def can_afford(self, amount: float) -> bool:
+        """Check if user can afford amount"""
+        return float(self.balance_usd) >= amount
+
+
+class UserState(Base):
+    """User interaction states for multi-step workflows"""
+
+    __tablename__ = "user_states"
+
+    telegram_id = Column(BIGINT, primary_key=True, index=True)
+    current_state = Column(String(100))
+    state_data = Column(JSONB)  # Store workflow data
+    expiry_date = Column(DateTime)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return (
+            f"<UserState(telegram_id={self.telegram_id}, state={self.current_state})>"
+        )
+
+    def set_state_value(self, key: str, value: Any) -> None:
+        """Set state data value"""
+        if not self.state_data:
+            self.state_data = {}
+
+        data = self.state_data if isinstance(self.state_data, dict) else {}
+        data[key] = value
+        self.state_data = data
+
+
+class RegisteredDomain(Base):
+    """Domain registrations with complete metadata and nameserver management"""
+
+    __tablename__ = "registered_domains"
+
+    id = Column(Integer, primary_key=True)
+    telegram_id = Column(
+        BIGINT, ForeignKey("users.telegram_id"), nullable=False, index=True
+    )
+    domain_name = Column(String(255), nullable=False, index=True)
+    tld = Column(String(20), nullable=False)
+    openprovider_domain_id = Column(String(100))  # For API operations
+    cloudflare_zone_id = Column(String(100))  # For DNS management
+    nameserver_mode = Column(
+        String(50), default="cloudflare"
+    )  # cloudflare, custom, default
+    nameservers = Column(JSONB)  # Array of nameserver records
+    registration_date = Column(DateTime, default=func.now())
+    expiry_date = Column(DateTime)
+    auto_renew = Column(Boolean, default=True)
+    status = Column(String(50), default="active")  # active, expired, suspended, pending
+    price_paid = Column(DECIMAL(10, 2))
+    payment_method = Column(String(50))  # wallet, crypto
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="domains")
+    dns_records = relationship(
+        "DNSRecord", back_populates="domain", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return f"<RegisteredDomain(domain={self.domain_name}.{self.tld}, status={self.status})>"
+
+    @property
+    def full_domain(self) -> str:
+        """Get full domain name"""
+        return f"{self.domain_name}.{self.tld}"
+
+    @property
+    def is_active(self) -> bool:
+        """Check if domain is active"""
+        return self.status == "active"
+
+    @property
+    def days_until_expiry(self) -> int:
+        """Get days until expiry"""
+        if self.expiry_date:
+            delta = self.expiry_date - datetime.utcnow()
+            return max(0, delta.days)
+        return 0
+
+    def get_nameservers(self) -> List[str]:
+        """Get nameserver list"""
+        if isinstance(self.nameservers, list):
+            return self.nameservers
+        elif isinstance(self.nameservers, str):
+            return json.loads(self.nameservers)
+        return []
+
+    def set_nameservers(self, nameservers: List[str]) -> None:
+        """Set nameserver list"""
+        self.nameservers = nameservers
+        self.updated_at = datetime.utcnow()
+
+
+class DNSRecord(Base):
+    """DNS records management with Cloudflare integration"""
+
+    __tablename__ = "dns_records"
+
+    id = Column(Integer, primary_key=True)
+    domain_id = Column(
+        Integer, ForeignKey("registered_domains.id"), nullable=False, index=True
+    )
+    cloudflare_record_id = Column(String(100))
+    record_type = Column(String(10), nullable=False)  # A, AAAA, MX, TXT, CNAME, SRV, NS
+    name = Column(String(255), nullable=False)
+    content = Column(Text, nullable=False)
+    ttl = Column(Integer, default=3600)
+    priority = Column(Integer)  # For MX and SRV records
+    proxied = Column(Boolean, default=False)  # Cloudflare proxy status
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Relationships
+    domain = relationship("RegisteredDomain", back_populates="dns_records")
+
+    def __repr__(self):
+        return f"<DNSRecord(type={self.record_type}, name={self.name}, content={self.content})>"
+
+    @property
+    def display_name(self) -> str:
+        """Get display name for DNS record"""
+        if self.name == "@":
+            return self.domain.full_domain
+        elif self.name.endswith(f".{self.domain.full_domain}"):
+            return self.name
+        else:
+            return f"{self.name}.{self.domain.full_domain}"
+
+
+class WalletTransaction(Base):
+    """Wallet and transaction history with cryptocurrency support"""
+
+    __tablename__ = "wallet_transactions"
+
+    id = Column(Integer, primary_key=True)
+    telegram_id = Column(
+        BIGINT, ForeignKey("users.telegram_id"), nullable=False, index=True
+    )
+    transaction_type = Column(
+        String(50), nullable=False
+    )  # deposit, payment, refund, admin_credit, admin_debit
+    amount = Column(DECIMAL(10, 2), nullable=False)
+    currency = Column(String(10), default="USD")
+    crypto_currency = Column(String(20))  # BTC, ETH, LTC, etc.
+    crypto_amount = Column(DECIMAL(18, 8))
+    blockbee_payment_id = Column(String(100))
+    payment_address = Column(Text)
+    transaction_hash = Column(String(255))
+    status = Column(
+        String(50), default="pending", index=True
+    )  # pending, confirmed, failed, expired
+    description = Column(Text)
+    created_at = Column(DateTime, default=func.now(), index=True)
+    confirmed_at = Column(DateTime)
+
+    # Relationships
+    user = relationship("User", back_populates="wallet_transactions")
+
+    def __repr__(self):
+        return f"<WalletTransaction(type={self.transaction_type}, amount={self.amount}, status={self.status})>"
+
+
+class OpenProviderContact(Base):
+    """OpenProvider contact handles for domain registration privacy"""
+
+    __tablename__ = "openprovider_contacts"
+
+    id = Column(Integer, primary_key=True)
+    telegram_id = Column(
+        BIGINT, ForeignKey("users.telegram_id"), nullable=False, index=True
+    )
+    contact_handle = Column(String(100), nullable=False)
+    first_name = Column(String(100), nullable=False)
+    last_name = Column(String(100), nullable=False)
+    company_name = Column(String(255))
+    email = Column(String(255), nullable=False)
+    phone = Column(String(50), nullable=False)
+    address_line_1 = Column(String(255), nullable=False)
+    address_line_2 = Column(String(255))
+    city = Column(String(100), nullable=False)
+    state = Column(String(100), nullable=False)
+    zipcode = Column(String(20), nullable=False)
+    country = Column(String(2), nullable=False)  # US
+    birth_date = Column(String(20))  # For some TLDs
+    passport_number = Column(String(50))  # Privacy protection
+    created_at = Column(DateTime, default=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="openprovider_contacts")
+
+    def __repr__(self):
+        return f"<OpenProviderContact(handle={self.contact_handle}, name={self.first_name} {self.last_name})>"
+
+
+class AdminNotification(Base):
+    """Admin notifications for domain activities"""
+
+    __tablename__ = "admin_notifications"
+
+    id = Column(Integer, primary_key=True)
+    telegram_id = Column(BIGINT, nullable=False, index=True)
+    notification_type = Column(
+        String(100), nullable=False
+    )  # domain_search, domain_registration, wallet_topup
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    data = Column(JSONB)  # Additional structured data
+    severity = Column(String(20), default="info")  # info, warning, error, critical
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=func.now())
+
+    def __repr__(self):
+        return f"<AdminNotification(type={self.notification_type}, severity={self.severity})>"
+
+
+class Translation(Base):
+    """Language translations for bilingual support (EN/FR)"""
+
+    __tablename__ = "translations"
+
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255), nullable=False)
+    language_code = Column(String(10), nullable=False)  # en, fr
+    translation_text = Column(Text, nullable=False)
+    context = Column(String(255))  # Additional context for translators
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index("idx_translations_key_language", "key", "language_code", unique=True),
+    )
+
+    def __repr__(self):
+        return f"<Translation(key={self.key}, lang={self.language_code})>"
+
+
+class SystemSetting(Base):
+    """System configuration and settings"""
+
+    __tablename__ = "system_settings"
+
+    id = Column(Integer, primary_key=True)
+    setting_key = Column(String(255), unique=True, nullable=False)
+    setting_value = Column(Text, nullable=False)
+    setting_type = Column(
+        String(50), default="string"
+    )  # string, integer, boolean, json
+    description = Column(Text)
+    is_public = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    def __repr__(self):
+        return f"<SystemSetting(key={self.setting_key}, type={self.setting_type})>"
+
+
+class APIUsageLog(Base):
+    """API rate limiting and usage tracking for OpenProvider, Cloudflare, BlockBee"""
+
+    __tablename__ = "api_usage_logs"
+
+    id = Column(Integer, primary_key=True)
+    api_provider = Column(
+        String(100), nullable=False
+    )  # openprovider, cloudflare, blockbee
+    endpoint = Column(String(255), nullable=False)
+    method = Column(String(10), nullable=False)
+    status_code = Column(Integer)
+    response_time_ms = Column(Integer)
+    telegram_id = Column(BIGINT, nullable=True)
+    request_data = Column(JSONB)
+    response_data = Column(JSONB)
+    error_message = Column(Text)
+    created_at = Column(DateTime, default=func.now())
+
+    def __repr__(self):
+        return f"<APIUsageLog(provider={self.api_provider}, endpoint={self.endpoint}, status={self.status_code})>"
+
+
+# Performance indexes for domain bot operations
+"""
+-- Domain Bot Performance Indexes
+CREATE INDEX idx_users_telegram_id ON users(telegram_id);
+CREATE INDEX idx_user_states_telegram_id ON user_states(telegram_id);
+CREATE INDEX idx_user_states_expires_at ON user_states(expiry_date);
+CREATE INDEX idx_registered_domains_telegram_id ON registered_domains(telegram_id);
+CREATE INDEX idx_registered_domains_domain_name ON registered_domains(domain_name);
+CREATE INDEX idx_dns_records_domain_id ON dns_records(domain_id);
+CREATE INDEX idx_wallet_transactions_telegram_id ON wallet_transactions(telegram_id);
+CREATE INDEX idx_wallet_transactions_status ON wallet_transactions(status);
+CREATE INDEX idx_wallet_transactions_created_at ON wallet_transactions(created_at);
+CREATE INDEX idx_openprovider_contacts_telegram_id ON openprovider_contacts(telegram_id);
+CREATE INDEX idx_admin_notifications_created_at ON admin_notifications(created_at);
+"""

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Orders - Nameword Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        <i class="fas fa-shopping-cart maritime-icon"></i>Order Management
+    </h1>
+    <p class="text-muted">Monitor payment orders and transaction status</p>
+</div>
+
+<!-- Orders Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Payment Orders</h5>
+        <small class="text-muted">{{ orders|length }} recent orders</small>
+    </div>
+    <div class="card-body">
+        {% if orders %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Service</th>
+                            <th>Amount</th>
+                            <th>Payment Method</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>
+                                <code class="small">{{ order.order_id[:12] }}...</code>
+                            </td>
+                            <td>
+                                {% if order.username %}
+                                    <i class="fab fa-telegram maritime-icon"></i>@{{ order.username }}
+                                {% else %}
+                                    <i class="fas fa-user maritime-icon"></i>{{ order.telegram_id }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ order.service_type.replace('_', ' ').title() }}</strong>
+                                {% if order.service_details %}
+                                    <br><small class="text-muted">{{ order.service_details[:30] }}{% if order.service_details|length > 30 %}...{% endif %}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>${{ "%.2f"|format(order.amount_usd) }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 'primary' if order.payment_method == 'cryptocurrency' else 'secondary' }}">
+                                    {{ order.payment_method.replace('_', ' ').title() }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ order.payment_status }}">
+                                    {{ order.payment_status.title() }}
+                                </span>
+                            </td>
+                            <td>
+                                <small>{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </td>
+                            <td>
+                                {% if order.payment_address != 'N/A' %}
+                                    <small>
+                                        <i class="fas fa-wallet maritime-icon"></i>
+                                        {{ order.payment_address[:10] }}...
+                                    </small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-shopping-cart text-muted fa-3x mb-3"></i>
+                <h5 class="text-muted">No Orders Found</h5>
+                <p class="text-muted">No payment orders have been created yet</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

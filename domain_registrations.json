@@ -1,0 +1,18 @@
+[
+  {
+    "telegram_id": 5590563715,
+    "domain_name": "junsusud.com",
+    "domain_id": "SIM_85bde9ca",
+    "customer_handle": "NOMADLY_53194dd5",
+    "cloudflare_zone_id": null,
+    "nameservers": [
+      "ns1.privatehoster.cc",
+      "ns2.privatehoster.cc"
+    ],
+    "nameserver_choice": "nomadly",
+    "technical_email": "onarrival21@gmail.com",
+    "registered_at": "2025-07-23T20:20:37.170161",
+    "status": "active",
+    "registration_id": "REG_000001"
+  }
+]

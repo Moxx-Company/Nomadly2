@@ -1,0 +1,15 @@
+{
+  "total_tests": 6,
+  "passed_tests": 2,
+  "failed_tests": 4,
+  "success_rate": "33.3%",
+  "detailed_results": {
+    "Fresh Database Layer": "\u2705 PASSED",
+    "Data Access Layer": "\u274c FAILED",
+    "Business Logic Layer": "\u274c FAILED",
+    "External API Layer": "\u274c FAILED",
+    "FastAPI Routes Layer": "\u2705 PASSED",
+    "Complete Integration Flow": "\u274c FAILED"
+  },
+  "status": "NEEDS_WORK"
+}

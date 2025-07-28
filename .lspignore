@@ -1,0 +1,15 @@
+# LSP Performance - Exclude problematic directories
+.cache/
+.pre-commit-*/
+tests/data/
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+venv/
+env/
+.venv/
+node_modules/

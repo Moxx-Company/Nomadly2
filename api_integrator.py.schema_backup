@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""
+API Integrator - Fix both Cloudflare and OpenProvider API issues
+Remove all mock functionality and implement real API calls
+"""
+
+import os
+import asyncio
+import logging
+import requests
+from typing import Dict, List, Optional, Tuple
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+class WorkingCloudflareAPI:
+    """Fixed Cloudflare API with proper authentication"""
+
+    def __init__(self):
+        self.email = os.getenv("CLOUDFLARE_EMAIL")
+        self.api_key = os.getenv("CLOUDFLARE_GLOBAL_API_KEY")
+        self.api_token = os.getenv("CLOUDFLARE_API_TOKEN")
+        self.base_url = "https://api.cloudflare.com/client/v4"
+
+    def _get_headers(self):
+        """Get proper authentication headers - try token first, then key+email"""
+        if self.api_token:
+            return {
+                "Authorization": f"Bearer {self.api_token}",
+                "Content-Type": "application/json",
+            }
+        elif self.email and self.api_key:
+            return {
+                "X-Auth-Email": self.email,
+                "X-Auth-Key": self.api_key,
+                "Content-Type": "application/json",
+            }
+        else:
+            raise Exception("No valid Cloudflare credentials found")
+
+    def create_zone(self, domain_name: str) -> Tuple[bool, Optional[str], List[str]]:
+        """Create Cloudflare zone with proper error handling"""
+        try:
+            url = f"{self.base_url}/zones"
+            data = {
+                "name": domain_name,
+                "account": {"id": None},  # Will use default account
+                "jump_start": False,
+                "type": "full",
+            }
+
+            headers = self._get_headers()
+            response = requests.post(url, json=data, headers=headers)
+
+            logger.info(f"Cloudflare API response: {response.status_code}")
+            logger.info(f"Response data: {response.text[:500]}")
+
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("success"):
+                    zone_data = result.get("result", {})
+                    cloudflare_zone_id = zone_data.get("id")
+                    nameservers = zone_data.get("name_servers", [])
+
+                    logger.info(f"Zone created: {domain_name} (ID: {cloudflare_zone_id})")
+                    return True, cloudflare_zone_id, nameservers
+                else:
+                    errors = result.get("errors", [])
+                    logger.error(f"Zone creation failed: {errors}")
+                    return False, None, []
+            else:
+                logger.error(f"HTTP error {response.status_code}: {response.text}")
+                return False, None, []
+
+        except Exception as e:
+            logger.error(f"Zone creation exception: {e}")
+            return False, None, []
+
+
+class WorkingOpenProviderAPI:
+    """Fixed OpenProvider API with correct method signatures and authentication"""
+
+    def __init__(self):
+        self.username = os.getenv("OPENPROVIDER_USERNAME")
+        self.password = os.getenv("OPENPROVIDER_PASSWORD")
+        self.base_url = "https://api.openprovider.eu"
+        self.token = None
+
+    def _authenticate(self) -> bool:
+        """Authenticate and get access token"""
+        try:
+            url = f"{self.base_url}/v1beta/auth/login"
+            data = {"username": self.username, "password": self.password}
+
+            response = requests.post(url, json=data)
+
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("code") == 0:  # Success code
+                    self.token = result.get("data", {}).get("token")
+                    logger.info("OpenProvider authentication successful")
+                    return True
+                else:
+                    logger.error(f"Auth failed: {result.get('desc')}")
+                    return False
+            else:
+                logger.error(f"Auth HTTP error: {response.status_code}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Authentication error: {e}")
+            return False
+
+    def _get_headers(self):
+        """Get authentication headers"""
+        if not self.token:
+            if not self._authenticate():
+                raise Exception("OpenProvider authentication failed")
+
+        return {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+        }
+
+    def register_domain_real(
+        self, domain_name: str, tld: str, contact_handle: str, nameservers: List[str]
+    ) -> Tuple[bool, Optional[str], str]:
+        """Register domain with OpenProvider - REAL implementation"""
+        try:
+            # First create customer/contact if needed
+            customer_handle = self._create_customer_handle(contact_handle)
+            if not customer_handle:
+                return False, None, "Failed to create customer handle"
+
+            # Register the domain
+            url = f"{self.base_url}/v1beta/domains"
+
+            data = {
+                "domain": {"name": domain_name, "extension": tld},
+                "period": 1,
+                "owner_handle": customer_handle,
+                "admin_handle": customer_handle,
+                "tech_handle": customer_handle,
+                "billing_handle": customer_handle,
+                "nameservers": [{"name": ns} for ns in nameservers],
+                "use_domainlock": True,
+                "autorenew": False,
+                "dnssec": False,
+            }
+
+            headers = self._get_headers()
+            response = requests.post(url, json=data, headers=headers)
+
+            logger.info(f"Domain registration response: {response.status_code}")
+            logger.info(f"Response: {response.text[:500]}")
+
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("code") == 0:
+                    domain_data = result.get("data", {})
+                    domain_id = domain_data.get("id")
+                    logger.info(
+                        f"Domain registered: {domain_name}.{tld} (ID: {domain_id})"
+                    )
+                    return True, str(domain_id), "Registration successful"
+                else:
+                    error_msg = result.get("desc", "Unknown error")
+                    logger.error(f"Registration failed: {error_msg}")
+                    return False, None, error_msg
+            else:
+                error_msg = f"HTTP {response.status_code}: {response.text}"
+                logger.error(error_msg)
+                return False, None, error_msg
+
+        except Exception as e:
+            error_msg = f"Registration exception: {e}"
+            logger.error(error_msg)
+            return False, None, error_msg
+
+    def _create_customer_handle(self, contact_handle: str) -> Optional[str]:
+        """Create customer handle with anonymous data"""
+        try:
+            url = f"{self.base_url}/v1beta/customers"
+
+            # Use anonymous data for privacy
+            data = {
+                "company_name": "Privacy Services LLC",
+                "name": {"first_name": "John", "last_name": "Privacy"},
+                "address": {
+                    "street": "123 Privacy Street",
+                    "number": "1",
+                    "zipcode": "89101",
+                    "city": "Las Vegas",
+                    "state": "NV",
+                    "country": "US",
+                },
+                "phone": {
+                    "country_code": "+1",
+                    "area_code": "702",
+                    "subscriber_number": "5551234",
+                },
+                "email": "privacy@nomadly.com",
+            }
+
+            headers = self._get_headers()
+            response = requests.post(url, json=data, headers=headers)
+
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("code") == 0:
+                    handle = result.get("data", {}).get("handle")
+                    logger.info(f"Customer handle created: {handle}")
+                    return handle
+                else:
+                    logger.error(f"Customer creation failed: {result.get('desc')}")
+                    return None
+            else:
+                logger.error(f"Customer creation HTTP error: {response.status_code}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Customer creation error: {e}")
+            return None
+
+
+async def test_fixed_apis():
+    """Test both fixed APIs"""
+    print("🔧 TESTING FIXED API INTEGRATIONS")
+    print("=" * 40)
+
+    # Test Cloudflare
+    print("\n☁️ Testing Fixed Cloudflare API...")
+    cloudflare = WorkingCloudflareAPI()
+    cf_success, cf_zone_id, cf_nameservers = cloudflare.create_zone(
+        "test-fix-nomadly.com"
+    )
+
+    print(f"Cloudflare Result: {cf_success}")
+    if cf_success:
+        print(f"  Zone ID: {cf_zone_id}")
+        print(f"  Nameservers: {cf_nameservers}")
+
+    # Test OpenProvider
+    print("\n🌐 Testing Fixed OpenProvider API...")
+    openprovider = WorkingOpenProviderAPI()
+    op_success, op_domain_id, op_message = openprovider.register_domain_real(
+        "test-fix-nomadly",
+        "com",
+        "contact_test",
+        [await get_real_cloudflare_nameservers(domain_name)],
+    )
+
+    print(f"OpenProvider Result: {op_success}")
+    print(f"  Domain ID: {op_domain_id}")
+    print(f"  Message: {op_message}")
+
+    if cf_success and op_success:
+        print("\n✅ BOTH APIS WORKING - Ready to integrate into payment system")
+        return True
+    else:
+        print("\n❌ API issues remain - need credential fixes")
+        return False
+
+
+if __name__ == "__main__":
+    asyncio.run(test_fixed_apis())
