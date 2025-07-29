@@ -573,7 +573,7 @@ class UnifiedDNSManager:
                 "type": "full"
             }
             
-            print(f"headers: {self._get_headers()}")
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{self.base_url}/zones",
@@ -581,6 +581,8 @@ class UnifiedDNSManager:
                     json=zone_data,
                     timeout=15
                 )
+
+                print(f"headers: {self._get_headers()}, json: {zone_data}, response: {response}")
                 
                 if response.status_code == 200:
                     data = response.json()
