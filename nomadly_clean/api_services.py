@@ -11,7 +11,8 @@ import string
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from decimal import Decimal
-
+from dotenv import load_dotenv
+load_dotenv()
 
 class OpenProviderAPI:
     """OpenProvider domain registration API"""
@@ -238,9 +239,10 @@ class CloudflareAPI:
     def get_headers(self) -> Dict[str, str]:
         """Get headers with authentication"""
         return {
-            "Authorization": f"Bearer {self.api_token}",
-            "Content-Type": "application/json",
-        }
+                "X-Auth-Email": self.email,
+                "X-Auth-Key": self.api_token,
+                "Content-Type": "application/json",
+            }
 
     def create_zone(self, domain: str) -> Optional[str]:
         """Create DNS zone for domain"""
