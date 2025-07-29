@@ -26,7 +26,7 @@ class UnifiedDNSManager:
         self.base_url = "https://api.cloudflare.com/client/v4"
         
         # Validate credentials on initialization
-        self.auth_method = self._determine_auth_method()
+        self.auth_method = "token" #self._determine_auth_method()
         if not self.auth_method:
             logger.warning("⚠️ No valid Cloudflare credentials found - DNS management will be limited")
             self.enabled = False
@@ -573,6 +573,7 @@ class UnifiedDNSManager:
                 "type": "full"
             }
             
+            print(f"headers: {self._get_headers()}")
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{self.base_url}/zones",
