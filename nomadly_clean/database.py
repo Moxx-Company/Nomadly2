@@ -577,6 +577,14 @@ class DatabaseManager:
             return domains
         finally:
             session.close()
+
+    def get_domain_by_name(self, domain_name: str) -> Optional[RegisteredDomain]:
+        """Get registered domain by domain name"""
+        session = self.get_session()
+        try:
+            return session.query(RegisteredDomain).filter(RegisteredDomain.domain_name == domain_name).first()
+        finally:
+            session.close()
     
     def update_domain_zone_id(self, domain_name: str, cloudflare_zone_id: str):
         """Update cloudflare_zone_id for a domain"""

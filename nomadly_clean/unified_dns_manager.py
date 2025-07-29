@@ -507,11 +507,24 @@ class UnifiedDNSManager:
             
             result["nameservers"] = nameservers
             logger.info(f"📡 Cloudflare nameservers: {nameservers}")
+
+            from database import get_db_manager
+            db = get_db_manager()
             
             # Step 4: Update nameservers at registrar (OpenProvider)
             if openprovider_api:
                 logger.info(f"🔄 Updating nameservers at registrar...")
-                ns_update_result = await openprovider_api.update_nameservers(domain, nameservers)
+
+                domain_det = db.get_domain_by_name(domain)
+
+                if domain_det:
+                    openprovider_domain_id = domain_det.openprovider_domain_id
+                else:
+                    openprovider_domain_id = None  
+
+                logger.info(f"✅ Domain id {openprovider_domain_id} for {domain}")
+
+                ns_update_result = await openprovider_api.update_nameservers(domain, nameservers, openprovider_domain_id)
                 if not ns_update_result.get("success", False):
                     result["error"] = f"Failed to update nameservers at registrar: {ns_update_result.get('error', 'Unknown error')}"
                     return result
@@ -519,8 +532,7 @@ class UnifiedDNSManager:
             
             # Step 5: Update database with zone information
             try:
-                from database import get_db_manager
-                db = get_db_manager()
+                
                 db.update_domain_zone_id(domain, zone_id)
                 db.update_domain_nameservers(domain, nameservers, "cloudflare")
                 logger.info(f"✅ Database updated with zone ID and nameservers")

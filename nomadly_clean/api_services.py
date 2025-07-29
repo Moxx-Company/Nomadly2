@@ -178,7 +178,7 @@ class OpenProviderAPI:
             print(f"Domain registration error: {e}")
             return None
 
-    def update_nameservers(self, domain: str, nameservers: List[str]) -> bool:
+    def update_nameservers(self, domain: str, nameservers: List[str], openprovider_domain_id: str) -> bool:
         """Update nameservers for a domain"""
         try:
             if not self.is_token_valid():
@@ -196,7 +196,8 @@ class OpenProviderAPI:
                 url = f"{self.base_url}/v1beta/domains/{domain_id}"
             else:
                 # For other domains, try domain name first
-                url = f"{self.base_url}/v1beta/domains/{domain}"
+                url = f"{self.base_url}/v1beta/domains/{openprovider_domain_id}"
+
 
             # Prepare nameserver data - OpenProvider expects specific format
             ns_data = []
@@ -213,8 +214,10 @@ class OpenProviderAPI:
 
             print(f"Making OpenProvider API call to update nameservers for {domain}")
             print(f"Sending data: {data}, URL: {url}, headers: {headers}")
-            
+
             response = requests.put(url, json=data, headers=headers, timeout=8)
+
+            print(f"response {response.json()}")
 
             if response.status_code in [200, 201]:
                 print(f"✅ Successfully updated nameservers for {domain}")
