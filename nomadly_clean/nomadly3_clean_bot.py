@@ -4809,7 +4809,7 @@ class NomadlyCleanBot:
                 dynopay = DynopayAPI(api_key,token)
                 
                 # Create callback URL for payment monitoring
-                callback_url = f"https://8c65414e27d0.ngrok-free.app/webhook/blockbee/{order_id}"
+                callback_url = f"{os.getenv('FLASK_WEB_HOOK')}webhook/blockbee/{order_id}"
                 
                 # Generate real payment address for this transaction
                 address_response = dynopay.create_payment_address(
