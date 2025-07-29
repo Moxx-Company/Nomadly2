@@ -582,7 +582,7 @@ class UnifiedDNSManager:
                     timeout=15
                 )
 
-                print(f"headers: {self._get_headers()}, json: {zone_data}, response: {response}")
+                print(f"headers: {self._get_headers()}, json: {zone_data}, response: {response.json()}")
                 
                 if response.status_code == 200:
                     data = response.json()
