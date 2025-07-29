@@ -524,8 +524,8 @@ class UnifiedDNSManager:
 
                 logger.info(f"✅ Domain id {openprovider_domain_id} for {domain}")
 
-                ns_update_result = await openprovider_api.update_nameservers(domain, nameservers, openprovider_domain_id)
-                if not ns_update_result.get("success", False):
+                ns_update_result = openprovider_api.update_nameservers(domain, nameservers, openprovider_domain_id)
+                if not ns_update_result:
                     result["error"] = f"Failed to update nameservers at registrar: {ns_update_result.get('error', 'Unknown error')}"
                     return result
                 logger.info(f"✅ Nameservers updated at registrar")
