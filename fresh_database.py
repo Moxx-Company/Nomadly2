@@ -314,8 +314,8 @@ class FreshDatabaseManager:
         """Create all tables in the database"""
         try:
             # Drop and recreate all tables to avoid conflicts
-            Base.metadata.drop_all(self.engine)
-            Base.metadata.create_all(self.engine)
+            #Base.metadata.drop_all(self.engine) # BB_CODE
+            #Base.metadata.create_all(self.engine) # BB_CODE
             logger.info("✅ All fresh database tables created successfully")
             return True
         except Exception as e:
