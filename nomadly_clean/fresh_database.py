@@ -415,6 +415,7 @@ def initialize_fresh_database():
     
     try:
         db = FreshDatabaseManager()
+        return db # BB_CODE
         
         # Create all tables
         if db.create_all_tables():
