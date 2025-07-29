@@ -2,7 +2,7 @@ import subprocess
 
 try:
     print("🔧 Installing dependencies...")
-    subprocess.check_call(["python", "setup.py"])
+    subprocess.check_call(["python", "install", "-r", "requirements.txt"])
 
     print("🚀 Starting the bot...")
     subprocess.check_call(["python", "nomadly_clean/nomadly3_clean_bot.py"])
