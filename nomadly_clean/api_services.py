@@ -212,6 +212,8 @@ class OpenProviderAPI:
             data = {"name_servers": ns_data}
 
             print(f"Making OpenProvider API call to update nameservers for {domain}")
+            print(f"Sending data: {data}, URL: {url}, headers: {headers}")
+            
             response = requests.put(url, json=data, headers=headers, timeout=8)
 
             if response.status_code in [200, 201]:
