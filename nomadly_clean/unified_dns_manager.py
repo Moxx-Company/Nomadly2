@@ -22,11 +22,11 @@ class UnifiedDNSManager:
         """Initialize DNS manager with proper authentication"""
         self.api_token = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
         self.email = os.getenv("CLOUDFLARE_EMAIL", "").strip()
-        self.api_key = os.getenv("CLOUDFLARE_GLOBAL_API_KEY", "").strip()
+        self.api_key = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
         self.base_url = "https://api.cloudflare.com/client/v4"
         
         # Validate credentials on initialization
-        self.auth_method = "token" #self._determine_auth_method()
+        self.auth_method = "key" #self._determine_auth_method()
         if not self.auth_method:
             logger.warning("⚠️ No valid Cloudflare credentials found - DNS management will be limited")
             self.enabled = False
