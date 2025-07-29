@@ -9,6 +9,8 @@ import logging
 from typing import Dict, List, Optional, Tuple
 import json
 from enhanced_tld_requirements_system import get_enhanced_tld_system
+from dotenv import load_dotenv
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
