@@ -114,13 +114,9 @@ class TrusteeServiceManager:
     def get_tld_from_domain(self, domain_name: str) -> str:
         """Extract TLD from domain name"""
         parts = domain_name.lower().split('.')
-        if len(parts) >= 2:
-            # Handle .co.uk style domains
-            if len(parts) >= 3 and parts[-2] == 'co' and parts[-1] == 'uk':
-                return '.co.uk'
-            else:
-                return '.' + parts[-1]
-        return ''
+        if len(parts) > 2 :
+            return f".{parts[-2]}.{parts[-1]}"
+        return f".{parts[-1]}"
 
     def check_trustee_requirement(self, domain_name: str) -> Dict:
         """Check if domain requires trustee service"""

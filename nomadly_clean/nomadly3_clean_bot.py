@@ -5061,7 +5061,7 @@ class NomadlyCleanBot:
                     
                     # Check specific domain requested - Nomadly supports all TLDs
                     full_domain = f"{domain_name}.{extension}"
-                    await self.check_specific_domain(message, full_domain, domain_name)
+                    await self.check_specific_domain(message, domain_input, domain_name)
                     return
                 else:
                     domain_name = domain_input.replace('.', '')
@@ -5085,6 +5085,13 @@ class NomadlyCleanBot:
             logger.error(f"Error in handle_text_domain_search: {e}")
             if message:
                 await message.reply_text("🚧 Service temporarily unavailable. Please try again.")
+
+    def get_tld_from_domain(self, domain_name: str) -> str:
+        """Extract TLD from domain name"""
+        parts = domain_name.lower().split('.')
+        if len(parts) > 2 :
+            return f".{parts[-2]}.{parts[-1]}"
+        return f".{parts[-1]}"
     
     async def check_specific_domain(self, message, full_domain, domain_name):
         """Check availability for a specific domain with extension"""
