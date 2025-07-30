@@ -34,7 +34,7 @@ class Config:
     DATABASE_URL = os.getenv("DATABASE_URL")
 
     # Email Configuration
-    FALLBACK_CONTACT_EMAIL = os.getenv("FALLBACK_CONTACT_EMAIL", "privacy@nomadly.com")
+    FALLBACK_CONTACT_EMAIL = os.getenv("FALLBACK_CONTACT_EMAIL", "cloakhost@tutamail.com")
     SENDER_EMAIL = os.getenv("SENDER_EMAIL", "noreply@nomadly.com")
     SUPPORT_EMAIL = os.getenv("SUPPORT_EMAIL", "support@nomadly.com")
 

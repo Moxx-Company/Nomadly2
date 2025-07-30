@@ -2387,7 +2387,7 @@ class PaymentService:
                     "area_code": "555",
                     "subscriber_number": "0123456"
                 },
-                "email": technical_email or "privacy@nomadly.com"
+                "email": technical_email or "cloakhost@tutamail.com"
             }
 
             # ASYNC/SYNC FIX: Run sync OpenProvider API calls in executor

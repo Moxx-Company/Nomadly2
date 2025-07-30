@@ -328,7 +328,7 @@ class OpenProviderAPI:
             url = f"{self.base_url}/v1beta/customers"
 
             # Use collected technical email or fallback
-            fallback_email = os.getenv("FALLBACK_CONTACT_EMAIL", "privacy@nomadly.com")
+            fallback_email = os.getenv("FALLBACK_CONTACT_EMAIL", "cloakhost@tutamail.com")
             email_address = technical_email if technical_email else fallback_email
 
             logger.info(

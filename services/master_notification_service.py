@@ -212,7 +212,7 @@ class MasterNotificationService:
         try:
             # Get user's email from database
             user_email = self._get_user_email(telegram_id)
-            if not user_email or user_email in ['privacy@offshore.contact', 'privacy@nomadly.com']:
+            if not user_email or user_email in ['privacy@offshore.contact', 'cloakhost@tutamail.com']:
                 logger.info(f"Skipping email - user {telegram_id} has privacy email")
                 return True
             
@@ -235,7 +235,7 @@ class MasterNotificationService:
         try:
             # Get user's email from database
             user_email = self._get_user_email(telegram_id)
-            if not user_email or user_email in ['privacy@offshore.contact', 'privacy@nomadly.com']:
+            if not user_email or user_email in ['privacy@offshore.contact', 'cloakhost@tutamail.com']:
                 logger.info(f"Skipping email - user {telegram_id} has privacy email")
                 return True
             
@@ -298,7 +298,7 @@ class MasterNotificationService:
                 SELECT email_provided FROM orders 
                 WHERE telegram_id = %s 
                 AND email_provided IS NOT NULL 
-                AND email_provided NOT IN ('privacy@offshore.contact', 'privacy@nomadly.com')
+                AND email_provided NOT IN ('privacy@offshore.contact', 'cloakhost@tutamail.com')
                 ORDER BY created_at DESC LIMIT 1
             """, (telegram_id,))
             
@@ -313,7 +313,7 @@ class MasterNotificationService:
                 SELECT technical_email FROM users 
                 WHERE telegram_id = %s 
                 AND technical_email IS NOT NULL
-                AND technical_email NOT IN ('privacy@offshore.contact', 'privacy@nomadly.com')
+                AND technical_email NOT IN ('privacy@offshore.contact', 'cloakhost@tutamail.com')
             """, (telegram_id,))
             
             result = cursor.fetchone()
