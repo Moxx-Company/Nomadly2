@@ -5121,6 +5121,7 @@ class NomadlyCleanBot:
                 try:
                     api_result = self.openprovider.check_domain_availability(full_domain)
                     
+                    print(f"=========== {api_result} =========")
                     if api_result.get("error"):
                         await checking_msg.edit_text(f"⚠️ **Error checking domain**\n\n{api_result['error']}\n\n🔄 Using Nomadly pricing estimates...", parse_mode='Markdown')
                         # Fallback on API error
@@ -5168,6 +5169,9 @@ class NomadlyCleanBot:
             
             is_available = api_result.get("available", False)
             price = api_result.get("price", 0)
+
+            if price < 25:
+                price = 25
             currency = api_result.get("currency", "USD")
             is_premium = api_result.get("premium", False)
             
@@ -5610,7 +5614,8 @@ class NomadlyCleanBot:
                 final_price, pricing_info = self.trustee_manager.calculate_trustee_pricing(
                     base_price, display_domain
                 )
-                price = final_price
+                print(f"====== {base_price} + {pricing_info}=====")
+                price = base_price + pricing_info['trustee_fee']
                 
             except Exception as e:
                 logger.error(f"Error getting pricing for {display_domain}: {e}")

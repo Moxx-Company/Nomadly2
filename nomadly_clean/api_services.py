@@ -98,6 +98,9 @@ class OpenProviderAPI:
                     from config import Config
                     api_price = price_info.get("reseller", {}).get("price", 0)
                     final_price = api_price * Config.PRICE_MULTIPLIER if api_price > 0 else 0
+
+                    if final_price < 25:
+                        final_price = 25
                     
                     return {
                         "available": domain_data.get("status") == "free",

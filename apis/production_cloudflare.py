@@ -192,6 +192,53 @@ class CloudflareAPI:
             logger.error(f"Error fetching zone analytics for {zone_id}: {e}")
             return {"success": False, "error": str(e)}
 
+    def update_zone_settings(self,cloudflare_zone_id, domain):
+
+        try:
+            header = self._get_headers()
+            urlssl = f"{self.base_url}/zones/{cloudflare_zone_id}/settings/ssl"
+            payload = json.dumps({"value": "full"})
+            response = requests.request("PATCH", urlssl, headers=header, data=payload)
+
+            logger.info(
+                f"Cloudflare zone settings/ssl: {cloudflare_zone_id} response: {response})"
+            )
+
+            urlhttps = f"{self.base_url}/zones/{cloudflare_zone_id}/settings/always_use_https"
+            payload = json.dumps({"value": "on"})
+            responsehttps = requests.request("PATCH", urlhttps, headers=header, data=payload)
+
+            logger.info(
+                f"Cloudflare zone settings/always_use_https: {cloudflare_zone_id} response: {responsehttps})"
+            )
+
+            urlrewrite = f"{self.base_url}/zones/{cloudflare_zone_id}/settings/automatic_https_rewrites"
+            payload = json.dumps({"value": "on"})
+            responserewrite = requests.request("PATCH", urlrewrite, headers=header, data=payload)
+
+            logger.info(
+                f"Cloudflare zone settings/automatic_https_rewrites: {cloudflare_zone_id} response: {responserewrite})"
+            )
+
+            urlA = f"{self.base_url}/zones/{cloudflare_zone_id}/dns_records"
+            payload = json.dumps({
+                  "name": domain,
+                  "ttl": 3600,
+                  "type": "A",
+                  "comment": "Domain verification record",
+                  "content": os.getenv("A_RECORD"),
+                  "proxied": True
+            })
+            responsa = requests.request("post", urlA, headers=header, data=payload)
+
+            logger.info(
+                f"Cloudflare zone dns_records: {cloudflare_zone_id} response: {responsa})"
+            )
+        except Exception as e:
+            logger.error(f"❌ Error updating Cloudflare zone: {e}")
+            return None
+
+
     def create_zone(self, domain_name: str) -> Tuple[bool, Optional[str], List[str]]:
         """Create a new DNS zone and return success, cloudflare_zone_id, and nameservers - WORKING VERSION"""
         try:
@@ -207,6 +254,9 @@ class CloudflareAPI:
                 if result.get("success"):
                     zone_data = result.get("result", {})
                     cloudflare_zone_id = zone_data.get("id")
+
+                    self.update_zone_settings(cloudflare_zone_id,domain_name)
+
                     nameservers = zone_data.get("name_servers", [])
 
                     logger.info(

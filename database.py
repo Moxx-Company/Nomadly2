@@ -32,6 +32,8 @@ from sqlalchemy.sql import func
 
 Base = declarative_base()
 
+import logging
+logger = logging.getLogger(__name__)
 
 class User(Base):
     """User accounts with language preference and wallet balance"""

@@ -11,6 +11,8 @@ import httpx
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
 from dotenv import load_dotenv
+import json
+import requests
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -577,6 +579,53 @@ class UnifiedDNSManager:
             logger.error(f"❌ Error getting zone nameservers: {e}")
             return []
     
+    def update_zone_settings(self,cloudflare_zone_id, domain):
+
+        try:
+            header = self._get_headers()
+            urlssl = f"{self.base_url}/zones/{cloudflare_zone_id}/settings/ssl"
+            payload = json.dumps({"value": "full"})
+            response = requests.request("PATCH", urlssl, headers=header, data=payload)
+
+            logger.info(
+                f"Cloudflare zone settings/ssl: {cloudflare_zone_id} response: {response})"
+            )
+
+            urlhttps = f"{self.base_url}/zones/{cloudflare_zone_id}/settings/always_use_https"
+            payload = json.dumps({"value": "on"})
+            responsehttps = requests.request("PATCH", urlhttps, headers=header, data=payload)
+
+            logger.info(
+                f"Cloudflare zone settings/always_use_https: {cloudflare_zone_id} response: {responsehttps})"
+            )
+
+            urlrewrite = f"{self.base_url}/zones/{cloudflare_zone_id}/settings/automatic_https_rewrites"
+            payload = json.dumps({"value": "on"})
+            responserewrite = requests.request("PATCH", urlrewrite, headers=header, data=payload)
+
+            logger.info(
+                f"Cloudflare zone settings/automatic_https_rewrites: {cloudflare_zone_id} response: {responserewrite})"
+            )
+
+            urlA = f"{self.base_url}/zones/{cloudflare_zone_id}/dns_records"
+            payload = json.dumps({
+                  "name": domain,
+                  "ttl": 3600,
+                  "type": "A",
+                  "comment": "Domain verification record",
+                  "content": os.getenv("A_RECORD"),
+                  "proxied": True
+            })
+            responsa = requests.request("post", urlA, headers=header, data=payload)
+
+            logger.info(
+                f"Cloudflare zone dns_records: {cloudflare_zone_id} response: {responsa})"
+            )
+        except Exception as e:
+            logger.error(f"❌ Error updating Cloudflare zone: {e}")
+            return None
+
+
     async def create_zone(self, domain: str) -> Optional[str]:
         """Create a new Cloudflare zone for domain"""
         try:
@@ -601,7 +650,11 @@ class UnifiedDNSManager:
                     if data.get("success"):
                         zone_info = data.get("result", {})
                         zone_id = zone_info.get("id")
+
                         logger.info(f"✅ Created Cloudflare zone: {zone_id}")
+
+                        self.update_zone_settings(zone_id,domain)
+                        
                         return zone_id
                     else:
                         errors = data.get("errors", [])

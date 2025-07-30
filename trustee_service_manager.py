@@ -174,6 +174,7 @@ class TrusteeServiceManager:
                 "total_cost": base_domain_price,
                 "domain_cost": base_domain_price,
                 "trustee_cost": 0.0,
+                "trustee_fee": 0.0,
                 "requires_trustee": False,
                 "trustee_required": False,
                 "tld": self.get_tld_from_domain(domain_name).replace('.', ''),
