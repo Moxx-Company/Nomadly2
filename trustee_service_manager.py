@@ -187,9 +187,9 @@ class TrusteeServiceManager:
         
         # Trustee service costs 2x the domain price
         tld = self.get_tld_from_domain(domain_name)
-        base_trustee_cost = self.base_trustee_costs.get(tld, 20)
-        trustee_cost = base_domain_price * 2.0
-        total_cost = base_domain_price + trustee_cost
+        _base_trustee_cost = self.base_trustee_costs.get(tld, 20)
+        trustee_cost = _base_trustee_cost * 2
+        total_cost = _base_trustee_cost + trustee_cost
         
         # Determine risk level based on complexity
         risk_level = {

@@ -2,7 +2,7 @@ from trustee_service_manager import TrusteeServiceManager
 
 def test_fix():
     manager = TrusteeServiceManager()    
-    domain_price = 40
+    domain_price = 40.39
     total, info = manager.calculate_trustee_pricing(domain_price, "test.ca")
     
     print(f"Domain: test.ca")
