@@ -20,6 +20,22 @@ class TrusteeServiceManager:
     """Manages trustee services for country-specific TLD registrations"""
     
     def __init__(self):
+
+        self.base_trustee_costs = {
+                ".ca": 20,   # Canada
+                ".au": 25,   # Australia
+                ".fr": 15,   # France
+                ".eu": 15,   # European Union
+                ".de": 10,   # Germany (optional)
+                ".dk": 12,   # Denmark
+                ".br": 18,   # Brazil (premium option)
+                ".com.br": 0,
+                ".hu": 0,
+                ".jp": 0,
+                ".kr": 0,
+                ".sg": 0,
+                ".com.sg": 0,
+            }
         # Country TLD requirements with trustee information
         self.tld_trustee_config = {
             # European TLDs
@@ -169,7 +185,8 @@ class TrusteeServiceManager:
                 "breakdown": f"Domain only: ${base_domain_price:.2f}"
             }
         
-        # Trustee service costs 2x the domain price
+        tld = self.get_tld_from_domain(domain_name)
+        base_trustee_cost = self.base_trustee_costs.get(tld, 20)
         trustee_cost = base_domain_price * 2.0
         total_cost = base_domain_price + trustee_cost
         
