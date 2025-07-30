@@ -5217,8 +5217,9 @@ class NomadlyCleanBot:
                 trustee_info = self.trustee_manager.check_trustee_requirement(full_domain)
                 if trustee_info['requires_trustee']:
                     # Calculate trustee fee based on domain price
-                    trustee_fee = price * 2.0  # Trustee costs 2x domain price
-                    result_text += f"   🏛️ Trustee: +${trustee_fee:.2f}\n"
+                    #trustee_fee = price * 2.0  # Trustee costs 2x domain price
+                    total, info = self.trustee_manager.calculate_trustee_pricing(price,full_domain)
+                    result_text += f"   🏛️ Trustee: +${info['trustee_cost']:.2f}\n"
             else:
                 taken_text = taken_texts.get(user_lang, taken_texts["en"])
                 result_text += f"❌ **{full_domain}** {taken_text}\n"
