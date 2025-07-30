@@ -80,7 +80,7 @@ class FixedRegistrationService:
                     return False
             elif nameserver_choice == "custom":
                 # Custom nameservers - no Cloudflare zone needed
-                nameservers = service_details.get("custom_nameservers", ["ns1.openprovider.nl", "ns2.openprovider.be"])
+                nameservers = ["ns1.openprovider.nl", "ns2.openprovider.be"]
                 logger.info(f"🎯 Using custom nameservers: {nameservers}")
             else:
                 # Default to OpenProvider nameservers (registrar choice)
