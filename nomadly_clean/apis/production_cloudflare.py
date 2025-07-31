@@ -55,7 +55,8 @@ class CloudflareAPI:
                 logger.info("Removed duplicate Bearer prefix from token")
             
             return {
-                "Authorization": f"Bearer {token_str}",
+                "X-Auth-Email": self.email,
+                "X-Auth-Key": self.api_key,
                 "Content-Type": "application/json",
             }
         else:

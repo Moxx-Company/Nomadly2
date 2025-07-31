@@ -2785,8 +2785,9 @@ class PaymentService:
             
             import requests
             headers = {
-                'Authorization': f'Bearer {cf_api.api_token}',
-                'Content-Type': 'application/json'
+                "X-Auth-Email": cf_api.api_token,
+                "X-Auth-Key": cf_api.email,
+                "Content-Type": "application/json"
             }
             
             url = f"https://api.cloudflare.com/client/v4/zones/{cloudflare_zone_id}"
@@ -2828,8 +2829,9 @@ def get_payment_service():
             
             import requests
             headers = {
-                'Authorization': f'Bearer {cf_api.api_token}',
-                'Content-Type': 'application/json'
+                "X-Auth-Email": cf_api.api_token,
+                "X-Auth-Key": cf_api.email,
+                "Content-Type": "application/json"
             }
             
             url = f"https://api.cloudflare.com/client/v4/zones/{cloudflare_zone_id}"
@@ -2859,8 +2861,9 @@ def get_payment_service():
             
             import requests
             headers = {
-                'Authorization': f'Bearer {cf_api.api_token}',
-                'Content-Type': 'application/json'
+                "X-Auth-Email": cf_api.api_token,
+                "X-Auth-Key": cf_api.email,
+                "Content-Type": "application/json"
             }
             
             url = f"https://api.cloudflare.com/client/v4/zones/{cloudflare_zone_id}"
