@@ -28,8 +28,8 @@ app = Flask(__name__)
 bot_instance = None
 load_dotenv()
 
-@app.route("/webhook/blockbee/<order_id>", methods=["GET", "POST"])
-def handle_blockbee_webhook(order_id=None):
+@app.route("/webhook/dynopay/<order_id>", methods=["GET", "POST"])
+def handle_dynopay_webhook(order_id=None):
     """Handle Dynopay payment confirmation webhooks"""
     try:
         # Dynopay sends data via query parameters for GET requests
