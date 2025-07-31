@@ -5061,6 +5061,7 @@ class NomadlyCleanBot:
                     
                     # Check specific domain requested - Nomadly supports all TLDs
                     full_domain = f"{domain_name}.{extension}"
+                    print(f"FUNC handle_text_domain_search domain_input: {domain_input}")
                     await self.check_specific_domain(message, domain_input, domain_name)
                     return
                 else:
@@ -5119,6 +5120,9 @@ class NomadlyCleanBot:
             
             if self.openprovider and not force_taken:
                 try:
+
+                    print(f"full_domain {full_domain} =========")
+
                     api_result = self.openprovider.check_domain_availability(full_domain)
                     
                     print(f"=========== {api_result} =========")

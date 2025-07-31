@@ -60,6 +60,13 @@ class OpenProviderAPI:
             "Content-Type": "application/json",
         }
 
+    def get_tld_from_domain(self, domain_name: str) -> str:
+        """Extract TLD from domain name"""
+        parts = domain_name.lower().split('.')
+        if len(parts) > 2 :
+            return f"{parts[-2]}.{parts[-1]}"
+        return f"{parts[-1]}"
+
     def check_domain_availability(self, domain: str) -> Dict:
         """Check if domain is available for registration"""
         try:
@@ -71,9 +78,11 @@ class OpenProviderAPI:
             if "." in domain:
                 name_parts = domain.split(".")
                 domain_name = name_parts[0]
-                extension = name_parts[1]
+                extension = self.get_tld_from_domain(domain) #name_parts[1]
             else:
                 return {"available": False, "error": "Invalid domain format"}
+
+            print(f"FUNC check_domain_availability sendin: name: {domain_name}, extension: {extension}")
 
             # OpenProvider API requires separate name and extension
             response = requests.post(
