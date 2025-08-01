@@ -50,17 +50,15 @@ class BlockBeeAPI:
         try:
             # Fix cryptocurrency mapping for BlockBee API
             crypto_mapping = {
-                "xmr": "monero",        # Fix Monero
-                "bnb": "bnb_bsc",       # Fix Binance Coin  
-                "matic": "polygon",     # Fix Polygon
+                "bch": "bch",
+                "bsc": "erc20/bnb",       # Fix Binance Coin  
                 "btc": "btc",
                 "eth": "eth", 
                 "ltc": "ltc",
-                "usdt": "usdt_erc20",
+                "ustcr": "erc20/usdt",
                 "doge": "doge",
                 "trx": "trx",
-                "bch": "bch",
-                "dash": "dash",
+                "usdt": "trc20/usdt",
             }
             
             api_crypto = crypto_mapping.get(cryptocurrency.lower(), cryptocurrency)

@@ -107,6 +107,65 @@ def handle_dynopay_webhook(order_id=None):
         return jsonify({"error": "Internal server error"}), 500
 
 
+@app.route("/webhook/blockbee/<order_id>", methods=["GET", "POST"])
+def handle_blockbee_webhook(order_id=None):
+    """Handle BlockBee payment confirmation webhooks"""
+    try:
+        # BlockBee sends data via query parameters for GET requests
+        if request.method == "GET":
+            data = request.args.to_dict()
+        else:
+            data = request.get_json() or {}
+
+        logger.info(f"Received BlockBee webhook for order {order_id}: {data}")
+
+        # Extract payment information
+        status = data.get(
+            "status",
+            "confirmed" if data.get("confirmations", "0") != "0" else "pending",
+        )
+        txid = data.get("txid_in")
+        confirmations = int(data.get("confirmations", 0))
+
+        if not order_id:
+            logger.error("No order_id in webhook data")
+            return jsonify({"error": "Missing order_id"}), 400
+
+        if status == "confirmed" or confirmations >= 1:
+            # Payment confirmed - process in background
+            executor = ThreadPoolExecutor(max_workers=1)
+            future = executor.submit(
+                process_payment_confirmation,
+                order_id,
+                {
+                    "status": "confirmed",
+                    "txid": txid,
+                    "confirmations": confirmations,
+                    "value_coin": data.get("value_coin"),
+                    "coin": data.get("coin"),
+                },
+            )
+
+            logger.info(
+                f"Payment confirmed for order {order_id} - processing in background"
+            )
+            return jsonify(
+                {"status": "success", "message": "Payment processing started"}
+            )
+        else:
+            logger.info(
+                f"Payment pending for order {order_id} (confirmations: {confirmations})"
+            )
+            return jsonify(
+                {"status": "pending", "message": "Waiting for confirmations"}
+            )
+
+    except Exception as e:
+        logger.error(f"Webhook processing error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
+
 def process_payment_confirmation(order_id: str, payment_data: dict):
     """Process payment confirmation with timeout handling and background queue"""
     try:

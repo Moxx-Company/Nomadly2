@@ -4796,32 +4796,71 @@ class NomadlyCleanBot:
             
             # Generate real payment address using BlockBee API
             try:
-                #from apis.blockbee import BlockBeeAPI
-                from apis.dynopay import DynopayAPI
                 import os
-                
-                api_key = os.getenv('DYNOPAY_API_KEY')
-                token = os.getenv('DYNOPAY_TOKEN')
-                print(f"api_key: {api_key}, token: {token}")
-                if not api_key or not token:
-                    raise Exception("DYNOPAY_API_KEY or DYNOPAY_TOKEN not found in environment variables")
-                
-                dynopay = DynopayAPI(api_key,token)
-                
-                # Create callback URL for payment monitoring
-                callback_url = f"{os.getenv('FLASK_WEB_HOOK')}webhook/dynopay/{order_id}"
-                
-                # Generate real payment address for this transaction
-                address_response = dynopay.create_payment_address(
-                    cryptocurrency=crypto_type,
-                    callback_url=callback_url,
-                    amount=usd_amount
-                )
+                #from apis.blockbee import BlockBeeAPI
+
+                check_payment_flag = False
+                payment_address = None
+                transaction_id = None
+                patment_gateway = os.getenv('PAYMENT_GATEWAY')
+
+                if  patment_gateway == 'dynopay':
+                    from apis.dynopay import DynopayAPI
+                    
+                    api_key = os.getenv('DYNOPAY_API_KEY')
+                    token = os.getenv('DYNOPAY_TOKEN')
+                    print(f"api_key: {api_key}, token: {token}")
+                    if not api_key or not token:
+                        raise Exception("DYNOPAY_API_KEY or DYNOPAY_TOKEN not found in environment variables")
+                    
+                    dynopay = DynopayAPI(api_key,token)
+                    
+                    # Create callback URL for payment monitoring
+                    callback_url = f"{os.getenv('FLASK_WEB_HOOK')}webhook/dynopay/{order_id}"
+                    
+                    # Generate real payment address for this transaction
+                    address_response = dynopay.create_payment_address(
+                        cryptocurrency=crypto_type,
+                        callback_url=callback_url,
+                        amount=usd_amount
+                    )
+
+                    logger.info(f"✅ Creating payment ${usd_amount}")
+
+                    if address_response.get('message') == 'Payment Created!' and address_response.get('data'):
+                        check_payment_flag = True
+                        payment_address = address_response.get('data', {}).get('address')
+                        transaction_id = address_response.get('data', {}).get('transaction_id')
+                else:
+
+                    from apis.blockbee import BlockBeeAPI
+                    import os
+
+                    api_key = os.getenv('BLOCKBEE_API_KEY')
+                    if not api_key:
+                        raise Exception("BLOCKBEE_API_KEY not found in environment variables")
+
+                    blockbee = BlockBeeAPI(api_key)
+
+                    callback_url = f"{os.getenv('FLASK_WEB_HOOK')}webhook/blockbee/{order_id}"
+
+                    address_response = blockbee.create_payment_address(
+                        cryptocurrency=crypto_type,
+                        callback_url=callback_url,
+                        amount=usd_amount
+                    )
+
+                    logger.info(f"✅ Creating payment ${usd_amount}")
+
+                    if address_response.get('status') == 'success' and address_response.get('address_in'):
+                        check_payment_flag = True
+                        payment_address = address_response['address_in']
+                        transaction_id = address_response['address_in']
                 
                 # Check if we got a valid response with address
-                if address_response.get('message') == 'Payment Created!' and address_response.get('data'):
-                    payment_address = address_response.get('data', {}).get('address')
-                    transaction_id = address_response.get('data', {}).get('transaction_id')
+                if check_payment_flag:
+                    # payment_address = address_response.get('data', {}).get('address')
+                    # transaction_id = address_response.get('data', {}).get('transaction_id')
                     logger.info(f"✅ Generated real {crypto_type.upper()} address: {payment_address}")
                     
                     # ✅ CRITICAL: UPDATE ORDER WITH PAYMENT ADDRESS IN DATABASE
@@ -4832,13 +4871,15 @@ class NomadlyCleanBot:
                                 UPDATE orders SET 
                                     crypto_address = :crypto_address,
                                     crypto_currency = :crypto_currency,
-                                    transaction_id = :transaction_id
+                                    transaction_id = :transaction_id,
+                                    patment_gateway = :patment_gateway
                                 WHERE order_id = :order_id AND telegram_id = :telegram_id
                             """)
                             db_session.execute(update_query, {
                                 'crypto_address': payment_address,
                                 'crypto_currency': crypto_type,
                                 'transaction_id': transaction_id,
+                                'patment_gateway': patment_gateway,
                                 'order_id': order_id,
                                 'telegram_id': user_id
                             })
@@ -4848,8 +4889,8 @@ class NomadlyCleanBot:
                         logger.error(f"❌ Failed to update order with payment address: {db_error}")
                         
                 else:
-                    logger.error(f"❌ Dynopay API failed: {address_response}")
-                    raise Exception(f"Dynopay API error: {address_response.get('message', 'Unknown error')}")
+                    logger.error(f"❌ {patment_gateway} API failed: {address_response}")
+                    raise Exception(f"{patment_gateway} API error: {address_response.get('message', 'Unknown error')}")
                 
                 # Store payment address and timing info in session
                 import time
@@ -6905,7 +6946,7 @@ class NomadlyCleanBot:
                 return
             
             # Get domain info
-            usd_amount = session.get('domain_price', 9.87)
+            usd_amount = session.get('price', 9.87)
             #usd_amount = session.get('domain_price', 6) #AP_comment
             
             # Calculate crypto amount
@@ -6916,7 +6957,13 @@ class NomadlyCleanBot:
                 'btc': {'name': 'Bitcoin', 'symbol': '₿'},
                 'eth': {'name': 'Ethereum', 'symbol': 'Ξ'},
                 'ltc': {'name': 'Litecoin', 'symbol': 'Ł'},
-                'doge': {'name': 'Dogecoin', 'symbol': 'Ð'}
+                'doge': {'name': 'Dogecoin', 'symbol': 'Ð'},
+
+                'trx': {'name': 'Tron', 'symbol': '⟠'},
+                'bsc': {'name': 'Binance BSC', 'symbol': '♦'},
+                'bch': {'name': 'Bitcoin Cash', 'symbol': 'Ƀ'},
+                'ustcr': {'name': 'Tether ERC20', 'symbol': '₮'},
+                'usdt': {'name': 'Tether TRC20', 'symbol': '₮'}
             }
             
             crypto_details = crypto_info.get(crypto_type, crypto_info['btc'])
