@@ -1021,6 +1021,19 @@ class DatabaseManager:
         finally:
             session.close()
 
+    def set_user_balance(self, telegram_id: int, amount_change: float):
+        """Update user balance (can be positive or negative)"""
+        session = self.get_session()
+        try:
+            user = session.query(User).filter(User.telegram_id == telegram_id).first()
+            if user:
+                user.balance_usd = amount_change
+                if user.balance_usd < 0:
+                    user.balance_usd = 0.0  # Prevent negative balance
+                session.commit()
+        finally:
+            session.close()
+
     def create_order(
         self,
         telegram_id: int,

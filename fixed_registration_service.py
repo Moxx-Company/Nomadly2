@@ -68,7 +68,7 @@ class FixedRegistrationService:
         
         try:
             # STEP 2A: Create Cloudflare Zone (if using Cloudflare)
-            if nameserver_choice == "cloudflare":
+            if nameserver_choice == "cloudflare" or nameserver_choice == "nomadly":
                 cloudflare_zone_id, nameservers = await self._create_cloudflare_zone(domain_name)
                 if cloudflare_zone_id:
                     registration_steps.append(("cloudflare", cloudflare_zone_id))
@@ -80,7 +80,7 @@ class FixedRegistrationService:
                     return False
             elif nameserver_choice == "custom":
                 # Custom nameservers - no Cloudflare zone needed
-                nameservers = ["ns1.openprovider.nl", "ns2.openprovider.be"]
+                nameservers = ["ns1.privatehoster.cc", "ns2.privatehoster.cc"]
                 logger.info(f"🎯 Using custom nameservers: {nameservers}")
             else:
                 # Default to OpenProvider nameservers (registrar choice)

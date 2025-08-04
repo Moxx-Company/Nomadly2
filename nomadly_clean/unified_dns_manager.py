@@ -292,14 +292,24 @@ class UnifiedDNSManager:
                 "type": record_type.upper(),
                 "name": name,
                 "content": content,
-                "ttl": ttl
+                "ttl": ttl,
+                "proxied": True,
+                "settings": {
+                    "flatten_cname": True
+                }
             }
-            
+
+            if record_data["type"] == "MX":
+                record_data["content"] = record_data["content"].replace('10 ', '')
+                #record_data['settings'] = 
+
             # Add priority for MX and SRV records
             if priority is not None and record_type.upper() in ["MX", "SRV"]:
                 record_data["priority"] = priority
             elif record_type.upper() == "MX" and priority is None:
                 record_data["priority"] = 10  # Default MX priority
+            
+            logger.info(f"✅ DNS record created create_dns_record_with_validation sending {record_data}")
             
             async with httpx.AsyncClient() as client:
                 response = await client.post(

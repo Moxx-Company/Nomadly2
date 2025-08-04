@@ -130,6 +130,20 @@ class ConfirmationService:
             logger.error(f"Error sending domain confirmation: {e}")
             return False
 
+    async def send_domain_wallet_top_confirmation(self, telegram_id: int, paid_amount: float):
+
+        from services.master_notification_service import get_master_notification_service
+
+        logger.info(
+            f"📞📞 2. Notification for User {telegram_id}"
+            )
+            
+        notification_service = get_master_notification_service()
+        telegram_success = await notification_service.send_wallet_topup_notification(telegram_id, paid_amount)
+
+        return True
+
+
     def _build_payment_confirmation_content(
         self, telegram_id: int, order_data: Dict[str, Any], language: str
     ) -> str:

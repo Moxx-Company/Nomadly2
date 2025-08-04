@@ -1,0 +1,13 @@
+{
+  "order_id": "d126c563-b148-4183-b523-73a033c48f1a",
+  "webhook_data": {
+    "status": "confirmed",
+    "txid": "0700220e28acd6b3533f92bea20ba1e16d548d2e9a83dbf13bdaee696e281d4e",
+    "confirmations": 2,
+    "value_coin": "0.08979588",
+    "coin": "ltc"
+  },
+  "queued_at": "2025-08-01T10:47:03.336490",
+  "attempts": 0,
+  "status": "queued"
+}

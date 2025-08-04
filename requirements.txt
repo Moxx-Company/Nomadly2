@@ -17,3 +17,4 @@ uvicorn[standard]>=0.24.0
 httpx>=0.25.0
 pydantic[email]>=2.5.0
 gunicorn
+qrcode

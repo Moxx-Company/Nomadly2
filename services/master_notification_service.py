@@ -68,6 +68,10 @@ class MasterNotificationService:
             domain_name = domain_data.get('domain_name', 'N/A')
             
             telegram_message = (
+                f"💰 **Payment Confirmed!**\n\n"
+                f"✅ **Domain:** `{domain_name}`\n"
+                f"🎉 **Status:** Active & Ready!\n\n"
+                f"Your domain registered and is working perfectly.\n"
                 f"What would you like to do next?"
             )
             
@@ -149,6 +153,24 @@ class MasterNotificationService:
                 f"⚠️ **Shortage:** ${shortage:.2f} USD\n\n"
                 f"✅ **Your ${amount_received:.2f} USD has been credited to your wallet!**\n\n"
                 f"💡 *Add ${shortage:.2f} more to complete your purchase.*\n\n"
+                f"🏴‍☠️ *No payment is ever lost - all funds are credited!*"
+            )
+            
+            return await self._send_telegram_message(telegram_id, message)
+            
+        except Exception as e:
+            logger.error(f"❌ Underpayment notification failed: {e}")
+            return False
+
+    async def send_wallet_topup_notification(self, telegram_id: int, amount_received: float) -> bool:
+        """Send underpayment wallet credit notification"""
+        try:
+            logger.info(f"⚠️ Sending underpayment notification to user {telegram_id}")
+            
+            message = (
+                f"💳 **Payment Credited to Wallet**\n\n"
+                f"💰 **You Sent:** ${amount_received:.2f} USD\n"
+                f"✅ **Your ${amount_received:.2f} USD has been credited to your wallet!**\n\n"
                 f"🏴‍☠️ *No payment is ever lost - all funds are credited!*"
             )
             

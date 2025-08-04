@@ -18,10 +18,9 @@ class CloudflareAPI:
 
     def __init__(self, email=None, api_key=None, api_token=None):
         # First try to use global API key + email from user-provided credentials
-        self.email = email or os.getenv("CLOUDFLARE_EMAIL", "onarrival21@gmail.com")
-        self.api_key = api_key or os.getenv("CLOUDFLARE_GLOBAL_API_KEY", "ba2e4fe1fc6cc75bc63c26e0417de3de383ba")
-        # Fallback to token if no global API key
-        self.api_token = api_token or os.getenv("CLOUDFLARE_API_TOKEN")
+        self.api_token = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
+        self.email = os.getenv("CLOUDFLARE_EMAIL", "").strip()
+        self.api_key = os.getenv("CLOUDFLARE_API_TOKEN", "").strip()
         self.base_url = "https://api.cloudflare.com/client/v4"
 
         # Validate credentials on initialization
@@ -280,7 +279,7 @@ class CloudflareAPI:
                     logger.error(f"Zone creation failed: {errors}")
                     return False, None, []
             else:
-                logger.error(f"Zone creation failed: {response.status_code}")
+                logger.error(f"Zone creation failed: {response.status_code}, {response.json()}")
                 return False, None, []
 
         except Exception as e:
@@ -502,7 +501,7 @@ class CloudflareAPI:
 
             response = requests.get(url, headers=headers, params=params, timeout=8)
 
-            logger.info(f"Response _get_zone_id: {response}")
+            logger.info(f"Response _get_zone_id: {response.json()}")
 
             if response.status_code == 200:
                 result = response.json()

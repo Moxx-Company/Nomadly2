@@ -43,7 +43,7 @@ class NewDNSUI:
                     {"text": lang_buttons["add"], "callback_data": f"dns_add_{domain}"}
                 ],
                 [
-                    {"text": lang_buttons["edit"], "callback_data": f"dns_edit_{domain}"},
+                    #{"text": lang_buttons["edit"], "callback_data": f"dns_edit_{domain}"},
                     {"text": lang_buttons["delete"], "callback_data": f"dns_delete_{domain}"}
                 ],
                 [{"text": lang_buttons["back"], "callback_data": f"my_domains"}]

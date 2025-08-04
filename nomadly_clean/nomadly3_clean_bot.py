@@ -38,7 +38,7 @@ from dotenv import load_dotenv
 # Simple caching for speed optimization
 response_cache = {}
 cache_timeouts = {}
-
+from concurrent.futures import ThreadPoolExecutor
 load_dotenv()
 
 def get_cached_data(key, default_value, timeout_seconds=300):
@@ -904,6 +904,9 @@ class NomadlyCleanBot:
             elif data == "dns_view_records":
                 # Get domain from session
                 user_id = query.from_user.id
+                print("=====")
+                print(" calling show_dns_records_view")
+                print("=====")
                 domain = self.user_sessions.get(user_id, {}).get("current_dns_domain")
                 if domain:
                     await self.show_dns_records_view(query, domain)
@@ -1170,6 +1173,7 @@ class NomadlyCleanBot:
             
             elif data and data.startswith("dns_replace_"):
                 # Handle DNS record replacement for conflicts: dns_replace_{domain}_{record_type}
+                logger.info(f" dns_replace_ 00000000000+++++++++ {data}")
                 parts = data.replace("dns_replace_", "").rsplit("_", 1)
                 if len(parts) == 2:
                     domain_encoded, record_type = parts
@@ -2160,7 +2164,11 @@ class NomadlyCleanBot:
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
             
             # Get current wallet balance
-            current_balance = self.user_sessions.get(user_id, {}).get("wallet_balance", 0.00)
+            #current_balance = self.user_sessions.get(user_id, {}).get("wallet_balance", 0.00)
+            from database import get_db_manager
+            db = get_db_manager()
+
+            current_balance = db.get_user_balance(user_id)
             
             # Compact wallet menu text
             wallet_texts = {
@@ -3111,12 +3119,20 @@ class NomadlyCleanBot:
                 "stage": "wallet_funding"
             })
             self.save_user_sessions()
+
+            logger.info(f"in handle_wallet_crypto_funding crypto_type: {crypto_type}")
             
             crypto_names = {
                 "btc": {"en": "Bitcoin", "fr": "Bitcoin", "hi": "बिटकॉइन", "zh": "比特币", "es": "Bitcoin"},
                 "eth": {"en": "Ethereum", "fr": "Ethereum", "hi": "एथेरियम", "zh": "以太坊", "es": "Ethereum"},
                 "ltc": {"en": "Litecoin", "fr": "Litecoin", "hi": "लाइटकॉइन", "zh": "莱特币", "es": "Litecoin"},
-                "doge": {"en": "Dogecoin", "fr": "Dogecoin", "hi": "डॉगकॉइन", "zh": "狗狗币", "es": "Dogecoin"}
+                "doge": {"en": "Dogecoin", "fr": "Dogecoin", "hi": "डॉगकॉइन", "zh": "狗狗币", "es": "Dogecoin"},
+
+                'trx': {'en': 'Tron', 'fr': 'Tron', "hi": "ट्रोन", "zh": "创", "es": "tron"},
+                'bsc': {'en': 'Binance BSC', 'fr': 'Binance BSC', "hi": "बिनेंस बीएससी", "zh": "币安BSC", "es": "Binance BSC"},
+                'bch': {'en': 'Bitcoin Cash', 'fr': 'Bitcoin Cash', "hi": "बिटकॉइन कैश", "zh": "比特币现金", "es": "Bitcoin Cash"},
+                'ustcr': {'en': 'Tether ERC20', 'fr': 'Tether ERC20', "hi": "टेदर ERC20", "zh": "Tether ERC20", "es": "Tether ERC20"},
+                'usdt': {'en': 'Tether TRC20', 'fr': 'Tether TRC20', "hi": "टेथर TRC20", "zh": "Tether TRC20", "es": "Tether TRC20"}
             }
             
             # Multilingual wallet funding payment texts
@@ -3166,7 +3182,7 @@ class NomadlyCleanBot:
             )
             
             keyboard = [
-                [InlineKeyboardButton(texts["check_payment"], callback_data=f"check_wallet_payment_{crypto_type}")],
+                #[InlineKeyboardButton(texts["check_payment"], callback_data=f"check_wallet_payment_{crypto_type}")],
                 [InlineKeyboardButton(texts["switch_crypto"], callback_data="fund_wallet")],
                 [InlineKeyboardButton(texts["back_wallet"], callback_data="wallet")]
             ]
@@ -3277,10 +3293,17 @@ class NomadlyCleanBot:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
             session = self.user_sessions.get(user_id, {})
+
+            from database import get_db_manager
+            db = get_db_manager()
+
+            wallet_balance = db.get_user_balance(user_id)
+
             
             # Get domain price
             price = session.get('price', 49.50)
-            wallet_balance = session.get('wallet_balance', 0.00)
+            #wallet_balance = session.get('wallet_balance', 0.00)
+            logger.info(f"🚧🚧🚧🚧price : {price}, wallet_balance: {wallet_balance}")
             
             # Check if wallet balance is sufficient
             if wallet_balance >= price:
@@ -3288,6 +3311,46 @@ class NomadlyCleanBot:
                 new_balance = wallet_balance - price
                 self.user_sessions[user_id]["wallet_balance"] = new_balance
                 self.save_user_sessions()
+
+                db.set_user_balance(user_id,new_balance)
+
+                clean_domain = session.get('domain', domain.replace('_', '.'))
+                tld = clean_domain.split('.')[-1] if '.' in clean_domain else '.com'
+                service_details = {
+                    'domain_name': clean_domain,
+                    'tld': tld,
+                    'nameserver_choice': session.get('nameserver_choice', 'cloudflare'),
+                    'technical_email': session.get('technical_email', 'cloakhost@tutamail.com'),
+                    'registration_years': 1
+                }
+                
+                # Create order in database using the working raw SQL method
+                order = db.create_order(
+                    telegram_id=user_id,
+                    service_type='domain_registration',
+                    service_details=service_details,
+                    amount=price,
+                    payment_method=f'wallet_payment'
+                )
+
+                sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+                from webhook_server import process_payment_confirmation
+
+                executor = ThreadPoolExecutor(max_workers=1)
+                future = executor.submit(
+                    process_payment_confirmation,
+                    order.order_id,
+                    {
+                        "status": "confirmed",
+                        #"txid": txid,
+                        #"confirmations": confirmations,
+                        "value_coin": '-',
+                        "coin": 0,
+                    },
+                )
+
+                #sys.path.append(os.path.dirname(os.path.abspath(__file__)))
                 
                 # Multilingual success messages
                 success_texts = {
@@ -3535,6 +3598,8 @@ class NomadlyCleanBot:
             monthly_visitors = "N/A"
             nameserver_status = "Custom"
             domain_record = None
+
+
             
             for domain in user_domains:
                 if domain.domain_name == clean_domain:
@@ -3571,7 +3636,10 @@ class NomadlyCleanBot:
             
             # Use cached DNS record count for speed - avoid API call on every button press
             if domain_record and hasattr(domain_record, 'cloudflare_zone_id') and domain_record.cloudflare_zone_id:
-                domain_record_count = 7  # Default estimate for Cloudflare zones
+
+                from unified_dns_manager import unified_dns_manager
+                records = await unified_dns_manager.list_dns_records( domain_record.cloudflare_zone_id)
+                domain_record_count = len(records) # Default estimate for Cloudflare zones
             else:
                 domain_record_count = 3  # Default estimate for custom nameservers
             
@@ -3687,9 +3755,9 @@ class NomadlyCleanBot:
                 [
                     InlineKeyboardButton(texts["nameservers"], callback_data=f"nameservers_{callback_domain}")
                 ],
-                [
-                    InlineKeyboardButton(texts["geo_visibility"], callback_data=f"visibility_{callback_domain}")
-                ],
+                # [
+                #     InlineKeyboardButton(texts["geo_visibility"], callback_data=f"visibility_{callback_domain}")
+                # ],
                 [
                     InlineKeyboardButton(texts["back"], callback_data="my_domains")
                 ]
@@ -4405,31 +4473,56 @@ class NomadlyCleanBot:
 
 
     def generate_crypto_address(self, crypto_type: str, user_id: int, purpose: str) -> str:
-        """Generate realistic cryptocurrency address for demo purposes"""
-        # Generate consistent addresses based on user_id and crypto_type for demo
-        seed = f"{user_id}_{crypto_type}_{purpose}_{int(time.time() // 3600)}"  # Changes hourly
-        random.seed(hash(seed) % (2**32))
         
-        if crypto_type.lower() == "bitcoin" or crypto_type.lower() == "btc":
-            # Bitcoin address format (P2PKH)
-            chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-            return "1" + "".join(random.choices(chars, k=33))
-        elif crypto_type.lower() == "ethereum" or crypto_type.lower() == "eth":
-            # Ethereum address format
-            chars = "0123456789abcdef"
-            return "0x" + "".join(random.choices(chars, k=40))
-        elif crypto_type.lower() == "litecoin" or crypto_type.lower() == "ltc":
-            # Litecoin address format
-            chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-            return "L" + "".join(random.choices(chars, k=33))
-        elif crypto_type.lower() == "dogecoin" or crypto_type.lower() == "doge":
-            # Dogecoin address format
-            chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-            return "D" + "".join(random.choices(chars, k=33))
+        logger.info(f"✅ ✅ ✅ Generating Address for: {crypto_type}")
+
+        patment_gateway = os.getenv('PAYMENT_GATEWAY')
+        payment_address = None
+
+        if  patment_gateway == 'dynopay':
+
+            from apis.dynopay import DynopayAPI
+
+            api_key = os.getenv('DYNOPAY_API_KEY')
+            token = os.getenv('DYNOPAY_TOKEN')
+
+            callback_url = f"{os.getenv('FLASK_WEB_HOOK')}topup/dynopay/{user_id}"
+                            
+            # Generate real payment address for this transaction
+            address_response = dynopay.create_payment_address(
+                cryptocurrency=crypto_type,
+                callback_url=callback_url,
+                amount=1
+            )
+
+            if address_response.get('message') == 'Payment Created!' and address_response.get('data'):
+                payment_address = address_response.get('data', {}).get('address')
+
         else:
-            # Fallback generic address
-            chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-            return "X" + "".join(random.choices(chars, k=33))
+
+            from apis.blockbee import BlockBeeAPI
+
+            api_key = os.getenv('BLOCKBEE_API_KEY')
+
+            logger.info(f"✅ ✅ ✅ BLOCKBEE_API_KEY : {api_key}")
+
+            blockbee = BlockBeeAPI(api_key)
+
+            callback_url = f"{os.getenv('FLASK_WEB_HOOK')}topup/blockbee/{user_id}"
+
+            address_response = blockbee.create_payment_address(
+                cryptocurrency=crypto_type,
+                callback_url=callback_url,
+                amount=1
+                )
+
+            if address_response.get('status') == 'success' and address_response.get('address_in'):
+                payment_address = address_response['address_in']
+
+        if payment_address is None:
+            raise Exception("Payment address creation failed for Wallet topup")
+        else:
+            return payment_address        
 
     def simulate_crypto_payment_check(self) -> bool:
         """Simulate cryptocurrency payment verification - 70% success rate"""
@@ -5764,35 +5857,40 @@ class NomadlyCleanBot:
             }
             
             registration_text = registration_texts.get(user_language, registration_texts["en"])
+
+            from database import get_db_manager
+            db = get_db_manager()
+
+            current_balance = db.get_user_balance(user_id)
             
             # Build keyboard with comprehensive multilingual buttons
             button_texts = {
                 "en": {
-                    "wallet": "💰 Wallet Balance ($0.00)",
+                    "wallet": f"💰 Wallet Balance (${current_balance:.2f})",
                     "edit_email": "📧 Edit Email",
                     "edit_dns": "🌐 Edit DNS", 
                     "back_search": "← Back to Search"
                 },
                 "fr": {
-                    "wallet": "💰 Solde portefeuille ($0.00)",
+                    "wallet": f"💰 Solde portefeuille (${current_balance:.2f})",
                     "edit_email": "📧 Modifier email",
                     "edit_dns": "🌐 Modifier DNS",
                     "back_search": "← Retour recherche"
                 },
                 "hi": {
-                    "wallet": "💰 वॉलेट बैलेंस ($0.00)",
+                    "wallet": f"💰 वॉलेट बैलेंस (${current_balance:.2f})",
                     "edit_email": "📧 ईमेल संपादित करें",
                     "edit_dns": "🌐 DNS संपादित करें",
                     "back_search": "← खोज पर वापस"
                 },
                 "zh": {
-                    "wallet": "💰 钱包余额 ($0.00)",
+                    "wallet": f"💰 钱包余额 (${current_balance:.2f})",
                     "edit_email": "📧 编辑邮箱",
                     "edit_dns": "🌐 编辑DNS",
                     "back_search": "← 返回搜索"
                 },
                 "es": {
-                    "wallet": "💰 Saldo Billetera ($0.00)",
+                    "wallet": f"💰 Saldo Billetera (${current_balance:.2f})",
                     "edit_email": "📧 Editar Email",
                     "edit_dns": "🌐 Editar DNS",
                     "back_search": "← Volver a Búsqueda"
@@ -6969,7 +7067,7 @@ class NomadlyCleanBot:
             crypto_details = crypto_info.get(crypto_type, crypto_info['btc'])
             
             # Generate ASCII QR code
-            qr_ascii = self.generate_payment_qr_ascii(payment_address)
+            qr_ascii = self.generate_payment_qr_ascii_new(payment_address)
             
             # Format crypto amount
             if crypto_type == 'doge' and crypto_amount >= 1:
@@ -7160,6 +7258,48 @@ class NomadlyCleanBot:
         lines.append("█▄▄▄▄▄▄▄█▄▄▄▄▄▄▄▄▄█")
         
         return "\n".join(lines)
+
+    def generate_payment_qr_ascii_new(self,data: str) -> str:
+
+        import qrcode
+        from io import StringIO
+
+        qr = qrcode.QRCode(
+            version=1,  # Smallest version for compact QR
+            error_correction=qrcode.constants.ERROR_CORRECT_L,  # Low error correction
+            box_size=1,  # Smallest module size for ASCII
+            border=2,    # Smaller border for compact output
+        )
+        
+        # Add the data (Bitcoin Cash address)
+        qr.add_data(data)
+        qr.make(fit=True)
+        
+        # Get the QR code matrix
+        qr_matrix = qr.get_matrix()
+        
+        # Convert to ASCII
+        output = StringIO()
+        block = "█"  # Full block for black modules
+        space = " "  # Space for white modules
+        
+        # Top border
+        output.write(block * (len(qr_matrix[0]) + 4) + "\n")
+        
+        # QR code matrix
+        for row in qr_matrix:
+            output.write(block * 2)  # Left border
+            for module in row:
+                output.write(block if module else space)
+            output.write(block * 2 + "\n")  # Right border
+        
+        # Bottom border
+        output.write(block * (len(qr_matrix[0]) + 4) + "\n")
+        
+        result = output.getvalue()
+        output.close()
+        return result
+
 
     # === MISSING METHOD IMPLEMENTATIONS ===
     
@@ -7443,6 +7583,9 @@ class NomadlyCleanBot:
         """Route DNS callbacks through new clean system - FIXED: No callback accumulation"""
         try:
             # Always extract clean domain from any callback
+
+            logger.info(f"222222 FUNC handle_new_dns_routing : {data}, {query}")
+
             clean_domain = self.extract_clean_domain(data)
             
             if data.startswith("dns_main_"):
@@ -7456,6 +7599,7 @@ class NomadlyCleanBot:
             elif data.startswith("dns_add_aaaa_"):
                 await self.handle_dns_add_aaaa_record(query, clean_domain)
             elif data.startswith("dns_add_cname_"):
+                logger.info(f"333333 FUNC handle_dns_add_cname_record : {data}")
                 await self.handle_dns_add_cname_record(query, clean_domain)
             elif data.startswith("dns_add_mx_"):
                 await self.handle_dns_add_mx_record(query, clean_domain)
@@ -7594,6 +7738,8 @@ class NomadlyCleanBot:
 
     async def handle_dns_add_cname_record(self, query, domain):
         """Handle CNAME record input prompt"""
+
+        logger.info(f"111111 FUNC handle_dns_add_cname_record : {query}")
         try:
             user_id = query.from_user.id
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
@@ -7775,7 +7921,7 @@ class NomadlyCleanBot:
                 
                 keyboard = [
                     [InlineKeyboardButton("Add Record", callback_data=f"dns_add_simple_{domain}")],
-                    [InlineKeyboardButton("Edit Record", callback_data=f"dns_edit_simple_{domain}")],
+                    #[InlineKeyboardButton("Edit Record", callback_data=f"dns_edit_simple_{domain}")],
                     [InlineKeyboardButton("Delete Record", callback_data=f"dns_delete_simple_{domain}")],
                     [InlineKeyboardButton("Back", callback_data="my_domains")]
                 ]
@@ -9188,6 +9334,8 @@ class NomadlyCleanBot:
                 "content": parsed_data["content"],
                 "ttl": parsed_data.get("ttl", 300)
             }
+
+            logger.info(f"✅ DNS record created create_dns_record_with_validation sending {record_data}")
             
             # Add type-specific fields
             if parsed_data["type"] == "MX":
@@ -9446,6 +9594,7 @@ class NomadlyCleanBot:
                     # Auto-append current domain to create full target (e.g., "target" -> "target.claudeb.sbs")
                     original_input = content
                     content = f"{content}.{domain}"
+                    name = f"{content}.{domain}"
                     logger.info(f"Smart CNAME: Auto-completed '{original_input}' to '{content}' for domain {domain}")
                     
                     await message.reply_text(
@@ -9680,9 +9829,12 @@ class NomadlyCleanBot:
                 logger.error(f"Error getting zone_id for {domain}: {e}")
                 zone_id = await self.get_or_create_cloudflare_zone(domain)
             
+            logger.info(f"✅ DNS handle_dns_record_input zone_id: {zone_id}")
             # ENHANCED: Check for existing records first to offer smart conflict resolution
             try:
                 existing_records = await unified_dns_manager.get_dns_records(zone_id)
+
+                logger.info(f"✅ DNS existing_records existing_records: {existing_records}")
                 conflict_record = None
                 
                 # Check for REAL conflicts only:
@@ -9698,8 +9850,10 @@ class NomadlyCleanBot:
                         existing_type = record.get('type', '').upper()
                         new_type = record_type.upper()
                         
+                        logger.info(f"✅ DNS existing_type: {existing_type}, new_type: {new_type}")
+
                         # CNAME conflicts: CNAME can't coexist with anything on same name
-                        if existing_type == 'CNAME' or new_type == 'CNAME':
+                        if existing_type == 'CNAME':
                             conflict_record = record
                             break
                         
@@ -10649,6 +10803,8 @@ class NomadlyCleanBot:
     
     async def handle_dns_replace_record(self, query, domain, record_type):
         """Handle DNS record replacement for conflicts - replace existing with new"""
+
+        logger.info(f"00000000000+++++++++")
         try:
             user_id = query.from_user.id
             session = self.user_sessions.get(user_id, {})
@@ -10676,6 +10832,7 @@ class NomadlyCleanBot:
             if existing_record_id:
                 delete_success = await unified_dns_manager.delete_dns_record(domain, existing_record_id)
             
+            
             if delete_success or not existing_record_id:
                 # Create the new record
                 create_success = await unified_dns_manager.create_dns_record(
@@ -10685,6 +10842,8 @@ class NomadlyCleanBot:
                     content=target_value,
                     ttl=3600
                 )
+
+                logger.info(f"00000000000+++++++++ in if")
                 
                 if create_success:
                     # Clear conflict data from session
@@ -11265,16 +11424,18 @@ Todas las consultas WHOIS muestran el servicio de privacidad Nomadly."""
                 db = get_db_manager()
                 
                 # Update domain nameserver configuration in database
-                success = db.update_domain_nameservers(
-                    user_id=user_id,
-                    domain_name=domain,
-                    nameserver_mode='custom',
-                    custom_ns1=pending_nameservers[0] if len(pending_nameservers) > 0 else '',
-                    custom_ns2=pending_nameservers[1] if len(pending_nameservers) > 1 else '',
-                    custom_ns3=pending_nameservers[2] if len(pending_nameservers) > 2 else '',
-                    custom_ns4=pending_nameservers[3] if len(pending_nameservers) > 3 else ''
-                )
+                # success = db.update_domain_nameservers(
+                #     user_id=user_id,
+                #     domain_name=domain,
+                #     nameserver_mode='custom',
+                #     custom_ns1=pending_nameservers[0] if len(pending_nameservers) > 0 else '',
+                #     custom_ns2=pending_nameservers[1] if len(pending_nameservers) > 1 else '',
+                #     custom_ns3=pending_nameservers[2] if len(pending_nameservers) > 2 else '',
+                #     custom_ns4=pending_nameservers[3] if len(pending_nameservers) > 3 else ''
+                # )
                 
+                success = db.update_domain_nameservers(domain, pending_nameservers, "custom")
+
                 if success:
                     await query.edit_message_text(
                         f"<b>{text['title']}</b>\n\n"
@@ -11302,6 +11463,22 @@ Todas las consultas WHOIS muestran el servicio de privacidad Nomadly."""
                 f"{text['processing']}",
                 parse_mode='HTML'
             )
+            
+            logger.info(f"🔄 Updating nameservers {pending_nameservers} at registrar...")
+
+            domain_det = db.get_domain_by_name(domain)
+
+            if domain_det:
+                openprovider_domain_id = domain_det.openprovider_domain_id
+            else:
+                openprovider_domain_id = None  
+
+            logger.info(f"✅ Domain id {openprovider_domain_id} for {domain}")
+
+            ns_update_result = self.openprovider.update_nameservers(domain, pending_nameservers, openprovider_domain_id)
+            if not ns_update_result:
+                logger.error(f"Failed to update nameservers at registrar: {ns_update_result.get('error', 'Unknown error')}")
+            logger.info(f"✅ Nameservers updated at registrar")
             
             # Step 4: Show success with acknowledgment
 

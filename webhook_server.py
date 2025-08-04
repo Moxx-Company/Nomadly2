@@ -68,6 +68,40 @@ def handle_dynopay_webhook(order_id=None):
         # txid = data.get("txid_in")
         # confirmations = int(data.get("confirmations", 0))
 
+        try:
+            from database import get_db_manager
+            from decimal import Decimal
+            db_manager = get_db_manager()
+
+            order = db_manager.get_order(order_id)
+
+            paid_amount = Decimal(str(data.get("base_amount", "0")))
+
+            logger.info(f"Paid amount {paid_amount} for order_amount {order.total_price_usd}")
+
+            if paid_amount > order.total_price_usd:
+
+                order_total = Decimal(str(order.total_price_usd))
+
+                credit_amu = Decimal(paid_amount - order_total)
+                db_manager.update_user_balance(
+                    order.telegram_id,
+                    credit_amu
+                    )
+
+                db_manager.create_wallet_transaction(
+                    telegram_id=order.telegram_id,
+                    transaction_type="deposit",
+                    amount=credit_amu,
+                    description="amount top up from payment webhook",
+                    payment_address=None,
+                    blockbee_payment_id=None
+                )
+
+                logger.info(f"Add wallet amount  {credit_amu} for order {order_id}")
+        except Exception as e:
+            logger.error(f"===> Add wallet amount processing error: {e}", exc_info=True)
+
         if not order_id:
             logger.error("No order_id in webhook data")
             return jsonify({"error": "Missing order_id"}), 400
@@ -131,7 +165,44 @@ def handle_blockbee_webhook(order_id=None):
             logger.error("No order_id in webhook data")
             return jsonify({"error": "Missing order_id"}), 400
 
+
+
         if status == "confirmed" or confirmations >= 1:
+
+            from database import get_db_manager
+            from decimal import Decimal
+            db_manager = get_db_manager()
+
+            order = db_manager.get_order(order_id)
+
+            value_coin = Decimal(str(data.get("value_coin", "0")))
+            price = Decimal(str(data.get("price", "0")))
+            some_other_value = Decimal(str(data.get("value_coin", "0")))
+            paid_amount = round(value_coin * price ,2)
+
+            logger.info(f"Paid amount {paid_amount} for order_amount {order.total_price_usd}")
+
+            if paid_amount > order.total_price_usd:
+
+                order_total = Decimal(str(order.total_price_usd))
+
+                credit_amu = Decimal(paid_amount - order_total)
+                db_manager.update_user_balance(
+                    order.telegram_id,
+                    credit_amu
+                    )
+
+                db_manager.create_wallet_transaction(
+                    telegram_id=order.telegram_id,
+                    transaction_type="deposit",
+                    amount=credit_amu,
+                    description="amount top up from payment webhook",
+                    payment_address=None,
+                    blockbee_payment_id=None
+                )
+
+                logger.info(f"Add wallet amount  {credit_amu} for order {order_id}")
+
             # Payment confirmed - process in background
             executor = ThreadPoolExecutor(max_workers=1)
             future = executor.submit(
@@ -161,8 +232,171 @@ def handle_blockbee_webhook(order_id=None):
             )
 
     except Exception as e:
-        logger.error(f"Webhook processing error: {e}")
+        logger.error(f"Webhook processing error: {e}", exc_info=True)
         return jsonify({"error": "Internal server error"}), 500
+
+
+
+########################################################        
+
+@app.route("/topup/dynopay/<user_id>", methods=["GET", "POST"])
+def handle_dynopay_wallet_topup(user_id=None):
+    """Handle Dynopay payment confirmation webhooks"""
+    try:
+        # Dynopay sends data via query parameters for GET requests
+        if request.method == "GET":
+            data = request.args.to_dict()
+        else:
+            data = request.get_json() or {}
+
+        logger.info(f"Received Dynopay webhook for Topup {user_id}: {data}")
+
+        try:
+            from database import get_db_manager
+            from decimal import Decimal
+            db_manager = get_db_manager()
+
+            paid_amount = Decimal(str(data.get("base_amount", "0")))
+
+            db_manager.update_user_balance(
+                order.telegram_id,
+                paid_amount
+                )
+
+            db_manager.create_wallet_transaction(
+                telegram_id=user_id,
+                transaction_type="deposit",
+                amount=paid_amount,
+                description="amount top up from wallet topup webhook",
+                payment_address=None,
+                blockbee_payment_id=None
+            )
+            logger.info(f"Add wallet amount  {credit_amu} for order {user_id}")
+        except Exception as e:
+            logger.error(f"===> Add wallet amount processing error: {e}", exc_info=True)
+
+        status = "successful"
+        #if status == "confirmed" or confirmations >= 1:
+        if status == "successful":
+            # Payment confirmed - process in background
+            executor = ThreadPoolExecutor(max_workers=1)
+            future = executor.submit(
+                process_wallet_top_confirmation,
+                user_id,
+                paid_amount,
+            )
+
+            logger.info(
+                f"Topup confirmed for order {order_id} - processing in background"
+            )
+            return jsonify(
+                {"status": "success", "message": "Payment processing started"}
+            )
+        else:
+            logger.info(
+                f"Payment pending for order {order_id}"
+            )
+            return jsonify(
+                {"status": "pending", "message": "Waiting for confirmations"}
+            )
+
+    except Exception as e:
+        logger.error(f"Wallet topup Webhook processing error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route("/topup/blockbee/<user_id>", methods=["GET", "POST"])
+def handle_blockbee_wallet_topup(user_id=None):
+    """Handle BlockBee payment confirmation webhooks"""
+    try:
+        # BlockBee sends data via query parameters for GET requests
+        if request.method == "GET":
+            data = request.args.to_dict()
+        else:
+            data = request.get_json() or {}
+
+        logger.info(f"Received BlockBee webhook for user_id {user_id}: {data}")
+
+        # Extract payment information
+        status = data.get(
+            "status",
+            "confirmed" if data.get("confirmations", "0") != "0" else "pending",
+        )
+        txid = data.get("txid_in")
+        confirmations = int(data.get("confirmations", 0))
+
+
+        if status == "confirmed" or confirmations >= 1:
+
+            from database import get_db_manager
+            from decimal import Decimal
+            db_manager = get_db_manager()
+
+            value_coin = Decimal(str(data.get("value_coin", "0")))
+            price = Decimal(str(data.get("price", "0")))
+            paid_amount = round(value_coin * price ,2)
+
+            credit_amu = Decimal(paid_amount)
+            db_manager.update_user_balance(
+                user_id,
+                credit_amu
+                )
+
+            db_manager.create_wallet_transaction(
+                telegram_id=user_id,
+                transaction_type="deposit",
+                amount=credit_amu,
+                description="amount top up from wallet topup webhook",
+                payment_address=None,
+                blockbee_payment_id=None
+            )
+
+            logger.info(f"Add wallet amount  {credit_amu} for order {user_id}")
+
+            # Payment confirmed - process in background
+            executor = ThreadPoolExecutor(max_workers=1)
+            future = executor.submit(
+                process_wallet_top_confirmation,
+                user_id,
+                paid_amount,
+            )
+
+            logger.info(
+                f"Topup confirmed for order {user_id} - processing in background"
+            )
+            return jsonify(
+                {"status": "success", "message": "Payment processing started"}
+            )
+        else:
+            logger.info(
+                f"Payment pending for order {user_id} (confirmations: {confirmations})"
+            )
+            return jsonify(
+                {"status": "pending", "message": "Waiting for confirmations"}
+            )
+
+    except Exception as e:
+        logger.error(f"Webhook processing error: {e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+def process_wallet_top_confirmation(user_id,paid_amount):
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    confirmation_service = get_confirmation_service()
+
+    logger.info(
+        f"📞📞 1. Notification for User {user_id}"
+    )
+    async def process_with_timeout():
+        await confirmation_service.send_domain_wallet_top_confirmation(
+            user_id, paid_amount
+        )
+
+    result = loop.run_until_complete(process_with_timeout())
+    loop.close()
+
 
 
 

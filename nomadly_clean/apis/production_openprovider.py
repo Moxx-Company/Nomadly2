@@ -8,7 +8,7 @@ import requests
 import logging
 from typing import Dict, List, Optional, Tuple
 import json
-from apis.tld_requirements import TLDRequirementsDatabase
+from enhanced_tld_requirements_system import get_enhanced_tld_system
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class OpenProviderAPI:
 
         self.base_url = "https://api.openprovider.eu"
         self.token = None
-        self.tld_system = TLDRequirementsDatabase()
+        self.tld_system = get_enhanced_tld_system()
         self._authenticate()
 
     def _authenticate(self):

@@ -1,0 +1,11 @@
+{
+  "order_id": "daede2ac-76cd-485e-8bc7-2db20f5664a8",
+  "webhook_data": {
+    "status": "confirmed",
+    "value_coin": "-",
+    "coin": 0
+  },
+  "queued_at": "2025-08-04T13:43:45.915294",
+  "attempts": 0,
+  "status": "queued"
+}
