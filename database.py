@@ -908,7 +908,7 @@ class DatabaseManager:
                 SELECT id, telegram_id, order_id, domain_name, tld, 
                        registration_years, base_price_usd, offshore_multiplier,
                        total_price_usd, nameserver_choice, email_provided,
-                       payment_method, crypto_currency, status, created_at, completed_at, service_type
+                       payment_method, crypto_currency, status, created_at, completed_at, service_type,service_details
                 FROM orders 
                 WHERE order_id = :order_id
             """), {'order_id': order_id})
@@ -935,6 +935,7 @@ class DatabaseManager:
                         self.created_at = row_data[14]
                         self.completed_at = row_data[15]
                         self.service_type = row_data[16]
+                        self.service_details = row_data[17]
                         
                 return SimpleOrder(row)
             return None

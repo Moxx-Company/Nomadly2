@@ -35,11 +35,11 @@ class FixedRegistrationService:
             logger.error(f"❌ FAIL: Order {order_id} not found")
             return False
             
-        #service_details = order.service_details or {}
+        service_details = order.service_details or {}
         domain_name = order.domain_name
         nameserver_choice = order.nameserver_choice #service_details.get("nameserver_choice", "cloudflare")
         telegram_id = order.telegram_id
-        
+
         if not domain_name:
             logger.error(f"❌ FAIL: No domain name in order {order_id}")
             return False
@@ -80,7 +80,7 @@ class FixedRegistrationService:
                     return False
             elif nameserver_choice == "custom":
                 # Custom nameservers - no Cloudflare zone needed
-                nameservers = ["ns1.privatehoster.cc", "ns2.privatehoster.cc"]
+                nameservers = service_details.get('custom_nameservers', ["ns1.privatehoster.cc", "ns2.privatehoster.cc"])
                 logger.info(f"🎯 Using custom nameservers: {nameservers}")
             else:
                 # Default to OpenProvider nameservers (registrar choice)

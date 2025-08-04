@@ -4583,7 +4583,8 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             session = self.user_sessions.get(user_id, {})
-            
+            print(session)
+
             # Generate order number if not already present
             if 'order_number' not in session:
                 import random
@@ -4624,7 +4625,7 @@ class NomadlyCleanBot:
                 # Get database manager and create order
                 from database import get_db_manager
                 db = get_db_manager()
-                
+
                 # Prepare service details for order
                 service_details = {
                     'domain_name': clean_domain,
@@ -4633,7 +4634,11 @@ class NomadlyCleanBot:
                     'technical_email': session.get('technical_email', 'cloakhost@tutamail.com'),
                     'registration_years': 1
                 }
-                
+
+
+                if session.get('nameserver_choice') == 'custom':
+                    service_details['custom_nameservers'] =  session.get('custom_nameservers')
+
                 # Create order in database using the working raw SQL method
                 order = db.create_order(
                     telegram_id=user_id,
@@ -6069,7 +6074,7 @@ class NomadlyCleanBot:
             # Update session with custom nameservers
             user_id = message.from_user.id
             session = self.user_sessions.get(user_id, {})
-            
+            print('session==',session)
             if user_id in self.user_sessions:
                 self.user_sessions[user_id]["nameserver_choice"] = "custom"
                 self.user_sessions[user_id]["custom_nameservers"] = nameservers
@@ -6079,7 +6084,7 @@ class NomadlyCleanBot:
             
             # Check if user was in payment context
             payment_context = session.get("payment_address") or session.get("crypto_type")
-            
+            print('after payment contex', self.user_sessions[user_id])
             ns_list = '\n'.join([f"• `{ns}`" for ns in nameservers])
             
             if payment_context:

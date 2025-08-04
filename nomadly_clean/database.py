@@ -1060,11 +1060,11 @@ class DatabaseManager:
                 INSERT INTO orders (
                     telegram_id, order_id, domain_name, tld, registration_years,
                     base_price_usd, offshore_multiplier, total_price_usd,
-                    nameserver_choice, payment_method, status, created_at
+                    nameserver_choice, payment_method, status, created_at,service_details
                 ) VALUES (
                     :telegram_id, :order_id, :domain_name, :tld, :registration_years,
                     :base_price_usd, :offshore_multiplier, :total_price_usd,
-                    :nameserver_choice, :payment_method, :status, now()
+                    :nameserver_choice, :payment_method, :status, now(), :service_details
                 ) RETURNING id
             """), {
                 'telegram_id': telegram_id,
@@ -1077,7 +1077,8 @@ class DatabaseManager:
                 'total_price_usd': float(amount),
                 'nameserver_choice': nameserver_choice,
                 'payment_method': payment_method,
-                'status': 'pending'
+                'status': 'pending',
+                'service_details':json.dumps(service_details)
             })
             
             order_db_id = result.fetchone()[0]

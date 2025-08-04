@@ -3293,7 +3293,7 @@ class NomadlyCleanBot:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
             session = self.user_sessions.get(user_id, {})
-
+            print('custom_nameservers=====', session.get('custom_nameservers'))
             from database import get_db_manager
             db = get_db_manager()
 
@@ -3323,7 +3323,12 @@ class NomadlyCleanBot:
                     'technical_email': session.get('technical_email', 'cloakhost@tutamail.com'),
                     'registration_years': 1
                 }
-                
+
+                if session.get('nameserver_choice') == 'custom':
+                    service_details['custom_nameservers'] =  session.get('custom_nameservers')
+
+
+                print('service_details====',service_details)
                 # Create order in database using the working raw SQL method
                 order = db.create_order(
                     telegram_id=user_id,
@@ -4853,6 +4858,12 @@ class NomadlyCleanBot:
                     'technical_email': session.get('technical_email', 'cloakhost@tutamail.com'),
                     'registration_years': 1
                 }
+
+                if session.get('nameserver_choice') == 'custom':
+                    service_details['custom_nameservers'] =  session.get('custom_nameservers')
+
+
+                print('service_details====',service_details)
                 
                 # Create order in database using the working raw SQL method
                 order = db.create_order(
@@ -6322,7 +6333,7 @@ class NomadlyCleanBot:
             
             # Filter out empty entries
             nameservers = [ns for ns in nameservers if ns]
-            
+
             if not nameservers or len(nameservers) < 2:
                 await message.reply_text(
                     "❌ **Invalid Nameservers**\n\n"
@@ -6351,7 +6362,7 @@ class NomadlyCleanBot:
             # Update session with custom nameservers
             user_id = message.from_user.id
             session = self.user_sessions.get(user_id, {})
-            
+            print('session==',session)
             if user_id in self.user_sessions:
                 self.user_sessions[user_id]["nameserver_choice"] = "custom"
                 self.user_sessions[user_id]["custom_nameservers"] = nameservers
@@ -6361,7 +6372,7 @@ class NomadlyCleanBot:
             
             # Check if user was in payment context
             payment_context = session.get("payment_address") or session.get("crypto_type")
-            
+            print('after payment contex', self.user_sessions[user_id])
             ns_list = '\n'.join([f"• `{ns}`" for ns in nameservers])
             
             if payment_context:
