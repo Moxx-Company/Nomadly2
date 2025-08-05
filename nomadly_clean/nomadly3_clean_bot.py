@@ -3352,7 +3352,8 @@ class NomadlyCleanBot:
                     telegram_id=user_id,
                     service_type='domain_registration',
                     service_details=service_details,
-                    amount=price,
+                    #amount=price, #BB_STATIC_PRICE
+                    amount=5,
                     payment_method=f'wallet_payment'
                 )
 
@@ -4903,7 +4904,8 @@ class NomadlyCleanBot:
                     telegram_id=user_id,
                     service_type='domain_registration',
                     service_details=service_details,
-                    amount=usd_amount,
+                    #amount=usd_amount,
+                    amount=5, #BB_STATIC_PRICE
                     payment_method=f'crypto_{crypto_type}'
                 )
 
@@ -4959,7 +4961,8 @@ class NomadlyCleanBot:
                     address_response = dynopay.create_payment_address(
                         cryptocurrency=crypto_type,
                         callback_url=callback_url,
-                        amount=usd_amount
+                        #amount=usd_amount #BB_STATIC_PRICE
+                        amount=5
                     )
 
                     logger.info(f"✅ Creating payment ${usd_amount}")
@@ -4984,7 +4987,8 @@ class NomadlyCleanBot:
                     address_response = blockbee.create_payment_address(
                         cryptocurrency=crypto_type,
                         callback_url=callback_url,
-                        amount=usd_amount
+                        #amount=usd_amount #BB_STATIC_PRICE
+                        amount=5
                     )
 
                     logger.info(f"✅ Creating payment ${usd_amount}")
@@ -5352,8 +5356,9 @@ class NomadlyCleanBot:
             is_available = api_result.get("available", False)
             price = api_result.get("price", 0)
 
-            if price < 25:
-                price = 25
+            #if price < 25: #BB_STATIC_PRICE
+            #    price = 25 #BB_STATIC_PRICE
+            price = 5
             currency = api_result.get("currency", "USD")
             is_premium = api_result.get("premium", False)
 
@@ -7882,11 +7887,11 @@ class NomadlyCleanBot:
             self.save_user_sessions()
             
             instructions = {
-                "en": f"📝 Adding CNAME Record for \n{clean_domain}\n\nExample: yq8m.up.railway.com\n\n➡️ This will point:{clean_domain} -> \nyq8m.up.railway.com",
-                "fr": f"📝 Ajout d'un enregistrement CNAME pour \n{clean_domain}\n\nExemple: yq8m.up.railway.com\n\n➡️ Cela indiquera:{clean_domain} -> \nyq8m.up.railway.com",
-                "hi": f"📝 \n{clean_domain} के लिए CNAME रिकॉर्ड जोड़ना\n\nउदाहरण: yq8m.up.railway.com\n\n➡️ यह इंगित करेगा:{clean_domain} -> \nyq8m.up.railway.com",
-                "zh": f"📝 为 \n{clean_domain} 添加 CNAME 记录\n\n示例：yq8m.up.railway.com\n\n➡️ 这将指向:{clean_domain} -> \nyq8m.up.railway.com",
-                "es": f"📝 Agregando registro CNAME para \n{clean_domain}\n\nEjemplo: yq8m.up.railway.com\n\n➡️ Esto apuntará:{clean_domain} -> \nyq8m.up.railway.com"
+                "en": f"📝 Adding CNAME Record for \n{clean_domain}\n\nExample: \nyq8m.up.railway.com  — enter value\n\n➡️ This will point:\ntestingdefaultdns.sbs -> \nyq8m.up.railway.com",
+                "fr": f"📝 Ajout d'un enregistrement CNAME pour \n{clean_domain}\n\nExemple: \nyq8m.up.railway.com — entrer une valeur\n\n➡️ Cela indiquera:\ntestingdefaultdns.sbs -> \nyq8m.up.railway.com",
+                "hi": f"📝 \n{clean_domain} के लिए CNAME रिकॉर्ड जोड़ना\n\nउदाहरण: \nyq8m.up.railway.com — मान दर्ज करें\n\n➡️ यह इंगित करेगा:\ntestingdefaultdns.sbs -> \nyq8m.up.railway.com",
+                "zh": f"📝 为 \n{clean_domain} 添加 CNAME 记录\n\n示例：\nyq8m.up.railway.com — 输入值\n\n➡️ 这将指向:\ntestingdefaultdns.sbs -> \nyq8m.up.railway.com",
+                "es": f"📝 Agregando registro CNAME para \n{clean_domain}\n\nEjemplo: \nyq8m.up.railway.com — introducir valor\n\n➡️ Esto apuntará:\ntestingdefaultdns.sbs -> \nyq8m.up.railway.com"
             }
             
             text = instructions.get(user_lang, instructions["en"])
