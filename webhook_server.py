@@ -75,15 +75,14 @@ def handle_dynopay_webhook(order_id=None):
 
             order = db_manager.get_order(order_id)
 
-            paid_amount = Decimal(str(data.get("base_amount", "0")))
+            paid_amount = float(data.get("base_amount", 0))
 
             logger.info(f"Paid amount {paid_amount} for order_amount {order.total_price_usd}")
 
             if paid_amount > order.total_price_usd:
 
-                order_total = Decimal(str(order.total_price_usd))
-
-                credit_amu = Decimal(paid_amount - order_total)
+                credit_amu = paid_amount - float(order.total_price_usd)
+                
                 db_manager.update_user_balance(
                     order.telegram_id,
                     credit_amu
@@ -175,18 +174,15 @@ def handle_blockbee_webhook(order_id=None):
 
             order = db_manager.get_order(order_id)
 
-            value_coin = Decimal(str(data.get("value_coin", "0")))
-            price = Decimal(str(data.get("price", "0")))
-            some_other_value = Decimal(str(data.get("value_coin", "0")))
-            paid_amount = round(value_coin * price ,2)
+            value_coin = float(data.get("value_coin", 0))
+            price = float(data.get("price", 0))
+            paid_amount = value_coin * price
 
             logger.info(f"Paid amount {paid_amount} for order_amount {order.total_price_usd}")
 
             if paid_amount > order.total_price_usd:
 
-                order_total = Decimal(str(order.total_price_usd))
-
-                credit_amu = Decimal(paid_amount - order_total)
+                credit_amu = paid_amount - float(order.total_price_usd)
                 db_manager.update_user_balance(
                     order.telegram_id,
                     credit_amu
@@ -256,10 +252,10 @@ def handle_dynopay_wallet_topup(user_id=None):
             from decimal import Decimal
             db_manager = get_db_manager()
 
-            paid_amount = Decimal(str(data.get("base_amount", "0")))
+            paid_amount = float(data.get("base_amount", 0))
 
             db_manager.update_user_balance(
-                order.telegram_id,
+                user_id,
                 paid_amount
                 )
 
@@ -332,26 +328,26 @@ def handle_blockbee_wallet_topup(user_id=None):
             from decimal import Decimal
             db_manager = get_db_manager()
 
-            value_coin = Decimal(str(data.get("value_coin", "0")))
-            price = Decimal(str(data.get("price", "0")))
-            paid_amount = round(value_coin * price ,2)
+            value_coin = float(data.get("value_coin", 0))
+            price = float(data.get("price", 0))
+            paid_amount = value_coin * price
 
-            credit_amu = Decimal(paid_amount)
+            #credit_amu = Decimal(paid_amount)
             db_manager.update_user_balance(
                 user_id,
-                credit_amu
+                paid_amount
                 )
 
             db_manager.create_wallet_transaction(
                 telegram_id=user_id,
                 transaction_type="deposit",
-                amount=credit_amu,
+                amount=paid_amount,
                 description="amount top up from wallet topup webhook",
                 payment_address=None,
                 blockbee_payment_id=None
             )
 
-            logger.info(f"Add wallet amount  {credit_amu} for order {user_id}")
+            logger.info(f"Add wallet amount  {paid_amount} for order {user_id}")
 
             # Payment confirmed - process in background
             executor = ThreadPoolExecutor(max_workers=1)

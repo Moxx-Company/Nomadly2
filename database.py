@@ -1000,7 +1000,7 @@ class DatabaseManager:
         try:
             user = session.query(User).filter(User.telegram_id == telegram_id).first()
             if user:
-                user.balance_usd = (user.balance_usd or 0.0) + amount_change
+                user.balance_usd = float(user.balance_usd or 0.0) + amount_change
                 if user.balance_usd < 0:
                     user.balance_usd = 0.0  # Prevent negative balance
                 session.commit()

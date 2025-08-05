@@ -376,7 +376,7 @@ class NomadlyCleanBot:
             user_id = query.from_user.id if query and query.from_user else 0
             
             # Comprehensive callback debugging
-            logger.info(f"📞 CALLBACK RECEIVED: '{data}' from user {user_id}")
+            logger.info(f"📞 CALLBACK RECEIVED: '{data}' from user {user_id} 123")
             
             # Debug logging for DNS/domain related callbacks
             if data and ('dns_' in data or 'manage_domain_' in data):
@@ -513,6 +513,7 @@ class NomadlyCleanBot:
             # NEW CURRENCY END
             
             elif data and data.startswith("pay_wallet_"):
+                logger.info("📞📞📞📞📞📞📞 22 handle_wallet_payment_for_domain")
                 domain = data.replace("pay_wallet_", "")
                 await self.handle_wallet_payment_for_domain(query, domain)
             
@@ -625,6 +626,7 @@ class NomadlyCleanBot:
             
             # Handle wallet payment selection
             elif data and data.startswith("pay_wallet_"):
+                logger.info("📞📞📞📞📞📞📞 11 handle_wallet_payment_for_domain")
                 domain = data.replace("pay_wallet_", "")
                 if query:
                     await self.handle_wallet_payment_for_domain(query, domain)
@@ -657,7 +659,7 @@ class NomadlyCleanBot:
                     crypto_type = parts[2]
                     domain = parts[3]
                     await self.handle_qr_generation(query, crypto_type, domain)
-            
+
             # Handle email editing from payment flow
             elif data and data.startswith("edit_email_"):
                 domain = data.replace("edit_email_", "").replace("_", ".")
@@ -672,12 +674,12 @@ class NomadlyCleanBot:
                             "Leave empty for anonymous registration.",
                             parse_mode='Markdown'
                         )
-            
+
             # Handle nameserver editing from payment flow
             elif data and data.startswith("edit_nameservers_"):
                 domain = data.replace("edit_nameservers_", "").replace("_", ".")
                 await self.handle_nameserver_configuration(query, domain)
-            
+
             # Language selection handlers (explicit individual handlers)
             elif data == "lang_en":
                 await self.handle_language_selection(query, data)
@@ -689,7 +691,7 @@ class NomadlyCleanBot:
                 await self.handle_language_selection(query, data)
             elif data == "lang_es":
                 await self.handle_language_selection(query, data)
-            
+
             # Menu options - individual handlers for better coverage
             elif data == "my_domains":
                 await self.show_my_domains(query)
@@ -711,14 +713,12 @@ class NomadlyCleanBot:
             elif data == "new_search":
                 await self.show_domain_search(query)
 
-
-            
             # DNS Add record type selection (from Try Again button)
             elif data.startswith("dns_add_") and not data.startswith("dns_add_simple_"):
                 domain = data.replace("dns_add_", "")
                 text, keyboard = await self.new_dns_ui.show_add_record_types(query, domain)
                 await self.send_clean_message(query, text, keyboard)
-            
+
             # Simple DNS action handlers
             elif data.startswith("dns_add_simple_"):
                 domain = data.replace("dns_add_simple_", "")
@@ -729,7 +729,7 @@ class NomadlyCleanBot:
             elif data.startswith("dns_delete_simple_"):
                 domain = data.replace("dns_delete_simple_", "")
                 await self.handle_simple_dns_delete(query, domain)
-            
+
             # Wallet funding options
             elif data == "fund_wallet":
                 await self.show_wallet_funding_options(query)
@@ -741,6 +741,15 @@ class NomadlyCleanBot:
                 await self.handle_wallet_crypto_funding(query, "ltc")
             elif data == "fund_crypto_doge":
                 await self.handle_wallet_crypto_funding(query, "doge")
+            elif data == "wallet_topup_generate_qr":
+                parts = data.split("_", 3)
+                if len(parts) >= 4:
+                    crypto_type = parts[2]
+                    domain = parts[3]
+                    print('===========')
+                    print('in handle_qr_generation_walleet_topup')
+                    await self.handle_qr_generation_walleet_topup(query, crypto_type, domain)
+
             elif data and data.startswith("fund_crypto_"):
                 crypto_type = data.replace("fund_crypto_", "")
                 await self.handle_wallet_crypto_funding(query, crypto_type)
@@ -749,59 +758,59 @@ class NomadlyCleanBot:
                 if len(parts) >= 4:
                     crypto_type = parts[3]
                     await self.handle_wallet_payment_status_check(query, crypto_type)
-            
+
             # Domain management handlers
             elif data and data.startswith("manage_domain_"):
                 domain_name = data.replace("manage_domain_", "")
                 logger.info(f"Domain management selected for: {domain_name}")
                 await self.handle_domain_management(query, domain_name)
-            
+
             elif data and data.startswith("visibility_"):
                 domain_name = data.replace("visibility_", "")
                 await self.handle_domain_visibility_control(query, domain_name)
-            
+
             elif data and data.startswith("privacy_"):
                 domain_name = data.replace("privacy_", "")
                 await self.handle_privacy_settings(query, domain_name)
-            
+
             elif data and data.startswith("website_"):
                 domain_name = data.replace("website_", "")
                 await self.handle_website_control(query, domain_name)
-            
+
             elif data and data.startswith("access_"):
                 domain_name = data.replace("access_", "")
                 await self.handle_access_control(query, domain_name)
-            
+
             # Portfolio management handlers
 
-            
+
             elif data == "portfolio_stats":
                 await self.handle_portfolio_stats(query)
-            
 
-            
+
+
             # Domain redirect and parking handlers
             elif data and data.startswith("redirect_"):
                 domain_name = data.replace("redirect_", "")
                 await self.handle_domain_redirect(query, domain_name)
-            
+
             elif data and data.startswith("parking_"):
                 domain_name = data.replace("parking_", "")
                 await self.handle_domain_parking(query, domain_name)
-            
 
-            
 
-            
 
-            
+
+
+
+
             elif data and data.startswith("visibility_"):
                 # Handle country visibility management
                 logger.info(f"🌍 Country visibility clicked - callback: {data}")
                 domain = data.replace("visibility_", "").replace("_", ".")
                 logger.info(f"🌍 Extracted domain: {domain}")
                 await self.show_country_visibility_control(query, domain)
-            
+
             # Country visibility mode handlers
             elif data and data.startswith("geo_mode_"):
                 parts = data.split("_", 3)  # geo_mode_[mode]_[domain]
@@ -809,12 +818,12 @@ class NomadlyCleanBot:
                     mode = parts[2]  # allow_all, block_except, allow_only
                     domain = "_".join(parts[3:]).replace("_", ".")
                     await self.handle_geo_mode_selection(query, mode, domain)
-            
+
             elif data and data.startswith("geo_manage_"):
-                # Handle country management interface  
+                # Handle country management interface
                 domain = data.replace("geo_manage_", "").replace("_", ".")
                 await self.show_country_management(query, domain)
-            
+
             # Country selection handlers
             elif data and data.startswith("country_toggle_"):
                 parts = data.split("_", 3)  # country_toggle_[code]_[domain]
@@ -822,36 +831,36 @@ class NomadlyCleanBot:
                     country_code = parts[2]
                     domain = "_".join(parts[3:]).replace("_", ".")
                     await self.handle_country_toggle(query, country_code, domain)
-            
+
             elif data and data.startswith("country_clear_"):
                 domain = data.replace("country_clear_", "").replace("_", ".")
                 await self.handle_country_clear(query, domain)
-            
+
             elif data and data.startswith("country_save_"):
                 domain = data.replace("country_save_", "").replace("_", ".")
                 await self.handle_country_save(query, domain)
-            
+
             elif data and data.startswith("country_search_"):
                 domain = data.replace("country_search_", "").replace("_", ".")
                 await self.show_country_search(query, domain)
-            
+
             # Additional visibility control handlers
             elif data and data.startswith("whois_settings_"):
                 domain = data.replace("whois_settings_", "").replace("_", ".")
                 await self.handle_whois_settings(query, domain)
-            
+
             elif data and data.startswith("search_visibility_"):
                 domain = data.replace("search_visibility_", "").replace("_", ".")
                 await self.handle_search_visibility(query, domain)
-            
+
             elif data and data.startswith("geo_blocking_"):
                 domain = data.replace("geo_blocking_", "").replace("_", ".")
                 await self.handle_geo_blocking(query, domain)
-            
+
             elif data and data.startswith("security_settings_"):
                 domain = data.replace("security_settings_", "").replace("_", ".")
                 await self.handle_security_settings(query, domain)
-            
+
             # Additional missing handlers
             elif data == "transaction_history":
                 await self.show_transaction_history(query)
@@ -881,7 +890,7 @@ class NomadlyCleanBot:
                 await self.migrate_to_cloudflare(query)
             elif data == "emergency_dns_reset":
                 await self.emergency_dns_reset(query)
-            
+
             # Bulk operations handlers
             elif data == "bulk_privacy_on":
                 await self.bulk_privacy_on(query)
@@ -899,7 +908,7 @@ class NomadlyCleanBot:
                 await self.bulk_reset_all(query)
             elif data == "bulk_visibility_report":
                 await self.bulk_visibility_report(query)
-            
+
             # DNS record management handlers
             elif data == "dns_view_records":
                 # Get domain from session
@@ -912,78 +921,78 @@ class NomadlyCleanBot:
                     await self.show_dns_records_view(query, domain)
                 else:
                     await query.answer("Session expired. Please start over.")
-            
+
             # Add missing DNS record type handlers
             elif data and data.startswith("add_aaaa_"):
                 domain = data.replace("add_aaaa_", "").replace("_", ".")
                 await self.handle_add_aaaa_record(query, domain)
-            
+
             elif data and data.startswith("add_mx_"):
                 domain = data.replace("add_mx_", "").replace("_", ".")
                 await self.handle_add_mx_record(query, domain)
-            
+
             elif data and data.startswith("add_cname_"):
                 domain = data.replace("add_cname_", "").replace("_", ".")
                 await self.handle_add_cname_record(query, domain)
-            
+
             elif data and data.startswith("add_txt_"):
                 domain = data.replace("add_txt_", "").replace("_", ".")
                 await self.handle_add_txt_record(query, domain)
-            
+
             elif data and data.startswith("add_srv_"):
                 domain = data.replace("add_srv_", "").replace("_", ".")
                 await self.handle_add_srv_record(query, domain)
-            
+
             # Missing nameserver and maintenance handlers
             elif data and data.startswith("switch_custom_"):
                 domain = data.replace("switch_custom_", "").replace("_", ".")
                 await self.handle_switch_custom_nameservers(query, domain)
-            
+
             elif data and data.startswith("manual_cloudflare_"):
                 domain = data.replace("manual_cloudflare_", "").replace("_", ".")
                 await self.handle_manual_cloudflare_setup(query, domain)
-            
+
             elif data and data.startswith("force_refresh_"):
                 domain = data.replace("force_refresh_", "").replace("_", ".")
                 await self.handle_force_refresh(query, domain)
-            
+
             elif data and data.startswith("maintenance_"):
                 domain = data.replace("maintenance_", "").replace("_", ".")
                 await self.handle_maintenance_mode(query, domain)
-            
+
             # Add missing back navigation handler
             elif data == "back_to_domain_mgmt":
                 await self.handle_back_to_domain_management(query)
-            
+
             # Add remaining missing handlers
             elif data and data.startswith("ssl_manage_"):
                 domain = data.replace("ssl_manage_", "").replace("_", ".")
                 await self.handle_ssl_management(query, domain)
-            
+
             elif data and data.startswith("cloudflare_status_"):
                 domain = data.replace("cloudflare_status_", "").replace("_", ".")
                 await self.handle_cloudflare_status(query, domain)
-            
+
             elif data and data.startswith("site_offline_"):
                 domain = data.replace("site_offline_", "").replace("_", ".")
                 await self.handle_site_offline(query, domain)
-            
+
             elif data and data.startswith("cdn_settings_"):
                 domain = data.replace("cdn_settings_", "").replace("_", ".")
                 await self.handle_cdn_settings(query, domain)
-            
+
             elif data and data.startswith("add_a_"):
                 domain = data.replace("add_a_", "").replace("_", ".")
                 await self.handle_add_a_record(query, domain)
-            
+
             elif data and data.startswith("performance_"):
                 domain = data.replace("performance_", "").replace("_", ".")
                 await self.handle_performance_settings(query, domain)
-            
+
             elif data and data.startswith("site_online_"):
                 domain = data.replace("site_online_", "").replace("_", ".")
                 await self.handle_site_online(query, domain)
-            
+
             elif data and data.startswith("dns_view_"):
                 # Handle legacy format
                 domain = data.replace("dns_view_", "")
@@ -997,7 +1006,7 @@ class NomadlyCleanBot:
                         # Convert back to underscore format for consistency
                         domain = domain.replace('.', '_')
                 await self.handle_dns_view(query, domain)
-            
+
             elif data == "dns_add_record":
                 # Get domain from session
                 user_id = query.from_user.id
@@ -1006,12 +1015,12 @@ class NomadlyCleanBot:
                     await self.handle_add_dns_record(query, domain)
                 else:
                     await query.answer("Session expired. Please start over.")
-            
+
             elif data and data.startswith("dns_add_"):
                 # Handle legacy format
                 domain = data.replace("dns_add_", "")
                 await self.handle_add_dns_record(query, domain)
-            
+
             # DNS record creation workflow handlers
             elif data and data.startswith("dns_create_"):
                 parts = data.split("_")
@@ -1019,7 +1028,7 @@ class NomadlyCleanBot:
                     record_type = parts[2]
                     domain = "_".join(parts[3:])
                     await self.handle_dns_create_record(query, record_type, domain)
-            
+
             # New UX workflow handlers
             elif data and data.startswith("dns_type_"):
                 # dns_type_a_claudeb_sbs -> Show Add/Edit/Delete for A records
@@ -1027,33 +1036,33 @@ class NomadlyCleanBot:
                 if len(parts) == 2:
                     record_type, domain = parts
                     await self.handle_dns_type_selection(query, record_type, domain)
-            
+
             elif data and data.startswith("dns_add_") and len(data.split("_")) >= 4:
                 # dns_add_a_claudeb_sbs -> Add A record field input
                 parts = data.replace("dns_add_", "").split("_", 1)
                 if len(parts) == 2:
                     record_type, domain = parts
                     await self.handle_dns_add_field_input(query, record_type, domain)
-            
+
             elif data and data.startswith("dns_edit_type_"):
                 # dns_edit_type_a_claudeb_sbs -> Show list of A records to edit
                 parts = data.replace("dns_edit_type_", "").split("_", 1)
                 if len(parts) == 2:
                     record_type, domain = parts
                     await self.handle_dns_edit_type_list(query, record_type, domain)
-            
+
             elif data and data.startswith("dns_delete_type_"):
                 # dns_delete_type_a_claudeb_sbs -> Show list of A records to delete
                 parts = data.replace("dns_delete_type_", "").split("_", 1)
                 if len(parts) == 2:
                     record_type, domain = parts
                     await self.handle_dns_delete_type_list(query, record_type, domain)
-            
+
             # DNS record confirmation handler
             elif data and data.startswith("dns_confirm_create_"):
                 domain = data.replace("dns_confirm_create_", "").replace("_", ".")
                 await self.handle_dns_confirm_create(query, domain)
-            
+
             elif data == "dns_edit_records":
                 # Get domain from session
                 user_id = query.from_user.id
@@ -1063,13 +1072,13 @@ class NomadlyCleanBot:
                     await self.show_edit_dns_records_list(query, domain)
                 else:
                     await query.answer("Session expired. Please start over.")
-            
+
             elif data and data.startswith("dns_edit_list_"):
                 # Handle legacy format
                 domain = data.replace("dns_edit_list_", "")
                 logger.info(f"DNS edit list selected with domain (legacy): {domain}")
                 await self.show_edit_dns_records_list(query, domain)
-            
+
             elif data == "dns_delete_records":
                 # Get domain from session
                 user_id = query.from_user.id
@@ -1078,15 +1087,15 @@ class NomadlyCleanBot:
                     await self.show_delete_dns_records_list(query, domain)
                 else:
                     await query.answer("Session expired. Please start over.")
-            
+
             elif data and data.startswith("dns_delete_list_"):
                 # Handle legacy format
                 domain = data.replace("dns_delete_list_", "")
                 await self.show_delete_dns_records_list(query, domain)
-            
+
             elif data and (data.startswith("edit_dns_") or data.startswith("edit_dns_record_")):
                 logger.info(f"🔧 DNS EDIT CALLBACK: {data}")
-                
+
                 # Handle both legacy and new formats
                 if data.startswith("edit_dns_record_"):
                     # Legacy format: edit_dns_record_claudeb.sbs_2
@@ -1105,29 +1114,29 @@ class NomadlyCleanBot:
                     # New format: edit_dns_{record_id}_{domain_with_underscores}
                     # Example: edit_dns_823d11992ce992a6d14865cc0ec5bebe_claudeb_sbs
                     callback_part = data.replace("edit_dns_", "")
-                    
+
                     # Split from the right to separate domain from record ID
                     # Domain is always the last 2 parts (e.g., "claudeb_sbs" -> "claudeb.sbs")
                     parts = callback_part.rsplit("_", 2)  # Split into max 3 parts from right
                     logger.info(f"🔧 DNS EDIT PARTS: {parts}")
-                    
+
                     if len(parts) >= 3:
                         # Format: {record_id}_{domain_part1}_{domain_part2}
                         record_id = parts[0]  # Real Cloudflare record ID
                         domain = f"{parts[1]}.{parts[2]}"  # Reconstruct domain
-                        
+
                         logger.info(f"🔧 DNS EDIT PARSED: record_id='{record_id}', domain='{domain}'")
                         await self.handle_edit_dns_record(query, record_id, domain)
                     elif len(parts) == 2:
                         # Fallback for single TLD domains
                         record_id = parts[0]
                         domain = parts[1].replace('_', '.')
-                        
+
                         logger.info(f"🔧 DNS EDIT PARSED (fallback): record_id='{record_id}', domain='{domain}'")
                         await self.handle_edit_dns_record(query, record_id, domain)
                     else:
                         logger.error(f"🔧 DNS EDIT PARSING FAILED: Expected at least 2 parts, got {len(parts)}: {parts}")
-            
+
             elif data and data.startswith("delete_dns_record_"):
                 # Handle format: delete_dns_record_claudeb.sbs_6
                 callback_part = data.replace("delete_dns_record_", "")
@@ -1138,7 +1147,7 @@ class NomadlyCleanBot:
                     record_index = parts[1]
                     logger.info(f"🗑️ DNS DELETE PARSED: domain='{domain}', record_index='{record_index}'")
                     await self.handle_delete_dns_record(query, f"idx_{record_index}", domain)
-            
+
             elif data == "dns_switch_ns":
                 # Get domain from session
                 user_id = query.from_user.id
@@ -1147,30 +1156,30 @@ class NomadlyCleanBot:
                     await self.show_nameserver_switch_options(query, domain)
                 else:
                     await query.answer("Session expired. Please start over.")
-            
+
             elif data and data.startswith("ns_switch_"):
                 # Handle legacy format
                 domain = data.replace("ns_switch_", "")
                 await self.show_nameserver_switch_options(query, domain)
-            
+
             elif data and data.startswith("ns_cloudflare_"):
                 domain = data.replace("ns_cloudflare_", "")
                 await self.switch_to_cloudflare_dns(query, domain)
-            
+
             elif data and data.startswith("ns_custom_"):
                 domain = data.replace("ns_custom_", "")
                 await self.switch_to_custom_nameservers(query, domain)
-            
+
             elif data and data.startswith("already_cloudflare_"):
                 domain = data.replace("already_cloudflare_", "")
                 await self.handle_already_on_cloudflare(query, domain)
-            
+
             elif data and data.startswith("add_dns_record_"):
                 domain = data.replace("add_dns_record_", "")
                 await self.handle_add_dns_record(query, domain)
-            
 
-            
+
+
             elif data and data.startswith("dns_replace_"):
                 # Handle DNS record replacement for conflicts: dns_replace_{domain}_{record_type}
                 logger.info(f" dns_replace_ 00000000000+++++++++ {data}")
@@ -1179,23 +1188,23 @@ class NomadlyCleanBot:
                     domain_encoded, record_type = parts
                     domain = domain_encoded.replace("_", ".")
                     await self.handle_dns_replace_record(query, domain, record_type)
-            
+
             elif data and data.startswith("whois_settings_"):
                 domain = data.replace("whois_settings_", "")
                 await self.handle_whois_settings(query, domain)
-            
+
             elif data and data.startswith("search_visibility_"):
                 domain = data.replace("search_visibility_", "")
                 await self.handle_search_visibility(query, domain)
-            
+
             elif data and data.startswith("geo_blocking_"):
                 domain = data.replace("geo_blocking_", "")
                 await self.handle_geo_blocking(query, domain)
-            
+
             elif data and data.startswith("security_settings_"):
                 domain = data.replace("security_settings_", "")
                 await self.handle_security_settings(query, domain)
-            
+
             # Mass DNS operations
             elif data == "mass_add_a_record":
                 await self.mass_add_a_record(query)
@@ -1209,7 +1218,7 @@ class NomadlyCleanBot:
                 await self.mass_cloudflare_migrate(query)
             elif data == "mass_propagation_check":
                 await self.mass_propagation_check(query)
-            
+
             # Default response
             elif query:
                 await query.edit_message_text("🚧 Feature coming soon - stay tuned!")
@@ -1222,7 +1231,7 @@ class NomadlyCleanBot:
             logger.error(f"Full traceback: {traceback.format_exc()}")
             if update.callback_query:
                 await ui_cleanup.handle_callback_error(update.callback_query, e)
-    
+
     # Additional missing handler methods for complete button responsiveness
     async def handle_add_a_record(self, query, domain):
         """Handle A record addition"""
@@ -1233,7 +1242,7 @@ class NomadlyCleanBot:
             self.user_sessions[user_id]["dns_domain"] = domain
             self.user_sessions[user_id]["waiting_for_dns_input"] = True
             self.save_user_sessions()
-        
+
         await self.ui_cleanup.safe_edit_message(
             query,
             "🌐 **Add A Record (IPv4)**\n\n"
@@ -1245,7 +1254,7 @@ class NomadlyCleanBot:
             "• mail,1.1.1.1",
             None
         )
-    
+
     async def handle_ssl_management(self, query, domain):
         """Handle SSL certificate management"""
         await query.answer("🔒 SSL Management...")
@@ -1260,7 +1269,7 @@ class NomadlyCleanBot:
             f"SSL is automatically managed by Cloudflare.",
             None
         )
-    
+
     async def handle_cloudflare_status(self, query, domain):
         """Handle Cloudflare status checking"""
         await query.answer("☁️ Status Check...")
@@ -1276,7 +1285,7 @@ class NomadlyCleanBot:
             f"All Cloudflare services operational.",
             None
         )
-    
+
     async def handle_site_offline(self, query, domain):
         """Handle taking site offline"""
         await query.answer("🔴 Taking Offline...")
@@ -1291,7 +1300,7 @@ class NomadlyCleanBot:
             f"Use 'Site Online' to restore normal operation.",
             None
         )
-    
+
     async def handle_site_online(self, query, domain):
         """Handle bringing site back online"""
         await query.answer("🟢 Bringing Online...")
@@ -1306,7 +1315,7 @@ class NomadlyCleanBot:
             f"✅ Site is live and accessible to visitors.",
             None
         )
-    
+
     async def handle_cdn_settings(self, query, domain):
         """Handle CDN settings management"""
         await query.answer("⚡ CDN Settings...")
@@ -1322,7 +1331,7 @@ class NomadlyCleanBot:
             f"CDN optimized for maximum performance.",
             None
         )
-    
+
     async def handle_performance_settings(self, query, domain):
         """Handle performance optimization settings"""
         await query.answer("🚀 Performance...")
@@ -1338,7 +1347,7 @@ class NomadlyCleanBot:
             f"Site optimized for maximum speed.",
             None
         )
-    
+
     async def handle_add_aaaa_record(self, query, domain):
         """Handle AAAA record addition"""
         await query.answer("🌐 AAAA Record...")
@@ -1348,7 +1357,7 @@ class NomadlyCleanBot:
             self.user_sessions[user_id]["dns_domain"] = domain
             self.user_sessions[user_id]["waiting_for_dns_input"] = True
             self.save_user_sessions()
-        
+
         await self.ui_cleanup.safe_edit_message(
             query,
             "🌐 **Add AAAA Record (IPv6)**\n\n"
@@ -1360,7 +1369,7 @@ class NomadlyCleanBot:
             "• @,2001:4860:4860::8888",
             None
         )
-    
+
     async def handle_add_mx_record(self, query, domain):
         """Handle MX record addition"""
         await query.answer("📧 MX Record...")
@@ -1370,7 +1379,7 @@ class NomadlyCleanBot:
             self.user_sessions[user_id]["dns_domain"] = domain
             self.user_sessions[user_id]["waiting_for_dns_input"] = True
             self.save_user_sessions()
-        
+
         await self.ui_cleanup.safe_edit_message(
             query,
             "📧 **Add MX Record (Mail Server)**\n\n"
@@ -1382,7 +1391,7 @@ class NomadlyCleanBot:
             "• mx1.example.com,5",
             None
         )
-    
+
     async def handle_add_cname_record(self, query, domain):
         """Handle CNAME record addition"""
         await query.answer("🔗 CNAME Record...")
@@ -1392,7 +1401,7 @@ class NomadlyCleanBot:
             self.user_sessions[user_id]["dns_domain"] = domain
             self.user_sessions[user_id]["waiting_for_dns_input"] = True
             self.save_user_sessions()
-        
+
         await self.ui_cleanup.safe_edit_message(
             query,
             "🔗 **Add CNAME Record (Alias)**\n\n"
@@ -1404,7 +1413,7 @@ class NomadlyCleanBot:
             "• shop,mystore.shopify.com",
             None
         )
-    
+
     async def handle_add_txt_record(self, query, domain):
         """Handle TXT record addition"""
         await query.answer("📝 TXT Record...")
@@ -1414,7 +1423,7 @@ class NomadlyCleanBot:
             self.user_sessions[user_id]["dns_domain"] = domain
             self.user_sessions[user_id]["waiting_for_dns_input"] = True
             self.save_user_sessions()
-        
+
         await self.ui_cleanup.safe_edit_message(
             query,
             "📝 **Add TXT Record (Text)**\n\n"
@@ -1426,7 +1435,7 @@ class NomadlyCleanBot:
             "• google,google-site-verification=abc123",
             None
         )
-    
+
     async def handle_add_srv_record(self, query, domain):
         """Handle SRV record addition"""
         await query.answer("⚙️ SRV Record...")
@@ -1436,7 +1445,7 @@ class NomadlyCleanBot:
             self.user_sessions[user_id]["dns_domain"] = domain
             self.user_sessions[user_id]["waiting_for_dns_input"] = True
             self.save_user_sessions()
-        
+
         await self.ui_cleanup.safe_edit_message(
             query,
             "⚙️ **Add SRV Record (Service)**\n\n"
@@ -1448,7 +1457,7 @@ class NomadlyCleanBot:
             "• _minecraft._tcp,1,1,25565,mc.example.com",
             None
         )
-    
+
     async def handle_switch_custom_nameservers(self, query, domain):
         """Handle custom nameserver switching"""
         await query.answer("🔧 Switching...")
@@ -1464,7 +1473,7 @@ class NomadlyCleanBot:
             f"Contact support for assistance with custom DNS setup.",
             None
         )
-    
+
     async def handle_manual_cloudflare_setup(self, query, domain):
         """Handle manual Cloudflare setup"""
         await query.answer("☁️ Manual Setup...")
@@ -1481,7 +1490,7 @@ class NomadlyCleanBot:
             f"Need help? Contact our support team!",
             None
         )
-    
+
     async def handle_force_refresh(self, query, domain):
         """Handle force refresh"""
         await query.answer("🔄 Refreshing...")
@@ -1496,7 +1505,7 @@ class NomadlyCleanBot:
             f"✅ Refresh completed!",
             None
         )
-    
+
     async def handle_maintenance_mode(self, query, domain):
         """Handle maintenance mode"""
         await query.answer("🚧 Maintenance...")
@@ -1512,7 +1521,7 @@ class NomadlyCleanBot:
             f"Contact support for advanced maintenance.",
             None
         )
-    
+
     async def handle_back_to_domain_management(self, query):
         """Handle back to domain management"""
         await query.answer("🔙 Returning...")
@@ -1523,31 +1532,31 @@ class NomadlyCleanBot:
         try:
             language_code = data.replace("lang_", "")
             user_id = query.from_user.id if query and query.from_user else 0
-    
+
             # Initialize or update user session with language preference
             if user_id not in self.user_sessions:
                 self.user_sessions[user_id] = {}
-            
+
             # Preserve existing session data and update language
             existing_session = self.user_sessions[user_id].copy() if user_id in self.user_sessions else {}
             existing_session["language"] = language_code
             self.user_sessions[user_id] = existing_session
-            
+
             # Force immediate save for language preferences (critical for persistence)
             self.save_user_sessions()
             logger.info(f"💾 Language preference '{language_code}' saved for user {user_id}")
-            
+
             logger.info(f"👤 User {user_id} selected language: {language_code}")
-            
+
             # Show confirmation and go to main menu
             language_names = {
-                "en": "English", "fr": "Français", "hi": "हिंदी", 
+                "en": "English", "fr": "Français", "hi": "हिंदी",
                 "zh": "中文", "es": "Español"
             }
-            
+
             selected_lang = language_names.get(language_code, "English")
             await query.answer(f"✅ Language set to {selected_lang}")
-            
+
             # Go directly to main menu with new language using clean UI
             await self.show_main_menu_clean(query)
 
@@ -1561,13 +1570,13 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             language = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Define multilingual text directly
             menu_texts = {
                 "en": {
                     "main_title": "🏴‍☠️ Nomadly",
                     "search_domain": "Register Domain",
-                    "my_domains": "My Domains", 
+                    "my_domains": "My Domains",
                     "wallet": "Wallet",
                     "support": "Support & Help",
                     "language": "Language"
@@ -1576,7 +1585,7 @@ class NomadlyCleanBot:
                     "main_title": "🏴‍☠️ Nomadly",
                     "search_domain": "Enregistrer Domaine",
                     "my_domains": "Mes Domaines",
-                    "wallet": "Portefeuille", 
+                    "wallet": "Portefeuille",
                     "support": "Support & Aide",
                     "language": "Langue"
                 },
@@ -1605,9 +1614,9 @@ class NomadlyCleanBot:
                     "language": "Idioma"
                 }
             }
-            
+
             texts = menu_texts.get(language, menu_texts["en"])
-            
+
             # Ultra-compact main menu for mobile (2 lines only!)
             text = f"<b>{texts['main_title']}</b>\n<i>Private Domain Registration</i>"
 
@@ -1625,17 +1634,17 @@ class NomadlyCleanBot:
                     InlineKeyboardButton(f"🌍 {texts['language']}", callback_data="change_language")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             # Force clear cache for main menu navigation to ensure it always works
             user_id = query.from_user.id if query and query.from_user else 0
             if user_id in ui_cleanup.message_cache:
                 ui_cleanup.message_cache[user_id] = {}
-            
+
             # Use clean UI manager to safely update the message
             await ui_cleanup.safe_edit_message(query, text, reply_markup)
-            
+
         except Exception as e:
             logger.error(f"Error in show_main_menu_clean: {e}")
             await ui_cleanup.handle_callback_error(query, e)
@@ -1645,7 +1654,7 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Multilingual main menu text
             menu_texts = {
                 "en": "🏴‍☠️ **Nomadly Hub**\n**No noise. No leaks. Just total control.**\n\n🌊 **What do you want to handle today?**",
@@ -1654,7 +1663,7 @@ class NomadlyCleanBot:
                 "zh": "🏴‍☠️ **Nomadly 中心**\n**无噪音。无泄露。只有完全控制。**\n\n🌊 **今天您想处理什么？**",
                 "es": "🏴‍☠️ **Centro Nomadly**\n**Sin ruido. Sin filtraciones. Solo control total.**\n\n🌊 **¿Qué quieres manejar hoy?**"
             }
-            
+
             # Multilingual button texts
             button_texts = {
                 "search_domain": {"en": "🔍 Register Domain", "fr": "🔍 Enregistrer Domaine", "hi": "🔍 डोमेन पंजीकृत करें", "zh": "🔍 注册域名", "es": "🔍 Registrar Dominio"},
@@ -1666,9 +1675,9 @@ class NomadlyCleanBot:
                 "support": {"en": "📞 Support", "fr": "📞 Support", "hi": "📞 सहायता", "zh": "📞 支持", "es": "📞 Soporte"},
                 "language": {"en": "🌍 Language", "fr": "🌍 Langue", "hi": "🌍 भाषा", "zh": "🌍 语言", "es": "🌍 Idioma"}
             }
-            
+
             menu_text = menu_texts.get(user_lang, menu_texts["en"])
-            
+
             # Mobile-optimized single column layout with localized text
             keyboard = [
                 [InlineKeyboardButton(button_texts["search_domain"].get(user_lang, button_texts["search_domain"]["en"]), callback_data="search_domain")],
@@ -1680,9 +1689,9 @@ class NomadlyCleanBot:
                 [InlineKeyboardButton(button_texts["support"].get(user_lang, button_texts["support"]["en"]), callback_data="support")],
                 [InlineKeyboardButton(button_texts["language"].get(user_lang, button_texts["language"]["en"]), callback_data="change_language")]
             ]
-    
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-    
+
             await query.edit_message_text(
                 menu_text,
                 reply_markup=reply_markup,
@@ -1693,7 +1702,7 @@ class NomadlyCleanBot:
             logger.error(f"Error in show_main_menu: {e}")
             if query:
                 await query.edit_message_text("🚧 Service temporarily unavailable. Please try again.")
-    
+
 
 
     async def show_my_domains(self, query):
@@ -1702,14 +1711,14 @@ class NomadlyCleanBot:
             logger.info(f"DEBUG: show_my_domains called for user {query.from_user.id if query and query.from_user else 'unknown'}")
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Get user domains
             domains = await self.get_user_domains(user_id)
             logger.info(f"DEBUG: My Domains - user {user_id} has {len(domains) if domains else 0} domains")
-            
+
             if not domains:
                 text = "📂 My Domains\n\nYou don't have any registered domains yet.\n\nRegister your first domain to get started!"
-                
+
                 keyboard = [
                     [InlineKeyboardButton("🔍 Register Domain", callback_data="search_domain")],
                     [InlineKeyboardButton("← Back", callback_data="main_menu")]
@@ -1719,37 +1728,37 @@ class NomadlyCleanBot:
                 domain_list = []
                 for i, domain in enumerate(domains[:10], 1):
                     domain_name = domain.get('domain_name', 'Unknown')
-                    
+
                     # Skip domains with invalid names
                     if not domain_name or domain_name == 'Unknown':
                         logger.warning(f"DEBUG: Skipping invalid domain name: {domain_name}")
                         continue
-                    
+
                     # Use cached domain status for speed
                     domain_status = "📋 Active"
-                    
+
                     # Add domain with status to list
                     domain_list.append(f"{i}. {domain_name} - {domain_status}")
-                
+
                 domain_text = "\n".join(domain_list)
                 text = f"📂 My Domains\n\n{domain_text}\n\nSelect a domain to manage:"
-                
+
                 keyboard = []
-                for domain in domains[:10]:
+                for domain in domains:
                     domain_name = domain.get('domain_name', 'Unknown')
-                    
+
                     # Skip domains with invalid names
                     if not domain_name or domain_name == 'Unknown':
                         continue
-                        
+
                     safe_domain = domain_name.replace('.', '_')
                     keyboard.append([InlineKeyboardButton(f"Manage {domain_name}", callback_data=f"manage_domain_{safe_domain}")])
-                
+
                 keyboard.append([InlineKeyboardButton("← Back", callback_data="main_menu")])
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='HTML')
-            
+
         except Exception as e:
             logger.error(f"Error in show_my_domains: {e}")
             import traceback
@@ -1762,7 +1771,7 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Compact domain search text
             search_texts = {
                 "en": "🔍 **Domain Search**\n\nType a domain to check availability and price.\n\n📝 **Examples:** mycompany, ghosthub.io, freedom.net",
@@ -1771,26 +1780,26 @@ class NomadlyCleanBot:
                 "zh": "🔍 **域名搜索**\n\n输入域名以检查可用性和价格。\n\n📝 **示例:** mycompany, ghosthub.io, freedom.net",
                 "es": "🔍 **Búsqueda de Dominio**\n\nEscriba un dominio para verificar disponibilidad y precio.\n\n📝 **Ejemplos:** miempresa, ghosthub.io, freedom.net"
             }
-            
+
             search_text = search_texts.get(user_lang, search_texts["en"])
-            
+
             # Multilingual back button
             back_texts = {
                 "en": "← Back to Menu",
-                "fr": "← Retour au Menu", 
+                "fr": "← Retour au Menu",
                 "hi": "← मेनू पर वापस",
                 "zh": "← 返回菜单",
                 "es": "← Volver al Menú"
             }
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton(back_texts.get(user_lang, back_texts["en"]), callback_data="main_menu")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 search_text,
                 reply_markup=reply_markup,
@@ -1841,9 +1850,9 @@ class NomadlyCleanBot:
                 "language": "🌍 Idioma"
             }
         }
-        
+
         current_texts = texts.get(lang, texts["en"])
-        
+
         keyboard = [
             [
                 InlineKeyboardButton(current_texts["register"], callback_data="search_domain"),
@@ -1857,13 +1866,13 @@ class NomadlyCleanBot:
                 InlineKeyboardButton(current_texts["language"], callback_data="change_language")
             ]
         ]
-        
+
         return InlineKeyboardMarkup(keyboard)
 
     async def show_main_menu_returning_user(self, message, user_id):
         """Show main menu for returning users"""
         lang = self.user_sessions.get(user_id, {}).get("language", "en")
-        
+
         texts = {
             "en": ("🏴‍☠️ <b>Nomadly</b>\n"
                    "<i>Welcome back to Private Domain Registration</i>"),
@@ -1876,7 +1885,7 @@ class NomadlyCleanBot:
             "es": ("🏴‍☠️ <b>Nomadly</b>\n"
                    "<i>Bienvenido de nuevo al Registro de Dominio Privado</i>")
         }
-        
+
         keyboard = self.get_main_menu_keyboard_clean(lang)
         await message.reply_text(
             texts.get(lang, texts["en"]),
@@ -1893,7 +1902,7 @@ class NomadlyCleanBot:
                 "<i>Welcome • Bienvenue • स्वागत • 欢迎 • Bienvenido</i>\n\n"
                 "<b>Choose your language:</b>"
             )
-            
+
             # 2-column language selection for mobile optimization
             keyboard = [
                 [
@@ -1908,9 +1917,9 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("🇪🇸 Español", callback_data="lang_es")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             if update.message:
                 await update.message.reply_text(
                     welcome_text,
@@ -1932,7 +1941,7 @@ class NomadlyCleanBot:
                 "<i>Welcome • Bienvenue • स्वागत • 欢迎 • Bienvenido</i>\n\n"
                 "<b>Choose your language:</b>"
             )
-            
+
             # 2-column language selection for mobile optimization
             keyboard = [
                 [
@@ -1947,9 +1956,9 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("🇪🇸 Español", callback_data="lang_es")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 welcome_text,
                 reply_markup=reply_markup,
@@ -1965,12 +1974,12 @@ class NomadlyCleanBot:
         """Handle domain search with availability results and alternatives"""
         try:
             domain_name = data.replace("search_", "")
-            
+
             # Simulate availability check with realistic results
             available_domains = []
             unavailable_domains = []
             alternatives = []
-            
+
             # Main domain check (.com typically taken for popular terms)
             if domain_name in ["mycompany", "privacyfirst"]:
                 unavailable_domains.append(f"{domain_name}.com")
@@ -1978,10 +1987,10 @@ class NomadlyCleanBot:
                 alternatives.extend([f"{domain_name}offshore.com", f"{domain_name}pro.com", f"get{domain_name}.com"])
             else:
                 available_domains.extend([f"{domain_name}.com", f"{domain_name}.net", f"{domain_name}.org"])
-            
+
             # Build result text
             result_text = f"🔍 **Search Results: {domain_name}**\n\n"
-            
+
             # Available domains with trustee pricing
             if available_domains:
                 result_text += "🟢 **Available:**\n"
@@ -1991,62 +2000,62 @@ class NomadlyCleanBot:
                     base_price = {"com": 15.00, "net": 18.00, "org": 16.00}.get(tld, 15.00) * 3.3
                     # Calculate trustee pricing
                     final_price, pricing_info = self.trustee_manager.calculate_trustee_pricing(base_price, domain)
-                    
+
                     # Add trustee indicator if needed
                     trustee_indicator = ""
                     if pricing_info.get('requires_trustee'):
                         risk_emoji = {"LOW": "🟢", "MEDIUM": "🟡", "HIGH": "🔴"}.get(pricing_info.get('risk_level', 'LOW'), "🟢")
                         trustee_indicator = f" {risk_emoji}🏛️"
-                    
+
                     result_text += f"• `{domain}` - ${final_price:.2f}{trustee_indicator}\n"
                 result_text += "\n"
-            
+
             # Unavailable domains
             if unavailable_domains:
                 result_text += "🔴 **Taken:**\n"
                 for domain in unavailable_domains:
                     result_text += f"• `{domain}` - Not available\n"
                 result_text += "\n"
-            
+
             # Alternative suggestions with trustee pricing
             if alternatives:
                 result_text += "💡 **Suggested Alternatives:**\n"
                 for alt in alternatives:
                     base_price = 15.00 * 3.3  # Default .com pricing with offshore multiplier
                     final_price, pricing_info = self.trustee_manager.calculate_trustee_pricing(base_price, alt)
-                    
+
                     trustee_indicator = ""
                     if pricing_info.get('requires_trustee'):
                         risk_emoji = {"LOW": "🟢", "MEDIUM": "🟡", "HIGH": "🔴"}.get(pricing_info.get('risk_level', 'LOW'), "🟢")
                         trustee_indicator = f" {risk_emoji}🏛️"
-                    
+
                     result_text += f"• `{alt}` - ${final_price:.2f}{trustee_indicator}\n"
                 result_text += "\n"
-            
+
             result_text += (
                 "**✅ All domains include WHOIS privacy + Cloudflare DNS**\n\n"
                 "🏛️ = Trustee service required for country-specific TLD\n"
                 "🟢 = Low risk | 🟡 = Medium risk | 🔴 = High risk"
             )
-            
+
             # Build keyboard with available options
             keyboard = []
-            
+
             # Add register buttons for available domains (max 3 to keep clean)
             register_buttons = []
             for domain in available_domains[:3]:
                 clean_domain = domain.replace(".", "_")
                 register_buttons.append(InlineKeyboardButton(f"Get {domain}", callback_data=f"register_{clean_domain}"))
-            
+
             # Add register buttons in rows of 1
             for button in register_buttons:
                 keyboard.append([button])
-            
+
             # Add alternative options if main domains taken
             if alternatives:
                 alt_domain = alternatives[0].replace(".", "_")
                 keyboard.append([InlineKeyboardButton(f"Get {alternatives[0]}", callback_data=f"register_{alt_domain}")])
-            
+
             # Navigation buttons
             keyboard.extend([
                 [
@@ -2057,9 +2066,9 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("← Back to Menu", callback_data="main_menu")
                 ]
             ])
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 result_text,
                 reply_markup=reply_markup,
@@ -2070,13 +2079,13 @@ class NomadlyCleanBot:
             logger.error(f"Error in handle_domain_search: {e}")
             if query:
                 await query.edit_message_text("🚧 Service temporarily unavailable. Please try again.")
-    
+
     async def handle_menu_option(self, query, option):
         """Handle main menu options with multilingual support"""
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             if option == "my_domains":
                 await self.show_my_domains(query)
                 return
@@ -2141,11 +2150,11 @@ class NomadlyCleanBot:
                 "zh": "← 返回菜单",
                 "es": "← Volver al Menú"
             }
-            
+
             back_text = back_menu_texts.get(user_lang, back_menu_texts["en"])
             keyboard = [[InlineKeyboardButton(back_text, callback_data="main_menu")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 text,
                 reply_markup=reply_markup,
@@ -2162,14 +2171,14 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Get current wallet balance
             #current_balance = self.user_sessions.get(user_id, {}).get("wallet_balance", 0.00)
             from database import get_db_manager
             db = get_db_manager()
 
             current_balance = db.get_user_balance(user_id)
-            
+
             # Compact wallet menu text
             wallet_texts = {
                 "en": {
@@ -2204,27 +2213,27 @@ class NomadlyCleanBot:
                     "title": "💰 **Saldo Billetera**",
                     "current_balance": f"**Saldo:** ${current_balance:.2f} USD",
                     "fund_wallet": "💰 Financiar Billetera",
-                    "transaction_history": "📊 Historial Transacciones",  
+                    "transaction_history": "📊 Historial Transacciones",
                     "back_menu": "← Volver al Menú"
                 }
             }
-            
+
             texts = wallet_texts.get(user_lang, wallet_texts["en"])
-            
+
             wallet_text = (
                 f"{texts['title']}\n"
                 f"{texts['current_balance']}"
             )
-            
+
             keyboard = [
                 [InlineKeyboardButton(texts["fund_wallet"], callback_data="fund_wallet")],
                 [InlineKeyboardButton(texts["transaction_history"], callback_data="transaction_history")],
                 [InlineKeyboardButton(texts["back_menu"], callback_data="main_menu")]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(wallet_text, reply_markup=reply_markup, parse_mode='Markdown')
-            
+
         except Exception as e:
             logger.error(f"Error in show_wallet_menu: {e}")
             if query:
@@ -2235,7 +2244,7 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Sentry: Track nameserver management (if available)
             if SENTRY_AVAILABLE:
                 sentry_sdk.add_breadcrumb(
@@ -2243,15 +2252,15 @@ class NomadlyCleanBot:
                     category="domain_management",
                     level="info"
                 )
-            
-            # Get current nameserver status from database 
+
+            # Get current nameserver status from database
             from database import get_db_manager
             db = get_db_manager()
-            
+
             # Default nameservers for demonstration
             current_ns_type = "custom"
             current_ns = ["ns1.privatehoster.cc", "ns2.privatehoster.cc"]
-            
+
             # Try to get real nameserver data from database
             try:
                 user_domains = db.get_user_domains(user_id)
@@ -2292,7 +2301,7 @@ class NomadlyCleanBot:
                         break
             except Exception as e:
                 logger.warning(f"Could not fetch nameserver data: {e}")
-            
+
             # Multilingual texts
             texts = {
                 "en": {
@@ -2371,10 +2380,10 @@ class NomadlyCleanBot:
                     "back": "← Atrás"
                 }
             }
-            
+
             text = texts.get(user_lang, texts["en"])
             provider_type = text["provider_cloudflare"] if current_ns_type == "cloudflare" else text["provider_custom"]
-            
+
             management_text = (
                 f"<b>{text['title']} {provider_type}</b>\n"
                 f"🌐 NS1: {current_ns[0]}\n"
@@ -2389,7 +2398,7 @@ class NomadlyCleanBot:
                 f"{text['benefit_control']}\n\n"
                 f"{text['question']}"
             )
-            
+
             # Create keyboard based on current nameserver type
             if current_ns_type == "cloudflare":
                 # Domain is already on Cloudflare - show different options
@@ -2405,15 +2414,15 @@ class NomadlyCleanBot:
                     [InlineKeyboardButton(text["edit_nameservers"], callback_data=f"update_custom_ns_{domain_name}")],
                     [InlineKeyboardButton(text["back"], callback_data=f"manage_domain_{domain_name}")]
                 ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 management_text,
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-            
+
         except Exception as e:
             logger.error(f"Error in handle_nameserver_management: {e}")
             if SENTRY_AVAILABLE:
@@ -2425,22 +2434,22 @@ class NomadlyCleanBot:
         """Handle switching domain from custom nameservers to Cloudflare"""
         try:
             user_id = query.from_user.id if query and query.from_user else 0
-            
+
             # First check if domain is already on Cloudflare
             from database import get_db_manager
             db = get_db_manager()
-            
+
             try:
                 user_domains = db.get_user_domains(user_id)
                 domain_already_on_cloudflare = False
-                
+
                 for d in user_domains:
                     if d.get('domain_name') == domain_name:
                         nameserver_mode = d.get('nameserver_mode', 'custom')
                         if nameserver_mode == 'cloudflare':
                             domain_already_on_cloudflare = True
                         break
-                
+
                 if domain_already_on_cloudflare:
                     # Domain is already on Cloudflare
                     await query.edit_message_text(
@@ -2457,10 +2466,10 @@ class NomadlyCleanBot:
                         parse_mode="Markdown"
                     )
                     return
-                    
+
             except Exception as db_error:
                 logger.warning(f"Could not check domain status: {db_error}")
-            
+
             # Sentry: Track Cloudflare switching (if available)
             if SENTRY_AVAILABLE:
                 sentry_sdk.add_breadcrumb(
@@ -2468,7 +2477,7 @@ class NomadlyCleanBot:
                     category="nameserver_switch",
                     level="info"
                 )
-            
+
             # Show immediate progress feedback
             await query.edit_message_text(
                 f"⚡ **Switching to Cloudflare DNS...**\n\n"
@@ -2478,7 +2487,7 @@ class NomadlyCleanBot:
                 f"⏳ Please wait while we configure your DNS",
                 parse_mode="Markdown"
             )
-            
+
             # Wait briefly for user feedback
             # Step 1: Check for existing Cloudflare zone
             await query.edit_message_text(
@@ -2489,13 +2498,13 @@ class NomadlyCleanBot:
                 f"⏳ Setting up DNS infrastructure",
                 parse_mode="Markdown"
             )
-            
+
             # Use the unified DNS manager to handle the switch
             switch_result = await unified_dns_manager.switch_domain_to_cloudflare(
-                domain_name, 
+                domain_name,
                 self.openprovider
             )
-            
+
             if switch_result['success']:
                 # Success - show completion message
                 success_text = (
@@ -2504,10 +2513,10 @@ class NomadlyCleanBot:
                     f"**Status:** Successfully switched to Cloudflare\n\n"
                     f"**New Nameservers:**\n"
                 )
-                
+
                 for i, ns in enumerate(switch_result['nameservers'], 1):
                     success_text += f"🌐 NS{i}: `{ns}`\n"
-                
+
                 success_text += (
                     f"\n**Zone Information:**\n"
                     f"🆔 Zone ID: `{switch_result['zone_id']}`\n"
@@ -2519,7 +2528,7 @@ class NomadlyCleanBot:
                     f"• ✅ SSL certificate automation\n\n"
                     f"🚀 **DNS propagation will complete within 24-48 hours**"
                 )
-                
+
                 keyboard = [
                     [
                         InlineKeyboardButton("🛡️ Manage DNS Records", callback_data=f"dns_{domain_name}"),
@@ -2534,7 +2543,7 @@ class NomadlyCleanBot:
                         InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")
                     ]
                 ]
-                
+
             else:
                 # Error - show failure message with options
                 error_text = (
@@ -2548,7 +2557,7 @@ class NomadlyCleanBot:
                     f"• Contact support if issue persists\n\n"
                     f"🔧 **Your current nameservers remain unchanged**"
                 )
-                
+
                 keyboard = [
                     [
                         InlineKeyboardButton("🔄 Retry Switch", callback_data=f"switch_cloudflare_{domain_name}"),
@@ -2563,9 +2572,9 @@ class NomadlyCleanBot:
                         InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")
                     ]
                 ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             if switch_result['success']:
                 await query.edit_message_text(
                     success_text,
@@ -2578,12 +2587,12 @@ class NomadlyCleanBot:
                     reply_markup=reply_markup,
                     parse_mode='Markdown'
                 )
-            
+
         except Exception as e:
             logger.error(f"Error in handle_switch_to_cloudflare: {e}")
             if SENTRY_AVAILABLE:
                 sentry_sdk.capture_exception(e)
-            
+
             # Show error message to user
             error_text = (
                 f"❌ **System Error**\n\n"
@@ -2591,7 +2600,7 @@ class NomadlyCleanBot:
                 f"**Issue:** Technical error during nameserver switch\n\n"
                 f"Please try again or contact support if the problem persists."
             )
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton("🔄 Try Again", callback_data=f"switch_cloudflare_{domain_name}"),
@@ -2602,9 +2611,9 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             if query:
                 await query.edit_message_text(
                     error_text,
@@ -2638,7 +2647,7 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id
             lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             texts = {
                 "en": {
                     "title": "📚 FAQ & Guides",
@@ -2681,21 +2690,21 @@ class NomadlyCleanBot:
                     "back": "← Volver"
                 }
             }
-            
+
             current_texts = texts.get(lang, texts["en"])
-            
+
             message = f"<b>{current_texts['title']}</b>\n\n"
             message += f"{current_texts['faq1']}\n"
             message += f"{current_texts['faq2']}\n"
             message += f"{current_texts['faq3']}\n"
             message += f"{current_texts['faq4']}"
-            
+
             keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton(current_texts["back"], callback_data="support_menu")]
             ])
-            
+
             await ui_cleanup.safe_edit_message(query, message, keyboard, parse_mode='HTML')
-            
+
         except Exception as e:
             logger.error(f"Error in show_faq_guides: {e}")
             await ui_cleanup.safe_edit_message(query, "🚧 Service temporarily unavailable. Please try again.")
@@ -2705,7 +2714,7 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             language = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             loyalty_texts = {
                 "en": {
                     "title": "🏆 Loyalty Dashboard",
@@ -2748,9 +2757,9 @@ class NomadlyCleanBot:
                     "back": "← Volver al Menú"
                 }
             }
-            
+
             texts = loyalty_texts.get(language, loyalty_texts["en"])
-            
+
             message = f"""
 🏴‍☠️ **{texts['title']}**
 
@@ -2761,12 +2770,12 @@ class NomadlyCleanBot:
 
 {texts['next_tier']}
 """
-            
+
             keyboard = [[InlineKeyboardButton(texts["back"], callback_data="main_menu")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await ui_cleanup.safe_edit_message(query, message, reply_markup)
-            
+
         except Exception as e:
             logger.error(f"Error showing loyalty dashboard: {e}")
             if query:
@@ -2781,7 +2790,7 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             language = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             dns_texts = {
                 "en": {
                     "title": "🌐 DNS Records Manager",
@@ -2824,22 +2833,22 @@ class NomadlyCleanBot:
                     "back": "← Volver al Menú"
                 }
             }
-            
+
             texts = dns_texts.get(language, dns_texts["en"])
-            
+
             message = f"""🏴‍☠️ **{texts['title']}**
 {texts['description']}
 
 {texts['require']}"""
-            
+
             keyboard = [
                 [InlineKeyboardButton(texts["register"], callback_data="search_domain")],
                 [InlineKeyboardButton(texts["back"], callback_data="main_menu")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await ui_cleanup.safe_edit_message(query, message, reply_markup)
-            
+
         except Exception as e:
             logger.error(f"Error showing DNS management: {e}")
             if query:
@@ -2850,7 +2859,7 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             language = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             ns_texts = {
                 "en": {
                     "title": "⚙️ Nameserver Control Panel",
@@ -2893,22 +2902,22 @@ class NomadlyCleanBot:
                     "back": "← Volver al Menú"
                 }
             }
-            
+
             texts = ns_texts.get(language, ns_texts["en"])
-            
+
             message = f"""🏴‍☠️ **{texts['title']}**
 {texts['description']}
 
 {texts['require']}"""
-            
+
             keyboard = [
                 [InlineKeyboardButton(texts["register"], callback_data="search_domain")],
                 [InlineKeyboardButton(texts["back"], callback_data="main_menu")]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await ui_cleanup.safe_edit_message(query, message, reply_markup)
-            
+
         except Exception as e:
             logger.error(f"Error showing nameserver management: {e}")
             if query:
@@ -2919,7 +2928,7 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             language = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             support_texts = {
                 "en": {
                     "title": "<b>🆘 Support & Help</b>",
@@ -2957,12 +2966,12 @@ class NomadlyCleanBot:
                     "back": "Atrás"
                 }
             }
-            
+
             texts = support_texts.get(language, support_texts["en"])
-            
+
             # Ultra-compact support menu
             text = f"{texts['title']}\n<i>{texts['contact']}</i>"
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton(f"📚 {texts['faq']}", callback_data="faq_guides"),
@@ -2970,10 +2979,10 @@ class NomadlyCleanBot:
                 ],
                 [InlineKeyboardButton(f"← {texts['back']}", callback_data="main_menu")]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='HTML')
-            
+
         except Exception as e:
             logger.error(f"Error showing support menu: {e}")
             if query:
@@ -2984,7 +2993,7 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Multilingual funding options text
             funding_texts = {
                 "en": {
@@ -3058,14 +3067,14 @@ class NomadlyCleanBot:
                     "back_wallet": "← Volver a Billetera"
                 }
             }
-            
+
             texts = funding_texts.get(user_lang, funding_texts["en"])
-            
+
             funding_text = (
                 f"{texts['title']}\n\n"
                 f"{texts['description']}"
             )
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton(texts["btc"], callback_data="fund_crypto_btc"),
@@ -3090,10 +3099,10 @@ class NomadlyCleanBot:
                     InlineKeyboardButton(texts["back_wallet"], callback_data="wallet")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(funding_text, reply_markup=reply_markup, parse_mode='Markdown')
-            
+
         except Exception as e:
             logger.error(f"Error in show_wallet_funding_options: {e}")
             if query:
@@ -3104,14 +3113,14 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Generate unique wallet funding address
             wallet_address = self.generate_crypto_address(crypto_type, user_id, "wallet_funding")
-            
+
             # Store wallet funding session data
             if user_id not in self.user_sessions:
                 self.user_sessions[user_id] = {}
-            
+
             self.user_sessions[user_id].update({
                 "wallet_funding_crypto": crypto_type,
                 f"{crypto_type}_wallet_address": wallet_address,
@@ -3121,7 +3130,7 @@ class NomadlyCleanBot:
             self.save_user_sessions()
 
             logger.info(f"in handle_wallet_crypto_funding crypto_type: {crypto_type}")
-            
+
             crypto_names = {
                 "btc": {"en": "Bitcoin", "fr": "Bitcoin", "hi": "बिटकॉइन", "zh": "比特币", "es": "Bitcoin"},
                 "eth": {"en": "Ethereum", "fr": "Ethereum", "hi": "एथेरियम", "zh": "以太坊", "es": "Ethereum"},
@@ -3134,7 +3143,7 @@ class NomadlyCleanBot:
                 'ustcr': {'en': 'Tether ERC20', 'fr': 'Tether ERC20', "hi": "टेदर ERC20", "zh": "Tether ERC20", "es": "Tether ERC20"},
                 'usdt': {'en': 'Tether TRC20', 'fr': 'Tether TRC20', "hi": "टेथर TRC20", "zh": "Tether TRC20", "es": "Tether TRC20"}
             }
-            
+
             # Multilingual wallet funding payment texts
             payment_texts = {
                 "en": {
@@ -3142,54 +3151,62 @@ class NomadlyCleanBot:
                     "instructions": f"💳 **Send any amount to this address:**\n\n`{wallet_address}`\n\n💡 **Recommended:** $20+ for multiple domain registrations\n⚡ **Any amount accepted** - even $1 gets credited\n🔄 **Instant processing** after blockchain confirmation",
                     "check_payment": "✅ I've Sent Payment - Check Status",
                     "switch_crypto": "🔄 Switch Cryptocurrency",
-                    "back_wallet": "← Back to Wallet"
+                    "back_wallet": "← Back to Wallet",
+                    "qr_code": "📱 QR Code"
                 },
                 "fr": {
                     "title": f"💰 **Financer Portefeuille - {crypto_names[crypto_type]['fr']}**",
                     "instructions": f"💳 **Envoyez n'importe quel montant à cette adresse:**\n\n`{wallet_address}`\n\n💡 **Recommandé:** $20+ pour plusieurs enregistrements de domaines\n⚡ **Tout montant accepté** - même $1 est crédité\n🔄 **Traitement instantané** après confirmation blockchain",
                     "check_payment": "✅ J'ai Envoyé le Paiement - Vérifier Statut",
                     "switch_crypto": "🔄 Changer Cryptomonnaie",
-                    "back_wallet": "← Retour au Portefeuille"
+                    "back_wallet": "← Retour au Portefeuille",
+                    "qr_code": "📱 Code QR"
                 },
                 "hi": {
                     "title": f"💰 **वॉलेट फंड करें - {crypto_names[crypto_type]['hi']}**",
                     "instructions": f"💳 **इस पते पर कोई भी राशि भेजें:**\n\n`{wallet_address}`\n\n💡 **अनुशंसित:** $20+ कई डोमेन पंजीकरण के लिए\n⚡ **कोई भी राशि स्वीकार** - यहां तक कि $1 भी क्रेडिट हो जाता है\n🔄 **तत्काल प्रसंस्करण** ब्लॉकचेन पुष्टि के बाद",
                     "check_payment": "✅ मैंने भुगतान भेजा है - स्थिति जांचें",
                     "switch_crypto": "🔄 क्रिप्टोकरेंसी बदलें",
-                    "back_wallet": "← वॉलेट पर वापस"
+                    "back_wallet": "← वॉलेट पर वापस",
+                    "qr_code": "📱 QR कोड"
                 },
                 "zh": {
                     "title": f"💰 **充值钱包 - {crypto_names[crypto_type]['zh']}**",
                     "instructions": f"💳 **向此地址发送任何金额:**\n\n`{wallet_address}`\n\n💡 **推荐:** $20+ 用于多个域名注册\n⚡ **接受任何金额** - 即使 $1 也会被记入\n🔄 **即时处理** 区块链确认后",
                     "check_payment": "✅ 我已发送付款 - 检查状态",
                     "switch_crypto": "🔄 切换加密货币",
-                    "back_wallet": "← 返回钱包"
+                    "back_wallet": "← 返回钱包",
+                    "qr_code": "📱 二维码"
                 },
                 "es": {
                     "title": f"💰 **Financiar Billetera - {crypto_names[crypto_type]['es']}**",
                     "instructions": f"💳 **Envía cualquier cantidad a esta dirección:**\n\n`{wallet_address}`\n\n💡 **Recomendado:** $20+ para múltiples registros de dominios\n⚡ **Cualquier cantidad aceptada** - incluso $1 se acredita\n🔄 **Procesamiento instantáneo** tras confirmación blockchain",
                     "check_payment": "✅ He Enviado el Pago - Verificar Estado",
-                    "switch_crypto": "🔄 Cambiar Criptomoneda", 
-                    "back_wallet": "← Volver a Billetera"
+                    "switch_crypto": "🔄 Cambiar Criptomoneda",
+                    "back_wallet": "← Volver a Billetera",
+                    "qr_code": "📱 Código QR"
                 }
             }
-            
+
             texts = payment_texts.get(user_lang, payment_texts["en"])
-            
+
             payment_text = (
                 f"{texts['title']}\n\n"
                 f"{texts['instructions']}"
             )
-            
+
             keyboard = [
                 #[InlineKeyboardButton(texts["check_payment"], callback_data=f"check_wallet_payment_{crypto_type}")],
-                [InlineKeyboardButton(texts["switch_crypto"], callback_data="fund_wallet")],
+                [
+                    InlineKeyboardButton(texts["switch_crypto"], callback_data="fund_wallet"),
+                    InlineKeyboardButton(texts["qr_code"], callback_data=f"wallet_topup_generate_qr")
+                ],
                 [InlineKeyboardButton(texts["back_wallet"], callback_data="wallet")]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(payment_text, reply_markup=reply_markup, parse_mode='Markdown')
-            
+
         except Exception as e:
             logger.error(f"Error in handle_wallet_crypto_funding: {e}")
             if query:
@@ -3200,19 +3217,19 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Wait to simulate blockchain checking
             # CRITICAL: Real payment verification needed
             # For now, always show "no payment found" to prevent false confirmations
             payment_received = False
-            
+
             if payment_received:
                 # Simulate received amount (replace with real blockchain checking)
                 received_amount = self.simulate_received_amount()
-                
+
                 # Credit wallet balance
                 await self.credit_wallet_balance(user_id, received_amount)
-                
+
                 # Multilingual success messages
                 success_texts = {
                     "en": {
@@ -3246,22 +3263,22 @@ class NomadlyCleanBot:
                         "back_wallet": "← Volver a Billetera"
                     }
                 }
-                
+
                 texts = success_texts.get(user_lang, success_texts["en"])
-                
+
                 success_text = (
                     f"{texts['title']}\n\n"
                     f"{texts['details']}"
                 )
-                
+
                 keyboard = [
                     [InlineKeyboardButton(texts["register_domain"], callback_data="search_domain")],
                     [InlineKeyboardButton(texts["back_wallet"], callback_data="wallet")]
                 ]
-                
+
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(success_text, reply_markup=reply_markup, parse_mode='Markdown')
-                
+
             else:
                 # Payment not yet received - show waiting message
                 waiting_texts = {
@@ -3271,9 +3288,9 @@ class NomadlyCleanBot:
                     "zh": "⏳ **尚未检测到付款**\n\n🔍 检查区块链中...\n⚡ 请等待确认（通常10-20分钟）\n\n💡 **提示:** 先发送付款，然后检查状态",
                     "es": "⏳ **Pago aún no detectado**\n\n🔍 Verificando blockchain...\n⚡ Por favor espere la confirmación (usualmente 10-20 minutos)\n\n💡 **Consejo:** Envíe el pago primero, luego verifique el estado"
                 }
-                
+
                 await query.answer(waiting_texts.get(user_lang, waiting_texts["en"]))
-            
+
         except Exception as e:
             logger.error(f"Error in handle_wallet_payment_status_check: {e}")
             if query:
@@ -3289,6 +3306,7 @@ class NomadlyCleanBot:
 
     async def handle_wallet_payment_for_domain(self, query, domain):
         """Handle wallet payment for domain registration with balance checking"""
+        logger.info("📞📞📞📞📞📞📞 handle_wallet_payment_for_domain")
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
@@ -3299,12 +3317,12 @@ class NomadlyCleanBot:
 
             wallet_balance = db.get_user_balance(user_id)
 
-            
+
             # Get domain price
             price = session.get('price', 49.50)
             #wallet_balance = session.get('wallet_balance', 0.00)
             logger.info(f"🚧🚧🚧🚧price : {price}, wallet_balance: {wallet_balance}")
-            
+
             # Check if wallet balance is sufficient
             if wallet_balance >= price:
                 # Sufficient funds - process domain registration
@@ -3328,7 +3346,7 @@ class NomadlyCleanBot:
                     service_details['custom_nameservers'] =  session.get('custom_nameservers')
 
 
-                print('service_details====',service_details)
+                print('1 service_details====',service_details)
                 # Create order in database using the working raw SQL method
                 order = db.create_order(
                     telegram_id=user_id,
@@ -3356,7 +3374,7 @@ class NomadlyCleanBot:
                 )
 
                 #sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-                
+
                 # Multilingual success messages
                 success_texts = {
                     "en": {
@@ -3395,23 +3413,23 @@ class NomadlyCleanBot:
                         "back_menu": "← Volver al Menú"
                     }
                 }
-                
+
                 texts = success_texts.get(user_lang, success_texts["en"])
-                
+
                 success_text = (
                     f"{texts['title']}\n\n"
                     f"{texts['details']}"
                 )
-                
+
                 keyboard = [
                     [InlineKeyboardButton(texts["manage_domain"], callback_data=f"manage_domain_{domain}")],
                     [InlineKeyboardButton(texts["register_more"], callback_data="search_domain")],
                     [InlineKeyboardButton(texts["back_menu"], callback_data="main_menu")]
                 ]
-                
+
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(success_text, reply_markup=reply_markup, parse_mode='Markdown')
-                
+
             else:
                 # Insufficient funds - show crypto payment options with multilingual support
                 insufficient_texts = {
@@ -3491,9 +3509,9 @@ class NomadlyCleanBot:
                         "back_registration": "← Volver al Registro"
                     }
                 }
-                
+
                 texts = insufficient_texts.get(user_lang, insufficient_texts["en"])
-                
+
                 keyboard = [
                     [
                         InlineKeyboardButton(texts["btc"], callback_data=f"crypto_btc_{domain}"),
@@ -3519,14 +3537,14 @@ class NomadlyCleanBot:
                         InlineKeyboardButton(texts["back_registration"], callback_data=f"register_{domain}")
                     ]
                 ]
-                
+
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(
                     f"{texts['title']}\n\n{texts['insufficient']}",
                     reply_markup=reply_markup,
                     parse_mode='Markdown'
                 )
-                
+
         except Exception as e:
             logger.error(f"Error in handle_wallet_payment_for_domain: {e}")
             if query:
@@ -3539,29 +3557,29 @@ class NomadlyCleanBot:
             from database import get_db_manager
             db = get_db_manager()
             domains = db.get_user_domains(user_id)
-            
+
             logger.info(f"DEBUG: Found {len(domains)} domains in database")
             logger.info(f"DEBUG: Raw domains list: {domains}")
-            
+
             # Debug each domain object
             for i, domain in enumerate(domains):
                 logger.info(f"DEBUG: Domain {i}: {domain}")
                 logger.info(f"DEBUG: Domain {i} attributes: {dir(domain)}")
                 logger.info(f"DEBUG: Domain {i} name: {getattr(domain, 'domain_name', 'MISSING')}")
                 logger.info(f"DEBUG: Domain {i} status: {getattr(domain, 'status', 'MISSING')}")
-            
+
             # Convert database objects to dictionaries for DNS interface
             domain_list = []
             for domain in domains:
                 # Get domain name safely
                 domain_name = getattr(domain, 'domain_name', None)
                 logger.info(f"DEBUG: Processing domain {domain_name} (status: {getattr(domain, 'status', 'unknown')})")
-                
+
                 # Skip domains with no name
                 if not domain_name:
                     logger.warning(f"DEBUG: Skipping domain with no name - ID: {getattr(domain, 'id', 'unknown')}")
                     continue
-                    
+
                 domain_dict = {
                     "domain_name": domain_name,
                     "id": getattr(domain, "id", None),
@@ -3571,10 +3589,10 @@ class NomadlyCleanBot:
                     "nameserver_mode": getattr(domain, "nameserver_mode", "cloudflare")
                 }
                 domain_list.append(domain_dict)
-            
+
             logger.info(f"DEBUG: Returning {len(domain_list)} domains to interface")
             return domain_list
-            
+
         except Exception as e:
             logger.error(f"Error getting user domains from database: {e}")
             import traceback
@@ -3587,14 +3605,14 @@ class NomadlyCleanBot:
             logger.info(f"Unified domain control panel for: {domain_name}")
             user_id = query.from_user.id
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Extract clean domain name from potentially corrupted callback data
             clean_domain = self.extract_clean_domain_name(domain_name)
-            
+
             # Get actual domain data from database for stats
             from database import get_db_manager
             db = get_db_manager()
-            
+
             # Check if domain exists for user and get real data
             user_domains = db.get_user_domains(user_id)
             domain_found = False
@@ -3605,12 +3623,12 @@ class NomadlyCleanBot:
             domain_record = None
 
 
-            
+
             for domain in user_domains:
                 if domain.domain_name == clean_domain:
                     domain_found = True
                     domain_record = domain
-                    
+
                     # Get real expiry date from database
                     if hasattr(domain, 'expires_at') and domain.expires_at:
                         try:
@@ -3621,16 +3639,16 @@ class NomadlyCleanBot:
                                 domain_expires = str(expires_date)[:7]  # YYYY-MM format
                         except:
                             domain_expires = "Jan 2026"  # Fallback
-                    
+
                     # Check nameserver status
                     if hasattr(domain, 'nameserver_mode'):
                         if domain.nameserver_mode == 'cloudflare':
                             nameserver_status = "Cloudflare"
                         elif domain.nameserver_mode == 'custom':
                             nameserver_status = "Custom"
-                    
+
                     break
-            
+
             if not domain_found:
                 logger.warning(f"Domain {clean_domain} not found for user {user_id}")
                 await query.edit_message_text(
@@ -3638,7 +3656,7 @@ class NomadlyCleanBot:
                     reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("← Back", callback_data="my_domains")]])
                 )
                 return
-            
+
             # Use cached DNS record count for speed - avoid API call on every button press
             if domain_record and hasattr(domain_record, 'cloudflare_zone_id') and domain_record.cloudflare_zone_id:
 
@@ -3647,10 +3665,10 @@ class NomadlyCleanBot:
                 domain_record_count = len(records) # Default estimate for Cloudflare zones
             else:
                 domain_record_count = 3  # Default estimate for custom nameservers
-            
+
             # Use cached domain status for speed - avoid slow OpenProvider API calls
             domain_status = "📋 Active"  # Use database status or default
-            
+
             # Get nameserver information
             nameserver_info = "Unknown"
             try:
@@ -3666,11 +3684,11 @@ class NomadlyCleanBot:
             except Exception as e:
                 logger.warning(f"Could not fetch nameserver info for {clean_domain}: {e}")
                 nameserver_info = "📋 Default"
-            
+
             # Use default analytics for speed - avoid slow API calls
             monthly_visitors = "0/month"
             top_country = "Unknown"
-            
+
             # Multilingual unified control panel texts (using real-time data)
             unified_texts = {
                 "en": {
@@ -3734,9 +3752,9 @@ class NomadlyCleanBot:
                     "back": "← Volver a Dominios"
                 }
             }
-            
+
             texts = unified_texts.get(user_lang, unified_texts["en"])
-            
+
             # Build unified control panel display
             control_panel_text = (
                 f"<b>{texts['title']}</b>\n\n"
@@ -3748,36 +3766,51 @@ class NomadlyCleanBot:
                 f"└─────────────────────────────────────┘\n\n"
                 f"<b>{texts['management_header']}</b>"
             )
-            
+
             # Use clean domain with underscore encoding for callback data
             callback_domain = clean_domain.replace('.', '_')
-            
+
             # Enhanced DNS/Nameserver focused layout - Analytics removed, prominent DNS management
-            keyboard = [
-                [
+            keyboard = []
+            if nameserver_info != 'custom':
+                keyboard.append([
                     InlineKeyboardButton(texts["dns_records"], callback_data=f"dns_management_{callback_domain}")
-                ],
-                [
-                    InlineKeyboardButton(texts["nameservers"], callback_data=f"nameservers_{callback_domain}")
-                ],
-                # [
-                #     InlineKeyboardButton(texts["geo_visibility"], callback_data=f"visibility_{callback_domain}")
-                # ],
-                [
-                    InlineKeyboardButton(texts["back"], callback_data="my_domains")
-                ]
-            ]
-            
+                ])
+
+            keyboard.append([
+                InlineKeyboardButton(texts["nameservers"], callback_data=f"nameservers_{callback_domain}")
+            ])
+
+            # Always include back button
+            keyboard.append([
+                InlineKeyboardButton(texts["back"], callback_data="my_domains")
+            ])
+            # keyboard = [
+            #     [
+            #         InlineKeyboardButton(texts["dns_records"], callback_data=f"dns_management_{callback_domain}")
+            #     ],
+            #     [
+            #         InlineKeyboardButton(texts["nameservers"], callback_data=f"nameservers_{callback_domain}")
+            #     ],
+            #     # [
+            #     #     InlineKeyboardButton(texts["geo_visibility"], callback_data=f"visibility_{callback_domain}")
+            #     # ],
+            #     [
+            #         InlineKeyboardButton(texts["back"], callback_data="my_domains")
+            #     ]
+            # ]
+
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 control_panel_text,
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-            
+
             logger.info(f"Unified control panel displayed for {clean_domain}")
-            
+
         except Exception as e:
             logger.error(f"Error in unified domain management: {e}")
             if query:
@@ -3788,12 +3821,12 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Get current visibility settings (default: allow all)
             # In production, this would query the database
             current_mode = "allow_all"  # Options: allow_all, block_except, allow_only
             selected_countries = []  # List of country codes
-            
+
             # Multilingual interface texts with offshore branding
             texts = {
                 "en": {
@@ -3804,7 +3837,7 @@ class NomadlyCleanBot:
                     "mode_header": "⚓ Access Control Modes:",
                     "allow_all": "🌍 Global\nAccess",
                     "block_except": "🚫 Block\nExcept",
-                    "allow_only": "✅ Allow\nOnly", 
+                    "allow_only": "✅ Allow\nOnly",
                     "manage_countries": "🗺️ Manage\nCountries",
                     "back": f"← Back to Control"
                 },
@@ -3857,9 +3890,9 @@ class NomadlyCleanBot:
                     "back": f"← Volver Control"
                 }
             }
-            
+
             text = texts.get(user_lang, texts["en"])
-            
+
             # Clean mobile-first interface
             interface_text = (
                 f"<b>{text['title']}</b>\n"
@@ -3868,10 +3901,10 @@ class NomadlyCleanBot:
                 f"{text['description']}\n\n"
                 f"<b>{text['mode_header']}</b>"
             )
-            
+
             # Encode domain for callbacks
             callback_domain = domain_name.replace('.', '_')
-            
+
             # 2x2 grid layout for modes + manage countries button
             keyboard = [
                 [
@@ -3886,15 +3919,15 @@ class NomadlyCleanBot:
                     InlineKeyboardButton(text["back"], callback_data=f"manage_domain_{callback_domain}")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 interface_text,
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-            
+
         except Exception as e:
             logger.error(f"Error in show_country_visibility_control: {e}")
             if query:
@@ -3905,12 +3938,12 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Store mode in session for this domain
             if user_id not in self.user_sessions:
                 self.user_sessions[user_id] = {}
             self.user_sessions[user_id][f"geo_mode_{domain_name}"] = mode
-            
+
             # Mode descriptions
             mode_texts = {
                 "allow_all": {
@@ -3935,8 +3968,8 @@ class NomadlyCleanBot:
                     "es": "✅ <b>Modo Permitir Solo Seleccionados</b> activado\n\nSu dominio es accesible solo desde países que selecciona específicamente."
                 }
             }
-            
-            # Action buttons 
+
+            # Action buttons
             action_texts = {
                 "en": {"manage": "🗺️ Select Countries", "back": "← Back to Geo Control"},
                 "fr": {"manage": "🗺️ Sélectionner Pays", "back": "← Retour Contrôle Géo"},
@@ -3944,12 +3977,12 @@ class NomadlyCleanBot:
                 "zh": {"manage": "🗺️ 选择国家", "back": "← 返回地理控制"},
                 "es": {"manage": "🗺️ Seleccionar Países", "back": "← Volver Control Geo"}
             }
-            
+
             mode_text = mode_texts[mode].get(user_lang, mode_texts[mode]["en"])
             action_text = action_texts.get(user_lang, action_texts["en"])
-            
+
             callback_domain = domain_name.replace('.', '_')
-            
+
             # Show different buttons based on mode
             if mode == "allow_all":
                 keyboard = [
@@ -3960,15 +3993,15 @@ class NomadlyCleanBot:
                     [InlineKeyboardButton(action_text["manage"], callback_data=f"geo_manage_{callback_domain}")],
                     [InlineKeyboardButton(action_text["back"], callback_data=f"visibility_{callback_domain}")]
                 ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 mode_text,
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-            
+
         except Exception as e:
             logger.error(f"Error in handle_geo_mode_selection: {e}")
             if query:
@@ -3979,11 +4012,11 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Common countries for quick selection
             popular_countries = [
                 ("🇺🇸", "US", "United States"),
-                ("🇬🇧", "GB", "United Kingdom"), 
+                ("🇬🇧", "GB", "United Kingdom"),
                 ("🇨🇦", "CA", "Canada"),
                 ("🇩🇪", "DE", "Germany"),
                 ("🇫🇷", "FR", "France"),
@@ -3991,10 +4024,10 @@ class NomadlyCleanBot:
                 ("🇦🇺", "AU", "Australia"),
                 ("🇧🇷", "BR", "Brazil")
             ]
-            
+
             # Get current selected countries (from session or database)
             selected_countries = self.user_sessions.get(user_id, {}).get(f"selected_countries_{domain_name}", [])
-            
+
             # Interface texts
             texts = {
                 "en": {
@@ -4004,7 +4037,7 @@ class NomadlyCleanBot:
                     "popular_header": "⚓ Popular Countries:",
                     "search": "🔍 Search Countries",
                     "clear": "🗑️ Clear All",
-                    "save": "💾 Save Settings", 
+                    "save": "💾 Save Settings",
                     "back": "← Back to Modes"
                 },
                 "fr": {
@@ -4042,24 +4075,24 @@ class NomadlyCleanBot:
                     "subtitle": f"Dominio: {domain_name}",
                     "selected_header": f"Seleccionados: {len(selected_countries)} países",
                     "popular_header": "⚓ Países Populares:",
-                    "search": "🔍 Buscar Países", 
+                    "search": "🔍 Buscar Países",
                     "clear": "🗑️ Limpiar Todo",
                     "save": "💾 Guardar Config",
                     "back": "← Volver Modos"
                 }
             }
-            
+
             text = texts.get(user_lang, texts["en"])
-            
+
             interface_text = (
                 f"<b>{text['title']}</b>\n"
                 f"<i>{text['subtitle']}</i>\n\n"
                 f"{text['selected_header']}\n\n"
                 f"<b>{text['popular_header']}</b>"
             )
-            
+
             callback_domain = domain_name.replace('.', '_')
-            
+
             # Build country selection keyboard (2 columns)
             country_buttons = []
             for i in range(0, len(popular_countries), 2):
@@ -4071,7 +4104,7 @@ class NomadlyCleanBot:
                         display = f"✅ {flag}" if code in selected_countries else f"{flag}"
                         row.append(InlineKeyboardButton(display, callback_data=f"country_toggle_{code}_{callback_domain}"))
                 country_buttons.append(row)
-            
+
             # Action buttons
             keyboard = country_buttons + [
                 [
@@ -4083,15 +4116,15 @@ class NomadlyCleanBot:
                     InlineKeyboardButton(text["back"], callback_data=f"visibility_{callback_domain}")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 interface_text,
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-            
+
         except Exception as e:
             logger.error(f"Error in show_country_management: {e}")
             if query:
@@ -4101,60 +4134,60 @@ class NomadlyCleanBot:
         """Toggle country selection on/off"""
         try:
             user_id = query.from_user.id
-            
+
             # Get current selected countries from session
             if user_id not in self.user_sessions:
                 self.user_sessions[user_id] = {}
-                
+
             selected_countries = self.user_sessions[user_id].get(f"selected_countries_{domain_name}", [])
-            
+
             # Toggle country selection
             if country_code in selected_countries:
                 selected_countries.remove(country_code)
             else:
                 selected_countries.append(country_code)
-            
+
             # Update session
             self.user_sessions[user_id][f"selected_countries_{domain_name}"] = selected_countries
-            
+
             # Refresh the country management interface
             await self.show_country_management(query, domain_name)
-            
+
         except Exception as e:
             logger.error(f"Error in handle_country_toggle: {e}")
             if query:
                 await query.edit_message_text("🚧 Service temporarily unavailable. Please try again.")
-    
+
     async def handle_country_clear(self, query, domain_name):
         """Clear all selected countries"""
         try:
             user_id = query.from_user.id
-            
+
             # Clear selected countries from session
             if user_id in self.user_sessions:
                 self.user_sessions[user_id][f"selected_countries_{domain_name}"] = []
-            
+
             # Refresh the country management interface
             await self.show_country_management(query, domain_name)
-            
+
         except Exception as e:
             logger.error(f"Error in handle_country_clear: {e}")
             if query:
                 await query.edit_message_text("🚧 Service temporarily unavailable. Please try again.")
-    
+
     async def handle_country_save(self, query, domain_name):
         """Save country visibility settings"""
         try:
             user_id = query.from_user.id
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Get selected countries and mode
             selected_countries = self.user_sessions.get(user_id, {}).get(f"selected_countries_{domain_name}", [])
             geo_mode = self.user_sessions.get(user_id, {}).get(f"geo_mode_{domain_name}", "allow_all")
-            
+
             # In production, this would save to database
             # For now, just show confirmation
-            
+
             # Confirmation messages
             save_texts = {
                 "en": f"💾 <b>Settings Saved</b>\n\nCountry visibility settings for {domain_name} have been updated.\n\nMode: <b>{geo_mode.replace('_', ' ').title()}</b>\nCountries: <b>{len(selected_countries)} selected</b>",
@@ -4163,43 +4196,43 @@ class NomadlyCleanBot:
                 "zh": f"💾 <b>设置已保存</b>\n\n{domain_name} 的国家可见性设置已更新。\n\n模式: <b>{geo_mode.replace('_', ' ').title()}</b>\n国家: <b>{len(selected_countries)} 个已选择</b>",
                 "es": f"💾 <b>Configuración Guardada</b>\n\nLa configuración de visibilidad por países para {domain_name} ha sido actualizada.\n\nModo: <b>{geo_mode.replace('_', ' ').title()}</b>\nPaíses: <b>{len(selected_countries)} seleccionados</b>"
             }
-            
+
             back_texts = {
                 "en": "← Back to Control Panel",
                 "fr": "← Retour Panneau Contrôle",
                 "hi": "← नियंत्रण पैनल वापस",
-                "zh": "← 返回控制面板",  
+                "zh": "← 返回控制面板",
                 "es": "← Volver Panel Control"
             }
-            
+
             save_text = save_texts.get(user_lang, save_texts["en"])
             back_text = back_texts.get(user_lang, back_texts["en"])
-            
+
             callback_domain = domain_name.replace('.', '_')
-            
+
             keyboard = [
                 [InlineKeyboardButton(back_text, callback_data=f"manage_domain_{callback_domain}")]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 save_text,
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-            
+
         except Exception as e:
             logger.error(f"Error in handle_country_save: {e}")
             if query:
                 await query.edit_message_text("🚧 Service temporarily unavailable. Please try again.")
-    
+
     async def show_country_search(self, query, domain_name):
         """Show extended country search interface"""
         try:
             user_id = query.from_user.id
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Extended country list with regions
             all_countries = [
                 # North America
@@ -4208,18 +4241,18 @@ class NomadlyCleanBot:
                 ("🇬🇧", "GB", "United Kingdom"), ("🇩🇪", "DE", "Germany"), ("🇫🇷", "FR", "France"),
                 ("🇮🇹", "IT", "Italy"), ("🇪🇸", "ES", "Spain"), ("🇳🇱", "NL", "Netherlands"),
                 ("🇸🇪", "SE", "Sweden"), ("🇳🇴", "NO", "Norway"), ("🇨🇭", "CH", "Switzerland"),
-                # Asia Pacific  
+                # Asia Pacific
                 ("🇯🇵", "JP", "Japan"), ("🇰🇷", "KR", "South Korea"), ("🇨🇳", "CN", "China"),
                 ("🇮🇳", "IN", "India"), ("🇦🇺", "AU", "Australia"), ("🇸🇬", "SG", "Singapore"),
                 # Others
                 ("🇧🇷", "BR", "Brazil"), ("🇦🇷", "AR", "Argentina"), ("🇿🇦", "ZA", "South Africa"),
                 ("🇷🇺", "RU", "Russia"), ("🇹🇷", "TR", "Turkey"), ("🇦🇪", "AE", "UAE")
             ]
-            
+
             # Get current selected countries
             selected_countries = self.user_sessions.get(user_id, {}).get(f"selected_countries_{domain_name}", [])
-            
-            # Interface texts  
+
+            # Interface texts
             texts = {
                 "en": {
                     "title": "🔍 Extended Country Search",
@@ -4257,18 +4290,18 @@ class NomadlyCleanBot:
                     "back": "← Volver Selección"
                 }
             }
-            
+
             text = texts.get(user_lang, texts["en"])
-            
+
             interface_text = (
                 f"<b>{text['title']}</b>\n"
                 f"<i>{text['subtitle']}</i>\n\n"
                 f"{text['selected_header']}\n\n"
                 f"<b>{text['regions_header']}</b>"
             )
-            
+
             callback_domain = domain_name.replace('.', '_')
-            
+
             # Build comprehensive country keyboard (3 columns for more options)
             country_buttons = []
             for i in range(0, len(all_countries), 3):
@@ -4280,20 +4313,20 @@ class NomadlyCleanBot:
                         display = f"✅ {flag}" if code in selected_countries else f"{flag}"
                         row.append(InlineKeyboardButton(display, callback_data=f"country_toggle_{code}_{callback_domain}"))
                 country_buttons.append(row)
-            
+
             # Back button
             keyboard = country_buttons + [
                 [InlineKeyboardButton(text["back"], callback_data=f"geo_manage_{callback_domain}")]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 interface_text,
                 reply_markup=reply_markup,
                 parse_mode='HTML'
             )
-            
+
         except Exception as e:
             logger.error(f"Error in show_country_search: {e}")
             if query:
@@ -4310,7 +4343,7 @@ class NomadlyCleanBot:
                 f"🛡️ SSL: <b>Active</b>\n"
                 f"⚡ CDN: <b>Enabled</b>"
             )
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton("🟢 Go Online", callback_data=f"site_online_{domain_name}"),
@@ -4333,10 +4366,10 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(website_text, reply_markup=reply_markup, parse_mode='HTML')
-            
+
         except Exception as e:
             logger.error(f"Error in handle_website_control: {e}")
             if query:
@@ -4351,14 +4384,14 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             domains = self.get_user_domains(user_id)
-            
+
             stats_text = (
                 f"<b>📊 Portfolio Stats</b>\n\n"
                 f"📂 Domains: <b>{len(domains)}</b>\n"
                 f"🛡️ Attacks blocked: <b>2,847</b>\n"
                 f"📈 Uptime: <b>99.97%</b>"
             )
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton("📈 Traffic Analytics", callback_data="traffic_analytics"),
@@ -4377,10 +4410,10 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(stats_text, reply_markup=reply_markup, parse_mode='HTML')
-            
+
         except Exception as e:
             logger.error(f"Error in handle_portfolio_stats: {e}")
             if query:
@@ -4396,10 +4429,10 @@ class NomadlyCleanBot:
         """Get nameserver configuration and compatibility information for a domain"""
         # This would normally query the actual nameserver configuration
         # For demo purposes, we'll simulate different nameserver scenarios
-        
+
         # Simulate checking if domain uses Cloudflare nameservers
         cloudflare_managed = domain_name.endswith(('.com', '.io'))  # Simulate some domains on Cloudflare
-        
+
         if cloudflare_managed:
             return {
                 'provider': 'Cloudflare',
@@ -4456,14 +4489,14 @@ class NomadlyCleanBot:
                 "• **Multi-Currency Support** - Bitcoin, Ethereum, Litecoin, and Dogecoin accepted\n\n"
                 "**Your digital freedom starts here. Complete anonymity guaranteed.**"
             )
-            
+
             keyboard = [
                 [InlineKeyboardButton("🚀 I'm Ready - Start Registration", callback_data="main_menu")],
                 [InlineKeyboardButton("← Back to Welcome", callback_data="show_languages")]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
-            
+
             await query.edit_message_text(
                 security_text,
                 reply_markup=reply_markup,
@@ -4478,7 +4511,7 @@ class NomadlyCleanBot:
 
 
     def generate_crypto_address(self, crypto_type: str, user_id: int, purpose: str) -> str:
-        
+
         logger.info(f"✅ ✅ ✅ Generating Address for: {crypto_type}")
 
         patment_gateway = os.getenv('PAYMENT_GATEWAY')
@@ -4492,7 +4525,7 @@ class NomadlyCleanBot:
             token = os.getenv('DYNOPAY_TOKEN')
 
             callback_url = f"{os.getenv('FLASK_WEB_HOOK')}topup/dynopay/{user_id}"
-                            
+
             # Generate real payment address for this transaction
             address_response = dynopay.create_payment_address(
                 cryptocurrency=crypto_type,
@@ -4527,7 +4560,7 @@ class NomadlyCleanBot:
         if payment_address is None:
             raise Exception("Payment address creation failed for Wallet topup")
         else:
-            return payment_address        
+            return payment_address
 
     def simulate_crypto_payment_check(self) -> bool:
         """Simulate cryptocurrency payment verification - 70% success rate"""
@@ -4541,14 +4574,14 @@ class NomadlyCleanBot:
             (0.15, expected_price * random.uniform(0.3, 0.95)),  # Significant underpayment (15%)
             (0.10, expected_price - random.uniform(0.50, 2.00))  # Tolerance underpayment ≤$2 (10%)
         ]
-        
+
         rand = random.random()
         cumulative = 0
         for probability, amount in scenarios:
             cumulative += probability
             if rand <= cumulative:
                 return round(max(0.01, amount), 2)  # Ensure minimum $0.01
-        
+
         return expected_price  # Fallback to exact payment
 
     async def credit_wallet_balance(self, user_id: int, amount: float):
@@ -4556,11 +4589,11 @@ class NomadlyCleanBot:
         try:
             if user_id not in self.user_sessions:
                 self.user_sessions[user_id] = {}
-            
+
             current_balance = self.user_sessions[user_id].get('wallet_balance', 0.0)
             new_balance = current_balance + amount
             self.user_sessions[user_id]['wallet_balance'] = new_balance
-            
+
             logger.info(f"💰 Credited ${amount:.2f} to user {user_id} wallet. New balance: ${new_balance:.2f}")
         except Exception as e:
             logger.error(f"Error crediting wallet balance: {e}")
@@ -4572,10 +4605,10 @@ class NomadlyCleanBot:
                 text = update.message.text.strip()
                 user_id = update.message.from_user.id if update.message.from_user else 0
                 logger.info(f"👤 User {user_id} sent message: {text}")
-                
+
                 # Check if user is waiting for specific input
                 session = self.user_sessions.get(user_id, {})
-                
+
                 if "waiting_for_dns_input" in session and session.get("dns_workflow_step") == "field_input":
                     # Handle new DNS field validation workflow - PRIORITY: Check this first
                     logger.info(f"DEBUG: Routing to DNS field validation handler for user {user_id}")
@@ -4628,25 +4661,25 @@ class NomadlyCleanBot:
                             [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
                         ])
                     )
-        
+
         except Exception as e:
             logger.error(f"Error in handle_message: {e}")
             if update.message:
                 await update.message.reply_text("🚧 Service temporarily unavailable. Please try again.")
-    
+
     def is_valid_email(self, text):
         """Check if text is a valid email address"""
         import re
         email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return re.match(email_pattern, text) is not None
-    
+
     def looks_like_domain(self, text):
         """Check if text looks like a domain name"""
         import re
         # Basic domain pattern - letters/numbers/hyphens, must contain a dot
         domain_pattern = r'^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return (
-            re.match(domain_pattern, text) and 
+            re.match(domain_pattern, text) and
             not '@' in text and  # Not an email
             '.' in text and     # Must have extension
             len(text) >= 4      # Minimum length
@@ -4655,26 +4688,26 @@ class NomadlyCleanBot:
     def extract_clean_domain_name(self, potentially_corrupted_domain):
         """Extract clean domain name from potentially corrupted callback data"""
         import re
-        
+
         # Handle underscore format first
         domain_with_dots = potentially_corrupted_domain.replace('_', '.')
-        
+
         # Look for domain pattern (letters/numbers/hyphens ending with .tld)
         domain_pattern = r'([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})(?:[^a-zA-Z0-9.-]|$)'
         match = re.search(domain_pattern, domain_with_dots)
-        
+
         if match:
             clean_domain = match.group(1)
             logger.info(f"Extracted clean domain '{clean_domain}' from corrupted '{potentially_corrupted_domain}'")
             return clean_domain
-        
+
         # Fallback - if no pattern match, try simple underscore replacement
         if '_' in potentially_corrupted_domain:
             return potentially_corrupted_domain.replace('_', '.')
-        
+
         # Final fallback - return as is
         return potentially_corrupted_domain
-    
+
     def is_valid_ipv4(self, ip):
         """Validate IPv4 address format"""
         try:
@@ -4687,7 +4720,7 @@ class NomadlyCleanBot:
             return True
         except:
             return False
-    
+
     def is_valid_ipv6(self, ip):
         """Validate IPv6 address format"""
         try:
@@ -4696,13 +4729,13 @@ class NomadlyCleanBot:
             return True
         except:
             return False
-    
+
     def is_valid_domain(self, domain):
         """Validate domain name format"""
         import re
         domain_pattern = r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
         return bool(re.match(domain_pattern, domain)) and len(domain) <= 253
-    
+
     def is_valid_nameserver(self, nameserver):
         """Validate nameserver format (should be a domain name, not IP)"""
         # NS records should contain domain names like ns1.example.com, not IP addresses
@@ -4717,16 +4750,16 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             session = self.user_sessions.get(user_id, {})
-            
+
             # Update session stage
             if user_id in self.user_sessions:
                 self.user_sessions[user_id]["stage"] = "payment_selection"
                 self.save_user_sessions()
-            
+
             # Get current wallet balance
             current_balance = session.get('balance', 0.0)
             domain_price = session.get('price', 49.50)
-            
+
             payment_text = (
                 f"💳 **Complete Registration**\n\n"
                 f"**Domain:** `{session.get('domain', domain.replace('_', '.'))}`\n"
@@ -4734,9 +4767,9 @@ class NomadlyCleanBot:
                 f"**Current Balance:** ${current_balance:.2f} USD\n\n"
                 f"🚀 **Payment Options:**"
             )
-            
+
             keyboard = []
-            
+
             # Show wallet option if balance is sufficient
             if current_balance >= domain_price:
                 keyboard.append([
@@ -4746,7 +4779,7 @@ class NomadlyCleanBot:
                 keyboard.append([
                     InlineKeyboardButton(f"💰 Insufficient Balance (${current_balance:.2f})", callback_data="fund_wallet")
                 ])
-            
+
             # Cryptocurrency options in single row
             keyboard.extend([
                 [
@@ -4776,10 +4809,10 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("← Back to Registration", callback_data=f"register_{domain}")
                 ]
             ])
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(payment_text, reply_markup=reply_markup, parse_mode='Markdown')
-            
+
         except Exception as e:
             logger.error(f"Error in handle_payment_selection: {e}")
             if query:
@@ -4792,7 +4825,7 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id if query and query.from_user else 0
             session = self.user_sessions.get(user_id, {})
-            
+
             # Generate order number if not already present
             if 'order_number' not in session:
                 import random
@@ -4804,13 +4837,13 @@ class NomadlyCleanBot:
                     self.user_sessions[user_id]['order_number'] = order_number
             else:
                 order_number = session.get('order_number')
-            
+
             # Update session with crypto choice
             if user_id in self.user_sessions:
                 self.user_sessions[user_id]["crypto_type"] = crypto_type
                 self.user_sessions[user_id]["stage"] = "payment_processing"
                 self.save_user_sessions()
-            
+
             # Crypto info
             crypto_info = {
                 'btc': {'name': 'Bitcoin', 'symbol': '₿', 'confirmations': '1-2 blocks (~10-20 min)'},
@@ -4824,22 +4857,22 @@ class NomadlyCleanBot:
                 'ustcr': {'name': 'Tether ERC20', 'symbol': '₮', 'confirmations': '20 blocks (~20 min)'},
                 'usdt': {'name': 'Tether TRC20', 'symbol': '₮', 'confirmations': '20 blocks (~20 min)'}
             }
-            
+
             crypto_details = crypto_info.get(crypto_type, crypto_info['btc'])
-            
+
             # Get real-time crypto amount first
             usd_amount = session.get('price', 49.50)
-            
+
             # ✅ CRITICAL FIX: CREATE USER AND ORDER IN DATABASE BEFORE GENERATING PAYMENT ADDRESS
             try:
                 # Get domain details from session
                 clean_domain = domain.replace('_', '.')
                 tld = clean_domain.split('.')[-1] if '.' in clean_domain else '.com'
-                
+
                 # Get database manager and create order
                 from database import get_db_manager
                 db = get_db_manager()
-                
+
                 # ✅ ENSURE USER EXISTS BEFORE CREATING ORDER
                 user_info = query.from_user
                 user = db.get_or_create_user(
@@ -4849,7 +4882,7 @@ class NomadlyCleanBot:
                     last_name=user_info.last_name if user_info else None
                 )
                 logger.info(f"✅ Ensured user {user_id} exists in database")
-                
+
                 # Prepare service details for order
                 service_details = {
                     'domain_name': clean_domain,
@@ -4863,8 +4896,8 @@ class NomadlyCleanBot:
                     service_details['custom_nameservers'] =  session.get('custom_nameservers')
 
 
-                print('service_details====',service_details)
-                
+                print('2 service_details====',service_details)
+
                 # Create order in database using the working raw SQL method
                 order = db.create_order(
                     telegram_id=user_id,
@@ -4873,11 +4906,11 @@ class NomadlyCleanBot:
                     amount=usd_amount,
                     payment_method=f'crypto_{crypto_type}'
                 )
-                
+
                 if order and hasattr(order, 'order_id'):
                     order_id = order.order_id
                     logger.info(f"✅ Created order {order_id} for domain {clean_domain}")
-                    
+
                     # Store order ID in session for later reference
                     if user_id in self.user_sessions:
                         self.user_sessions[user_id]['order_id'] = order_id
@@ -4885,7 +4918,7 @@ class NomadlyCleanBot:
                 else:
                     logger.error("❌ Failed to create order - order creation returned None")
                     raise Exception("Order creation failed")
-                    
+
             except Exception as order_error:
                 logger.error(f"❌ CRITICAL: Order creation failed: {order_error}")
                 if query:
@@ -4897,7 +4930,7 @@ class NomadlyCleanBot:
                         parse_mode='Markdown'
                     )
                 return
-            
+
             # Generate real payment address using BlockBee API
             try:
                 import os
@@ -4910,18 +4943,18 @@ class NomadlyCleanBot:
 
                 if  patment_gateway == 'dynopay':
                     from apis.dynopay import DynopayAPI
-                    
+
                     api_key = os.getenv('DYNOPAY_API_KEY')
                     token = os.getenv('DYNOPAY_TOKEN')
                     print(f"api_key: {api_key}, token: {token}")
                     if not api_key or not token:
                         raise Exception("DYNOPAY_API_KEY or DYNOPAY_TOKEN not found in environment variables")
-                    
+
                     dynopay = DynopayAPI(api_key,token)
-                    
+
                     # Create callback URL for payment monitoring
                     callback_url = f"{os.getenv('FLASK_WEB_HOOK')}webhook/dynopay/{order_id}"
-                    
+
                     # Generate real payment address for this transaction
                     address_response = dynopay.create_payment_address(
                         cryptocurrency=crypto_type,
@@ -4960,13 +4993,13 @@ class NomadlyCleanBot:
                         check_payment_flag = True
                         payment_address = address_response['address_in']
                         transaction_id = address_response['address_in']
-                
+
                 # Check if we got a valid response with address
                 if check_payment_flag:
                     # payment_address = address_response.get('data', {}).get('address')
                     # transaction_id = address_response.get('data', {}).get('transaction_id')
                     logger.info(f"✅ Generated real {crypto_type.upper()} address: {payment_address}")
-                    
+
                     # ✅ CRITICAL: UPDATE ORDER WITH PAYMENT ADDRESS IN DATABASE
                     try:
                         from sqlalchemy import text
@@ -4991,11 +5024,11 @@ class NomadlyCleanBot:
                             logger.info(f"✅ Updated order {order_id} with payment address {payment_address}")
                     except Exception as db_error:
                         logger.error(f"❌ Failed to update order with payment address: {db_error}")
-                        
+
                 else:
                     logger.error(f"❌ {patment_gateway} API failed: {address_response}")
                     raise Exception(f"{patment_gateway} API error: {address_response.get('message', 'Unknown error')}")
-                
+
                 # Store payment address and timing info in session
                 import time
                 if user_id in self.user_sessions:
@@ -5006,12 +5039,12 @@ class NomadlyCleanBot:
                     self.user_sessions[user_id]['payment_transaction_id'] = address_response.get('data', {}).get('transaction_id')
                     #self.user_sessions[user_id]['blockbee_callback_url'] = callback_url
                     self.save_user_sessions()
-                    
+
                     # ✅ ADD TO REAL PAYMENT MONITOR VIA BACKGROUND SERVICE
                     try:
                         # Import the background payment monitor
                         import background_payment_monitor
-                        
+
                         # Add payment address to the real monitoring system
                         success = background_payment_monitor.add_payment_address(
                             payment_address,
@@ -5024,13 +5057,13 @@ class NomadlyCleanBot:
                             logger.info(f"✅ Added {payment_address} to background payment monitor")
                         else:
                             logger.warning("⚠️ Failed to add payment to monitor queue")
-                            
+
                     except Exception as e:
                         logger.error(f"❌ Failed to add payment to background monitor: {e}")
-                    
+
             except Exception as e:
                 logger.error(f"❌ BlockBee API error: {e}")
-                
+
                 # Show error message to user - NO FALLBACK ADDRESSES
                 error_texts = {
                     "en": "❌ Payment System Error\n\nUnable to generate payment address. Please contact support.\n\nError: BlockBee API unavailable",
@@ -5039,7 +5072,7 @@ class NomadlyCleanBot:
                     "zh": "❌ 支付系统错误\n\n无法生成付款地址。请联系支持。\n\n错误：BlockBee API 不可用",
                     "es": "❌ Error del Sistema de Pago\n\nNo se puede generar la dirección de pago. Por favor contacte soporte.\n\nError: API BlockBee no disponible"
                 }
-                
+
                 await query.edit_message_text(
                     error_texts.get(user_lang, error_texts["en"]),
                     reply_markup=InlineKeyboardMarkup([
@@ -5047,11 +5080,11 @@ class NomadlyCleanBot:
                     ])
                 )
                 return
-                
+
                 logger.info(f"Generated test {crypto_type.upper()} address for demonstration: {payment_address[:10]}...")
-            
+
             crypto_amount, is_realtime = self.get_crypto_amount(usd_amount, crypto_type)
-            
+
             # Format crypto amount based on currency
             if crypto_type == 'btc':
                 crypto_display = f"{crypto_amount:.8f} BTC"
@@ -5063,15 +5096,15 @@ class NomadlyCleanBot:
                 crypto_display = f"{crypto_amount:.2f} DOGE"
             else:
                 crypto_display = f"{crypto_amount:.8f} {crypto_type.upper()}"
-            
+
             rate_indicator = "🔴 Live Rate" if is_realtime else "🟡 Est. Rate"
-            
+
             # Format rate indicator
             rate_text = "Live (updates in real-time)" if is_realtime else "Estimated"
-            
+
             # Get user language for multilingual payment screen
             user_language = session.get("language", "en")
-            
+
             # Multilingual payment screen text - Mobile optimized with order number
             payment_texts = {
                 "en": (
@@ -5130,9 +5163,9 @@ class NomadlyCleanBot:
                     f"⏰ No se necesita acción - solo envíe el pago</i>"
                 )
             }
-            
+
             address_text = payment_texts.get(user_language, payment_texts["en"])
-            
+
             # Multilingual button texts for crypto payment
             crypto_button_texts = {
                 "en": {
@@ -5161,9 +5194,9 @@ class NomadlyCleanBot:
                     "main_menu": "🏠 Menú Principal"
                 }
             }
-            
+
             crypto_buttons = crypto_button_texts.get(user_language, crypto_button_texts["en"])
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton(crypto_buttons["switch_currency"], callback_data=f"register_{domain}"),
@@ -5173,10 +5206,10 @@ class NomadlyCleanBot:
                     InlineKeyboardButton(crypto_buttons["main_menu"], callback_data="main_menu")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(address_text, reply_markup=reply_markup, parse_mode='HTML')
-            
+
         except Exception as e:
             logger.error(f"Error in handle_crypto_address: {e}")
             if query:
@@ -5187,7 +5220,7 @@ class NomadlyCleanBot:
         try:
             # Clean the domain input
             domain_input = domain_input.lower().strip()
-            
+
             if not domain_input or len(domain_input) < 2:
                 await message.reply_text(
                     "⚠️ **Please enter a valid domain name**\n\n"
@@ -5195,7 +5228,7 @@ class NomadlyCleanBot:
                     parse_mode='Markdown'
                 )
                 return
-            
+
             # Check if user provided full domain with extension
             if '.' in domain_input:
                 # User provided full domain like "mycompany.com"
@@ -5203,7 +5236,7 @@ class NomadlyCleanBot:
                 if len(parts) >= 2:
                     domain_name = parts[0]
                     extension = parts[1]
-                    
+
                     # Check specific domain requested - Nomadly supports all TLDs
                     full_domain = f"{domain_name}.{extension}"
                     print(f"FUNC handle_text_domain_search domain_input: {domain_input}")
@@ -5214,7 +5247,7 @@ class NomadlyCleanBot:
             else:
                 # User provided just domain name without extension
                 domain_name = domain_input
-            
+
             # Validate domain name
             if not domain_name or len(domain_name) < 2:
                 await message.reply_text(
@@ -5223,10 +5256,10 @@ class NomadlyCleanBot:
                     parse_mode='Markdown'
                 )
                 return
-            
+
             # Check multiple extensions for the domain name
             await self.check_multiple_extensions(message, domain_name)
-            
+
         except Exception as e:
             logger.error(f"Error in handle_text_domain_search: {e}")
             if message:
@@ -5238,14 +5271,14 @@ class NomadlyCleanBot:
         if len(parts) > 2 :
             return f".{parts[-2]}.{parts[-1]}"
         return f".{parts[-1]}"
-    
+
     async def check_specific_domain(self, message, full_domain, domain_name):
         """Check availability for a specific domain with extension"""
         try:
             # Get user language for multilingual loading messages
             user_id = message.from_user.id if message.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Multilingual loading messages
             loading_texts = {
                 "en": "🔍 **Checking domain availability...**\n\n⏳ Querying Nomadly registry...",
@@ -5254,22 +5287,22 @@ class NomadlyCleanBot:
                 "zh": "🔍 **检查域名可用性...**\n\n⏳ 查询 Nomadly 注册表...",
                 "es": "🔍 **Verificando disponibilidad del dominio...**\n\n⏳ Consultando registro Nomadly..."
             }
-            
+
             # Use Nomadly for real availability and pricing
             loading_text = loading_texts.get(user_lang, loading_texts["en"])
             checking_msg = await message.reply_text(loading_text, parse_mode='Markdown')
-            
+
             # Check if this is a test domain that should be forced as taken
             test_unavailable = ["wewillwin", "example", "test", "demo", "mycompany", "privacyfirst"]
             force_taken = domain_name.lower() in test_unavailable
-            
+
             if self.openprovider and not force_taken:
                 try:
 
                     print(f"full_domain {full_domain} =========")
 
                     api_result = self.openprovider.check_domain_availability(full_domain)
-                    
+
                     print(f"=========== {api_result} =========")
                     if api_result.get("error"):
                         await checking_msg.edit_text(f"⚠️ **Error checking domain**\n\n{api_result['error']}\n\n🔄 Using Nomadly pricing estimates...", parse_mode='Markdown')
@@ -5315,7 +5348,7 @@ class NomadlyCleanBot:
                     "premium": False,
                     "fallback": True
                 }
-            
+
             is_available = api_result.get("available", False)
             price = api_result.get("price", 0)
 
@@ -5323,16 +5356,16 @@ class NomadlyCleanBot:
                 price = 25
             currency = api_result.get("currency", "USD")
             is_premium = api_result.get("premium", False)
-            
+
             # Debug logging
             logger.info(f"Domain check result for {full_domain}: available={is_available}, price={price}")
-            
+
             # Format price with currency
             price_display = f"${price:.2f} {currency}" if price > 0 else "Price unavailable"
-            
+
             # Always show the requested domain result and alternatives
             logger.info(f"Showing result for {full_domain}: {'AVAILABLE' if is_available else 'TAKEN'}")
-            
+
             # Multilingual result text
             result_headers = {
                 "en": f"🔍 **Results for:** {full_domain}",
@@ -5341,7 +5374,7 @@ class NomadlyCleanBot:
                 "zh": f"🔍 **搜索结果:** {full_domain}",
                 "es": f"🔍 **Resultados para:** {full_domain}"
             }
-            
+
             available_texts = {
                 "en": "is available",
                 "fr": "est disponible",
@@ -5349,7 +5382,7 @@ class NomadlyCleanBot:
                 "zh": "可用",
                 "es": "está disponible"
             }
-            
+
             taken_texts = {
                 "en": "is taken",
                 "fr": "est pris",
@@ -5357,7 +5390,7 @@ class NomadlyCleanBot:
                 "zh": "已被占用",
                 "es": "está ocupado"
             }
-            
+
             available_options_texts = {
                 "en": "✅ **Available Options:**",
                 "fr": "✅ **Options Disponibles:**",
@@ -5365,10 +5398,10 @@ class NomadlyCleanBot:
                 "zh": "✅ **可用选项:**",
                 "es": "✅ **Opciones Disponibles:**"
             }
-            
+
             # Build compact result text for mobile
             result_text = result_headers.get(user_lang, result_headers["en"]) + "\n\n"
-            
+
             # Compact mobile display
             if is_available:
                 available_text = available_texts.get(user_lang, available_texts["en"])
@@ -5383,15 +5416,15 @@ class NomadlyCleanBot:
             else:
                 taken_text = taken_texts.get(user_lang, taken_texts["en"])
                 result_text += f"❌ **{full_domain}** {taken_text}\n"
-            
+
             # Show only 2 alternatives for mobile
             current_extension = full_domain.split('.')[1]
             alternative_tlds = ["net", "org"] if current_extension == "com" else ["com", "net"]
             alternatives = [f"{domain_name}.{tld}" for tld in alternative_tlds[:2]]  # Show only 2 alternatives on mobile
-            
+
             available_alts = []
             has_alternatives = False
-            
+
             # Check alternatives - compact display
             if is_available or len(alternatives) > 0:
                 result_text += "\n"
@@ -5406,11 +5439,11 @@ class NomadlyCleanBot:
                                 "price": self.get_fallback_pricing(alt_ext),
                                 "currency": "USD"
                             }
-                        
+
                         alt_price = alt_result.get("price", 0)
                         alt_price_display = f"${alt_price:.2f}" if alt_price > 0 else "Price check"
                         alt_available = alt_result.get("available", False)
-                        
+
                         if alt_available:
                             # Check trustee requirement for alternative
                             alt_trustee = self.trustee_manager.check_trustee_requirement(alt)
@@ -5421,7 +5454,7 @@ class NomadlyCleanBot:
                                 trustee_note = ""
                             result_text += f"• **{alt}** — {alt_price_display}{trustee_note}\n"
                             available_alts.append(alt)
-                            
+
                     except Exception as e:
                         logger.error(f"Error checking alternative {alt}: {e}")
                         # Show with fallback pricing
@@ -5429,19 +5462,19 @@ class NomadlyCleanBot:
                         fallback_price = self.get_fallback_pricing(alt_ext)
                         result_text += f"• **{alt}** — ${fallback_price:.2f}\n"
                         available_alts.append(alt)
-            
+
             # Simple footer for mobile
             result_text += "\n🔒 WHOIS privacy included"
-            
+
             # Multilingual button texts
             register_texts = {
                 "en": "⚡ Register",
-                "fr": "⚡ Enregistrer", 
+                "fr": "⚡ Enregistrer",
                 "hi": "⚡ पंजीकृत करें",
                 "zh": "⚡ 注册",
                 "es": "⚡ Registrar"
             }
-            
+
             search_again_texts = {
                 "en": "🔍 Search Again",
                 "fr": "🔍 Rechercher Encore",
@@ -5449,7 +5482,7 @@ class NomadlyCleanBot:
                 "zh": "🔍 再次搜索",
                 "es": "🔍 Buscar Otra Vez"
             }
-            
+
             main_menu_texts = {
                 "en": "← Main Menu",
                 "fr": "← Menu Principal",
@@ -5457,32 +5490,32 @@ class NomadlyCleanBot:
                 "zh": "← 主菜单",
                 "es": "← Menú Principal"
             }
-            
+
             # Create keyboard with main domain (if available) + alternatives
             keyboard = []
             register_text = register_texts.get(user_lang, register_texts["en"])
-            
+
             if is_available:
                 keyboard.append([InlineKeyboardButton(f"{register_text} {full_domain}", callback_data=f"register_{full_domain.replace('.', '_')}")])
-            
+
             # Add buttons for available alternatives
             for alt in available_alts:
                 clean_alt = alt.replace(".", "_")
                 keyboard.append([InlineKeyboardButton(f"{register_text} {alt}", callback_data=f"register_{clean_alt}")])
-            
+
             search_again_text = search_again_texts.get(user_lang, search_again_texts["en"])
             main_menu_text = main_menu_texts.get(user_lang, main_menu_texts["en"])
-            
+
             keyboard.extend([
                 [
                     InlineKeyboardButton(search_again_text, callback_data="search_domain"),
                     InlineKeyboardButton(main_menu_text, callback_data="main_menu")
                 ]
             ])
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await checking_msg.edit_text(result_text, reply_markup=reply_markup, parse_mode='Markdown')
-            
+
         except Exception as e:
             logger.error(f"Error in check_specific_domain: {e}")
             try:
@@ -5492,14 +5525,14 @@ class NomadlyCleanBot:
                     await message.reply_text("🚧 **Service Issue**\n\nPlease try again or contact support.", parse_mode='Markdown')
             except:
                 await message.reply_text("🚧 **Service Issue**\n\nPlease try again or contact support.", parse_mode='Markdown')
-    
+
     async def check_multiple_extensions(self, message, domain_name):
         """Check availability for domain name across multiple extensions using Nomadly"""
         try:
             # Get user language for multilingual loading messages
             user_id = message.from_user.id if message.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Multilingual loading messages for multiple extensions
             multiple_loading_texts = {
                 "en": "🔍 **Checking domain availability...**\n\n⏳ Querying Nomadly registry for multiple extensions...",
@@ -5508,19 +5541,19 @@ class NomadlyCleanBot:
                 "zh": "🔍 **检查域名可用性...**\n\n⏳ 查询 Nomadly 注册表以获取多个扩展...",
                 "es": "🔍 **Verificando disponibilidad del dominio...**\n\n⏳ Consultando registro Nomadly para múltiples extensiones..."
             }
-            
+
             # Show checking message
             loading_text = multiple_loading_texts.get(user_lang, multiple_loading_texts["en"])
             checking_msg = await message.reply_text(loading_text, parse_mode='Markdown')
-            
+
             # Check popular extensions using Nomadly
             extensions_to_check = ["com", "net", "org", "info", "io"]
             available_domains = []
             unavailable_domains = []
-            
+
             for ext in extensions_to_check:
                 full_domain = f"{domain_name}.{ext}"
-                
+
                 if self.openprovider:
                     api_result = self.openprovider.check_domain_availability(full_domain)
                 else:
@@ -5531,7 +5564,7 @@ class NomadlyCleanBot:
                         "currency": "USD",
                         "premium": False
                     }
-                
+
                 if api_result.get("available", False):
                     price = api_result.get("price", 0)
                     currency = api_result.get("currency", "USD")
@@ -5544,11 +5577,11 @@ class NomadlyCleanBot:
                     })
                 else:
                     unavailable_domains.append(full_domain)
-            
+
             # Get user language for multilingual results
             user_id = message.from_user.id if message.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-            
+
             # Multilingual result headers
             search_results_texts = {
                 "en": f"🔍 **Search Results: {domain_name}**",
@@ -5557,7 +5590,7 @@ class NomadlyCleanBot:
                 "zh": f"🔍 **搜索结果: {domain_name}**",
                 "es": f"🔍 **Resultados de Búsqueda: {domain_name}**"
             }
-            
+
             available_headers = {
                 "en": "🟢 **Available:**",
                 "fr": "🟢 **Disponible:**",
@@ -5565,7 +5598,7 @@ class NomadlyCleanBot:
                 "zh": "🟢 **可用:**",
                 "es": "🟢 **Disponible:**"
             }
-            
+
             taken_headers = {
                 "en": "🔴 **Taken:**",
                 "fr": "🔴 **Pris:**",
@@ -5573,7 +5606,7 @@ class NomadlyCleanBot:
                 "zh": "🔴 **已占用:**",
                 "es": "🔴 **Ocupado:**"
             }
-            
+
             not_available_texts = {
                 "en": "Not available",
                 "fr": "Non disponible",
@@ -5581,7 +5614,7 @@ class NomadlyCleanBot:
                 "zh": "不可用",
                 "es": "No disponible"
             }
-            
+
             premium_texts = {
                 "en": "⭐ **Premium**",
                 "fr": "⭐ **Premium**",
@@ -5589,11 +5622,11 @@ class NomadlyCleanBot:
                 "zh": "⭐ **高级**",
                 "es": "⭐ **Premium**"
             }
-            
+
             # Build compact result text
             search_result_text = search_results_texts.get(user_lang, search_results_texts["en"])
             result_text = search_result_text + "\n\n"
-            
+
             # Available domains - more compact format
             if available_domains:
                 available_header = available_headers.get(user_lang, available_headers["en"])
@@ -5606,7 +5639,7 @@ class NomadlyCleanBot:
                     if premium:
                         result_text += " ⭐"
                     result_text += "\n"
-            
+
             # Show only if no domains available
             if unavailable_domains and not available_domains:
                 taken_header = taken_headers.get(user_lang, taken_headers["en"])
@@ -5614,13 +5647,13 @@ class NomadlyCleanBot:
                 result_text += f"\n{taken_header}\n"
                 for domain in unavailable_domains[:2]:  # Show only 2 taken domains
                     result_text += f"• `{domain}` - {not_available_text}\n"
-            
+
             # Show alternative TLD suggestions briefly
             if not available_domains or len(available_domains) < 2:
                 alternative_tlds = ["sbs", "xyz", "online"]
                 alternatives = [f"{domain_name}.{tld}" for tld in alternative_tlds[:2]]  # Only 2 alternatives
                 alt_available = []
-                
+
                 for alt in alternatives:
                     try:
                         alt_ext = alt.split('.')[1]
@@ -5633,7 +5666,7 @@ class NomadlyCleanBot:
                                 "price": self.get_fallback_pricing(alt_ext),
                                 "currency": "USD"
                             }
-                        
+
                         if alt_result.get("available", False):
                             alt_price = alt_result.get("price", 0)
                             currency = alt_result.get("currency", "USD")
@@ -5645,29 +5678,29 @@ class NomadlyCleanBot:
                         alt_ext = alt.split('.')[1]
                         alt_price = self.get_fallback_pricing(alt_ext)
                         alt_available.append({"domain": alt, "price": f"${alt_price:.2f} USD"})
-                
+
                 if alt_available:
                     result_text += "\n💡 **Alternatives:**\n"
                     for alt_info in alt_available:
                         result_text += f"• `{alt_info['domain']}` - {alt_info['price']}\n"
-            
+
             # More compact footer
             result_text += "\n🔒 **WHOIS privacy included**"
-            
+
             # Build keyboard with available options
             keyboard = []
-            
+
             # Add register buttons for available domains (max 3 to keep clean)
             register_buttons = []
             for domain_info in available_domains[:3]:
                 domain = domain_info["domain"]
                 clean_domain = domain.replace(".", "_")
                 register_buttons.append(InlineKeyboardButton(f"Get {domain}", callback_data=f"register_{clean_domain}"))
-            
+
             # Add register buttons in rows of 1
             for button in register_buttons:
                 keyboard.append([button])
-            
+
             # Add alternative options if available
             try:
                 if alt_available:
@@ -5678,7 +5711,7 @@ class NomadlyCleanBot:
             except NameError:
                 # alt_available not defined, skip alternatives
                 pass
-            
+
             # Navigation buttons
             keyboard.extend([
                 [
@@ -5686,10 +5719,10 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("← Main Menu", callback_data="main_menu")
                 ]
             ])
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await checking_msg.edit_text(result_text, reply_markup=reply_markup, parse_mode='Markdown')
-        
+
         except Exception as e:
             logger.error(f"Error in check_multiple_extensions: {e}")
             try:
@@ -5699,34 +5732,34 @@ class NomadlyCleanBot:
                     await message.reply_text("🚧 **Service Issue**\n\nPlease try again or contact support.", parse_mode='Markdown')
             except:
                 await message.reply_text("🚧 **Service Issue**\n\nPlease try again or contact support.", parse_mode='Markdown')
-    
+
     def simulate_domain_availability(self, domain_name, extension):
         """Simulate domain availability check"""
         # Force specific domains to be unavailable to test alternatives (HIGHEST PRIORITY)
         test_unavailable = ["wewillwin", "example", "test", "demo", "mycompany", "privacyfirst"]
-        
+
         if domain_name.lower() in test_unavailable:
             return False  # Force these domains to show as taken - NO EXCEPTIONS
-        
+
         # Popular domains are typically taken
         popular_domains = ["google", "facebook", "amazon", "microsoft", "apple", "company", "business", "crypto", "bitcoin", "ethereum"]
-        
+
         if domain_name in popular_domains:
             return False
-        
+
         # Some domains are taken for .com but available for other extensions
         taken_com_domains = ["business", "startup", "company", "crypto", "bitcoin"]
         if domain_name.lower() in taken_com_domains and extension == "com":
             return False
-        
+
         # Simulate some realistic availability patterns
         # .sbs domains are generally more available (but test domains override this above)
         if extension in ["sbs", "xyz", "online", "site"]:
             return True
-        
+
         # Most unique domains are available
         return True
-    
+
     def get_fallback_pricing(self, extension):
         """Get fallback pricing when registry API is not available"""
         # Base pricing estimates with 3.3x offshore multiplier
@@ -5737,7 +5770,7 @@ class NomadlyCleanBot:
             "store": 7.20, "app": 21.60, "dev": 18.00, "blog": 3.60, "news": 3.60,
             "ai": 120.00, "crypto": 144.00, "nft": 18.00, "web3": 7.20, "dao": 14.40,
         }
-        
+
         base_price = base_prices.get(extension, 15.00)
         offshore_price = base_price * 3.3
         return round(offshore_price, 2)
@@ -5747,7 +5780,7 @@ class NomadlyCleanBot:
         try:
             # Clean domain name for display
             display_domain = domain.replace("_", ".")
-            
+
             # Get pricing from API or fallback, including trustee services
             try:
                 if self.openprovider:
@@ -5758,14 +5791,14 @@ class NomadlyCleanBot:
                     extension = display_domain.split('.')[-1]
                     base_price = self.get_fallback_pricing(extension)
                     currency = "USD"
-                
+
                 # Calculate trustee pricing if required
                 final_price, pricing_info = self.trustee_manager.calculate_trustee_pricing(
                     base_price, display_domain
                 )
                 print(f"====== {base_price} + {pricing_info}=====")
                 price = base_price + pricing_info['trustee_fee']
-                
+
             except Exception as e:
                 logger.error(f"Error getting pricing for {display_domain}: {e}")
                 price = 49.50
@@ -5775,13 +5808,13 @@ class NomadlyCleanBot:
                     'tld': display_domain.split('.')[-1],
                     'risk_level': 'LOW'
                 }
-            
+
             # Store registration data in session with persistent user preferences
             user_id = query.from_user.id if query and query.from_user else 0
-            
+
             # Get user's persistent preferences (remembers across all sessions)
             preferences = self.get_user_persistent_preferences(user_id)
-            
+
             # Update session with current domain but preserve all user preferences
             self.user_sessions[user_id] = {
                 "domain": display_domain,
@@ -5795,7 +5828,7 @@ class NomadlyCleanBot:
                 "trustee_info": pricing_info if 'pricing_info' in locals() else None  # Include trustee information
             }
             self.save_user_sessions()
-            
+
             # Compact nameserver display
             current_session = self.user_sessions[user_id]
             user_language = current_session.get("language", "en")
@@ -5807,11 +5840,11 @@ class NomadlyCleanBot:
                     ns_display = "🌐 Not configured"
             else:
                 ns_display = "🌐 Nomadly/Cloudflare"
-            
+
             # Build trustee information if applicable
             trustee_info = current_session.get('trustee_info', {})
             trustee_display = ""
-            
+
             if trustee_info and trustee_info.get('requires_trustee'):
                 trustee_texts = {
                     "en": f"🏛️ Trustee service included for .{trustee_info.get('tld', '')}\n",
@@ -5820,9 +5853,9 @@ class NomadlyCleanBot:
                     "zh": f"🏛️ .{trustee_info.get('tld', '')} 包含受托服务\n",
                     "es": f"🏛️ Servicio fiduciario incluido para .{trustee_info.get('tld', '')}\n"
                 }
-                
+
                 trustee_display = trustee_texts.get(user_language, trustee_texts["en"])
-            
+
             # Build compact registration text for mobile
             registration_texts = {
                 "en": (
@@ -5866,50 +5899,50 @@ class NomadlyCleanBot:
                     f"\n¿Listo para continuar?"
                 )
             }
-            
+
             registration_text = registration_texts.get(user_language, registration_texts["en"])
 
             from database import get_db_manager
             db = get_db_manager()
 
             current_balance = db.get_user_balance(user_id)
-            
+
             # Build keyboard with comprehensive multilingual buttons
             button_texts = {
                 "en": {
                     "wallet": f"💰 Wallet Balance (${current_balance:.2f})",
                     "edit_email": "📧 Edit Email",
-                    "edit_dns": "🌐 Edit DNS", 
+                    "edit_dns": "🌐 Edit NS",
                     "back_search": "← Back to Search"
                 },
                 "fr": {
                     "wallet": f"💰 Solde portefeuille (${current_balance:.2f})",
                     "edit_email": "📧 Modifier email",
-                    "edit_dns": "🌐 Modifier DNS",
+                    "edit_dns": "🌐 Modifier NS",
                     "back_search": "← Retour recherche"
                 },
                 "hi": {
                     "wallet": f"💰 वॉलेट बैलेंस (${current_balance:.2f})",
                     "edit_email": "📧 ईमेल संपादित करें",
-                    "edit_dns": "🌐 DNS संपादित करें",
+                    "edit_dns": "🌐 NS संपादित करें",
                     "back_search": "← खोज पर वापस"
                 },
                 "zh": {
                     "wallet": f"💰 钱包余额 (${current_balance:.2f})",
                     "edit_email": "📧 编辑邮箱",
-                    "edit_dns": "🌐 编辑DNS",
+                    "edit_dns": "🌐 编辑 NS",
                     "back_search": "← 返回搜索"
                 },
                 "es": {
                     "wallet": f"💰 Saldo Billetera (${current_balance:.2f})",
                     "edit_email": "📧 Editar Email",
-                    "edit_dns": "🌐 Editar DNS",
+                    "edit_dns": "🌐 Editar NS",
                     "back_search": "← Volver a Búsqueda"
                 }
             }
-            
+
             texts = button_texts.get(user_language, button_texts["en"])
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton(texts["wallet"], callback_data=f"pay_wallet_{domain}")
@@ -5941,10 +5974,10 @@ class NomadlyCleanBot:
                     InlineKeyboardButton(texts["back_search"], callback_data="search_domain")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(registration_text, reply_markup=reply_markup, parse_mode='HTML')
-            
+
         except Exception as e:
             logger.error(f"Error in handle_domain_registration: {e}")
             await query.edit_message_text("🚧 Registration setup failed. Please try again.")
@@ -5955,13 +5988,13 @@ class NomadlyCleanBot:
             user_id = query.from_user.id
             session = self.user_sessions.get(user_id, {})
             user_language = session.get("language", "en")
-            
+
             # Check if we're in payment context
             in_payment_context = session.get('payment_address') is not None
-            
+
             # Show nameserver options
             await self.handle_nameserver_change(query, domain)
-            
+
         except Exception as e:
             logger.error(f"Error in handle_nameserver_configuration: {e}")
             await query.edit_message_text("🚧 Service temporarily unavailable. Please try again.")
@@ -5972,7 +6005,7 @@ class NomadlyCleanBot:
             user_id = query.from_user.id
             session = self.user_sessions.get(user_id, {})
             user_language = session.get("language", "en")
-            
+
             # Multilingual email change text
             email_texts = {
                 "en": (
@@ -6046,7 +6079,7 @@ class NomadlyCleanBot:
                     f"   • Se puede cambiar en cualquier momento antes del pago"
                 )
             }
-            
+
             # Multilingual buttons
             button_texts = {
                 "en": {
@@ -6075,10 +6108,10 @@ class NomadlyCleanBot:
                     "back": "← Volver al Registro"
                 }
             }
-            
+
             email_text = email_texts.get(user_language, email_texts["en"])
             buttons = button_texts.get(user_language, button_texts["en"])
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton(buttons["default"], callback_data=f"email_default_{domain}")
@@ -6090,10 +6123,10 @@ class NomadlyCleanBot:
                     InlineKeyboardButton(buttons["back"], callback_data=f"register_{domain}")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(email_text, reply_markup=reply_markup, parse_mode='Markdown')
-            
+
         except Exception as e:
             logger.error(f"Error in handle_email_change: {e}")
             await query.edit_message_text("🚧 Email setup failed. Please try again.")
@@ -6104,7 +6137,7 @@ class NomadlyCleanBot:
             user_id = query.from_user.id
             session = self.user_sessions.get(user_id, {})
             user_language = session.get("language", "en")
-            
+
             # Multilingual nameserver configuration text
             ns_texts = {
                 "en": (
@@ -6188,7 +6221,7 @@ class NomadlyCleanBot:
                     f"   • Especifique registros NS personalizados"
                 )
             }
-            
+
             # Multilingual buttons for nameserver selection
             button_texts = {
                 "en": {
@@ -6217,10 +6250,10 @@ class NomadlyCleanBot:
                     "back": "← Volver al Registro"
                 }
             }
-            
+
             ns_text = ns_texts.get(user_language, ns_texts["en"])
             buttons = button_texts.get(user_language, button_texts["en"])
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton(buttons["nomadly"], callback_data=f"ns_nomadly_{domain}")
@@ -6232,10 +6265,10 @@ class NomadlyCleanBot:
                     InlineKeyboardButton(buttons["back"], callback_data=f"register_{domain}")
                 ]
             ]
-            
+
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(ns_text, reply_markup=reply_markup, parse_mode='Markdown')
-            
+
         except Exception as e:
             logger.error(f"Error in handle_nameserver_change: {e}")
             await query.edit_message_text("🚧 Nameserver setup failed. Please try again.")
@@ -6246,7 +6279,7 @@ class NomadlyCleanBot:
             # Basic email validation
             import re
             email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-            
+
             if not re.match(email_pattern, email):
                 await message.reply_text(
                     "❌ **Invalid Email Format**\n\n"
@@ -6255,23 +6288,23 @@ class NomadlyCleanBot:
                     parse_mode='Markdown'
                 )
                 return
-            
+
             # Update session with custom email
             user_id = message.from_user.id
             session = self.user_sessions.get(user_id, {})
-            
+
             if user_id in self.user_sessions:
                 self.user_sessions[user_id]["technical_email"] = email
                 if "waiting_for_email" in self.user_sessions[user_id]:
                     del self.user_sessions[user_id]["waiting_for_email"]
                 self.save_user_sessions()
-            
+
             # Send welcome email notification
             await self.send_welcome_email(email, domain)
-            
+
             # Check if user was in payment context (has payment_address indicating they were on QR page)
             payment_context = session.get("payment_address") or session.get("crypto_type")
-            
+
             if payment_context:
                 # User was on QR page, return to QR page with updated email
                 await message.reply_text(
@@ -6280,7 +6313,7 @@ class NomadlyCleanBot:
                     f"Returning to payment...",
                     parse_mode='Markdown'
                 )
-                
+
                 # Return to QR page if they have crypto context
                 crypto_type = session.get("crypto_type", "eth")
                 if crypto_type:
@@ -6307,14 +6340,14 @@ class NomadlyCleanBot:
                     f"Returning to registration setup...",
                     parse_mode='Markdown'
                 )
-                
+
                 # Return to registration page
                 from types import SimpleNamespace
                 fake_query = SimpleNamespace()
                 fake_query.from_user = message.from_user
                 fake_query.edit_message_text = message.reply_text
                 await self.handle_domain_registration(fake_query, domain)
-            
+
         except Exception as e:
             logger.error(f"Error in handle_custom_email_input: {e}")
             await message.reply_text("🚧 Email setup failed. Please try again.")
@@ -6330,7 +6363,7 @@ class NomadlyCleanBot:
             else:
                 # Line-separated or single
                 nameservers = [ns.strip() for ns in ns_input.split('\n')]
-            
+
             # Filter out empty entries
             nameservers = [ns for ns in nameservers if ns]
 
@@ -6344,12 +6377,12 @@ class NomadlyCleanBot:
                     parse_mode='Markdown'
                 )
                 return
-            
+
             # Basic nameserver validation
             import re
             ns_pattern = r'^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
             invalid_ns = [ns for ns in nameservers if not re.match(ns_pattern, ns)]
-            
+
             if invalid_ns:
                 await message.reply_text(
                     f"❌ **Invalid Nameserver Format**\n\n"
@@ -6358,7 +6391,7 @@ class NomadlyCleanBot:
                     parse_mode='Markdown'
                 )
                 return
-            
+
             # Update session with custom nameservers
             user_id = message.from_user.id
             session = self.user_sessions.get(user_id, {})
@@ -6369,12 +6402,12 @@ class NomadlyCleanBot:
                 if "waiting_for_ns" in self.user_sessions[user_id]:
                     del self.user_sessions[user_id]["waiting_for_ns"]
                 self.save_user_sessions()
-            
+
             # Check if user was in payment context
             payment_context = session.get("payment_address") or session.get("crypto_type")
             print('after payment contex', self.user_sessions[user_id])
             ns_list = '\n'.join([f"• `{ns}`" for ns in nameservers])
-            
+
             if payment_context:
                 # User was on QR page, return to QR page with updated nameservers
                 await message.reply_text(
@@ -6383,7 +6416,7 @@ class NomadlyCleanBot:
                     f"Returning to payment...",
                     parse_mode='Markdown'
                 )
-                
+
                 # Return to QR page if they have crypto context
                 crypto_type = session.get("crypto_type", "eth")
                 if crypto_type:
@@ -6408,14 +6441,14 @@ class NomadlyCleanBot:
                     f"Returning to registration setup...",
                     parse_mode='Markdown'
                 )
-                
+
                 # Return to registration page
                 from types import SimpleNamespace
                 fake_query = SimpleNamespace()
                 fake_query.from_user = message.from_user
                 fake_query.edit_message_text = message.reply_text
                 await self.handle_domain_registration(fake_query, domain)
-            
+
         except Exception as e:
             logger.error(f"Error in handle_custom_nameserver_input: {e}")
             await message.reply_text("🚧 Nameserver setup failed. Please try again.")
@@ -6438,13 +6471,13 @@ class NomadlyCleanBot:
             user_id = query.from_user.id
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
             session = self.user_sessions.get(user_id, {})
-            
+
             # Get expected domain price
             expected_price = session.get('price', 49.50)
-            
+
             # IMPORTANT: Always show "checking payment" status first
             await query.answer("⏳ Checking blockchain for payment...")
-            
+
             # Show checking status message
             checking_texts = {
                 "en": "⏳ **Checking Payment Status**\n\nScanning blockchain for your transaction...\nThis may take a few moments.",
@@ -6453,32 +6486,32 @@ class NomadlyCleanBot:
                 "zh": "⏳ **检查付款状态**\n\n正在区块链上扫描您的交易...\n这可能需要一些时间。",
                 "es": "⏳ **Verificando Estado del Pago**\n\nEscaneando blockchain para tu transacción...\nEsto puede tomar unos momentos."
             }
-            
+
             await query.edit_message_text(
                 checking_texts.get(user_lang, checking_texts["en"]),
                 parse_mode='Markdown'
             )
-            
+
             # Real payment verification
             payment_received = False
             received_amount = 0.0
-            
+
             # Check if we have a payment address stored in session
             payment_address = session.get(f'{crypto_type}_address')
             if not payment_address:
                 logger.warning(f"No payment address found for {crypto_type}")
                 await self.show_payment_not_found(query, crypto_type, domain)
                 return
-            
+
             # Use payment service to check blockchain payment
             try:
                 from payment_service import get_payment_service
                 payment_service = get_payment_service()
-                
+
                 # Check for any order associated with this user and domain
                 from database import get_db_manager
                 db = get_db_manager()
-                
+
                 # Find the most recent order for this user/domain
                 orders = []
                 try:
@@ -6491,11 +6524,11 @@ class NomadlyCleanBot:
                                 orders.append(order)
                 except Exception as e:
                     logger.warning(f"Could not retrieve orders: {e}")
-                
+
                 # Check payment status via BlockBee if we have an order
                 if orders and len(orders) > 0:
                     latest_order = orders[-1]  # Get most recent
-                    
+
                     # Check if order already completed
                     if latest_order.payment_status == "completed":
                         payment_received = True
@@ -6514,23 +6547,23 @@ class NomadlyCleanBot:
                                     'doge': 'doge'
                                 }
                                 api_crypto_code = crypto_mapping.get(crypto_type.lower(), crypto_type.lower())
-                                
+
                                 logger.info(f"Checking payment: crypto={crypto_type}, api_code={api_crypto_code}, address={payment_address}")
-                                
+
                                 payment_info = payment_service.api_manager.blockbee.get_payment_info(
-                                    api_crypto_code, 
+                                    api_crypto_code,
                                     payment_address
                                 )
-                                
+
                                 if payment_info:
                                     # Check if payment confirmed
                                     confirmations = payment_info.get("confirmations", 0)
                                     value_received = float(payment_info.get("value_coin", 0))
-                                    
+
                                     if confirmations >= 1 and value_received > 0:
                                         # Convert crypto to USD
                                         received_amount = await payment_service._convert_crypto_to_usd(
-                                            value_received, 
+                                            value_received,
                                             crypto_type
                                         )
                                         payment_received = True
@@ -6541,21 +6574,21 @@ class NomadlyCleanBot:
                                 logger.error(f"BlockBee payment check failed: {e}")
                 else:
                     logger.info("No order found for payment verification")
-                    
+
             except Exception as e:
                 logger.error(f"Payment verification error: {e}")
                 # Continue with fallback behavior
-            
+
             # Check if payment is sufficient (exact, overpayment, or within $2 tolerance)
             shortfall = expected_price - received_amount
-            
+
             if received_amount >= expected_price or shortfall <= 2.00:
                 # Sufficient payment - register domain (exact, overpayment, or within $2 tolerance)
                 if received_amount > expected_price:
                     # Overpayment - credit excess to wallet
                     excess_amount = received_amount - expected_price
                     await self.credit_wallet_balance(user_id, excess_amount)
-                    
+
                     # Multilingual overpayment success messages
                     success_texts = {
                         "en": {
@@ -6599,16 +6632,16 @@ class NomadlyCleanBot:
                                 "back_menu": "← Volver al Menú"
                             }
                         }
-                        
+
                     texts = success_texts.get(user_lang, success_texts["en"])
-                    
+
                     keyboard = [
                         [InlineKeyboardButton(texts["manage_domain"], callback_data=f"manage_domain_{domain}")],
                         [InlineKeyboardButton(texts["register_more"], callback_data="search_domain")],
                         [InlineKeyboardButton(texts["check_wallet"], callback_data="wallet")],
                         [InlineKeyboardButton(texts["back_menu"], callback_data="main_menu")]
                     ]
-                    
+
                 elif received_amount < expected_price and shortfall <= 2.00:
                         # Within $2 tolerance - accept payment and show tolerance message
                         tolerance_texts = {
@@ -6648,15 +6681,15 @@ class NomadlyCleanBot:
                                 "back_menu": "← Volver al Menú"
                             }
                         }
-                        
+
                         texts = tolerance_texts.get(user_lang, tolerance_texts["en"])
-                        
+
                         keyboard = [
                             [InlineKeyboardButton(texts["manage_domain"], callback_data=f"manage_domain_{domain}")],
                             [InlineKeyboardButton(texts["register_more"], callback_data="search_domain")],
                             [InlineKeyboardButton(texts["back_menu"], callback_data="main_menu")]
                         ]
-                        
+
                 else:
                         # Exact payment - standard success
                         success_texts = {
@@ -6696,46 +6729,46 @@ class NomadlyCleanBot:
                                 "back_menu": "← Volver al Menú"
                             }
                         }
-                        
+
                         texts = success_texts.get(user_lang, success_texts["en"])
-                        
+
                         keyboard = [
                             [InlineKeyboardButton(texts["manage_domain"], callback_data=f"manage_domain_{domain}")],
                             [InlineKeyboardButton(texts["register_more"], callback_data="search_domain")],
                             [InlineKeyboardButton(texts["back_menu"], callback_data="main_menu")]
                         ]
-                    
+
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(
                         f"{texts['title']}\n\n{texts['details']}",
                         reply_markup=reply_markup,
                         parse_mode='Markdown'
                     )
-                    
+
                 # Send welcome email if custom email is provided
                 technical_email = session.get('technical_email', 'cloakhost@tutamail.com')
                 order_number = session.get('order_number', 'ORD-XXXXX')
-                
+
                 if technical_email != 'cloakhost@tutamail.com':
                     try:
                         from services.brevo_email_service import get_email_service
                         email_service = get_email_service()
-                        
+
                         # Send welcome email immediately when payment is confirmed
                         await email_service.send_welcome_email(
                             email=technical_email,
                             domain=domain.replace('_', '.'),
                             order_id=order_number
                         )
-                        
+
                         logger.info(f"📧 Welcome email sent to {technical_email}")
                     except Exception as e:
                         logger.error(f"Error sending welcome email: {e}")
-                    
+
             else:
                 # Significant underpayment (more than $2) - credit received amount to wallet, notify about shortfall
                 await self.credit_wallet_balance(user_id, received_amount)
-                
+
                 # Multilingual underpayment messages
                 underpayment_texts = {
                         "en": {
@@ -6779,23 +6812,23 @@ class NomadlyCleanBot:
                         "back_registration": "← Volver al Registro"
                     }
                 }
-                
+
                 texts = underpayment_texts.get(user_lang, underpayment_texts["en"])
-                
+
                 keyboard = [
                     [InlineKeyboardButton(texts["fund_wallet"], callback_data="fund_wallet")],
                     [InlineKeyboardButton(texts["pay_crypto"], callback_data=f"payment_{domain}")],
                     [InlineKeyboardButton(texts["check_wallet"], callback_data="wallet")],
                     [InlineKeyboardButton(texts["back_registration"], callback_data=f"register_{domain}")]
                 ]
-                
+
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(
                     f"{texts['title']}\n\n{texts['details']}",
                     reply_markup=reply_markup,
                     parse_mode='Markdown'
                 )
-            
+
             # If we reach here, payment was not found - show waiting message
             if not payment_received:
                 waiting_texts = {
@@ -6805,9 +6838,9 @@ class NomadlyCleanBot:
                 "zh": "⏳ **尚未检测到付款**\n\n🔍 检查区块链中...\n⚡ 请等待确认（通常10-20分钟）\n\n💡 **提示:** 先发送付款，然后检查状态",
                 "es": "⏳ **Pago aún no detectado**\n\n🔍 Verificando blockchain...\n⚡ Por favor espere la confirmación (usualmente 10-20 minutos)\n\n💡 **Consejo:** Envíe el pago primero, luego verifique el estado"
                 }
-                
+
                 await query.answer(waiting_texts.get(user_lang, waiting_texts["en"]))
-                
+
         except Exception as e:
             logger.error(f"Error in handle_payment_status_check: {e}")
             if query:
@@ -6820,11 +6853,11 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id
             domain_name = domain.replace('_', '.')
-            
+
             # Update session with telegram_id for registration service
             session['telegram_id'] = user_id
             session['domain'] = domain_name
-            
+
             # Show payment confirmation
             await query.edit_message_text(
                 f"✅ **Payment Confirmed!**\n\n"
@@ -6835,22 +6868,22 @@ class NomadlyCleanBot:
                 f"⏳ Creating your offshore domain account...",
                 parse_mode='Markdown'
             )
-            
+
             # Import and use domain registration service
             from domain_registration_service import get_domain_registration_service
             registration_service = get_domain_registration_service()
-            
+
             # Trigger complete domain registration workflow
             logger.info(f"🚀 Triggering domain registration for {domain_name}")
             registration_result = await registration_service.complete_domain_registration(session)
-            
+
             if registration_result.get("success"):
                 # Registration successful
                 await self.show_registration_success(query, registration_result)
             else:
                 # Registration failed
                 await self.show_registration_failure(query, registration_result, domain_name)
-                
+
         except Exception as e:
             logger.error(f"Error in process_successful_payment: {e}")
             await query.edit_message_text(
@@ -6874,7 +6907,7 @@ class NomadlyCleanBot:
             domain_name = registration_result.get("domain_name", "")
             nameserver_choice = registration_result.get("nameserver_choice", "cloudflare")
             nameservers = registration_result.get("nameservers", [])
-            
+
             success_text = (
                 f"🎉 **Domain Registration Complete!**\n\n"
                 f"🏴‍☠️ **Domain:** `{domain_name}`\n"
@@ -6889,7 +6922,7 @@ class NomadlyCleanBot:
                 f"• Manage domain settings\n\n"
                 f"Welcome to sovereign domain ownership! 🏴‍☠️"
             )
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton("📂 My Domains", callback_data="my_domains"),
@@ -6902,13 +6935,13 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")
                 ]
             ]
-            
+
             await query.edit_message_text(
                 success_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='Markdown'
             )
-            
+
         except Exception as e:
             logger.error(f"Error in show_registration_success: {e}")
 
@@ -6917,7 +6950,7 @@ class NomadlyCleanBot:
         try:
             error_message = registration_result.get("error", "Unknown error")
             step = registration_result.get("step", "unknown")
-            
+
             failure_text = (
                 f"⚠️ **Registration Processing Issue**\n\n"
                 f"🏴‍☠️ **Domain:** `{domain_name}`\n"
@@ -6931,7 +6964,7 @@ class NomadlyCleanBot:
                 f"• You'll receive confirmation within 1 hour\n\n"
                 f"**This is a temporary technical issue - your domain is secured.**"
             )
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton("📞 Contact Support", callback_data="support"),
@@ -6941,13 +6974,13 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")
                 ]
             ]
-            
+
             await query.edit_message_text(
                 failure_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='Markdown'
             )
-            
+
         except Exception as e:
             logger.error(f"Error in show_registration_failure: {e}")
 
@@ -6964,7 +6997,7 @@ class NomadlyCleanBot:
                 f"🚀 **Domain registration will start automatically** once payment is fully confirmed.\n\n"
                 f"**We're monitoring the blockchain for you!**"
             )
-            
+
             keyboard = [
                 [
                     InlineKeyboardButton("🔄 Check Again", callback_data=f"check_payment_{crypto_type}_{domain}")
@@ -6974,24 +7007,24 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")
                 ]
             ]
-            
+
             await query.edit_message_text(
                 pending_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='Markdown'
             )
-            
+
         except Exception as e:
             logger.error(f"Error in show_payment_pending: {e}")
 
 
-            
+
     async def show_payment_not_found(self, query, crypto_type: str, domain: str):
         """Show payment not found message with options"""
         try:
             user_id = query.from_user.id
             user_lang = self.user_sessions.get(user_id, {}).get('language', 'en')
-            
+
             not_found_texts = {
                 "en": {
                     "title": "❌ **Payment Not Found**",
@@ -7024,20 +7057,20 @@ class NomadlyCleanBot:
                     "back": "← Volver al Menú"
                 }
             }
-            
+
             texts = not_found_texts.get(user_lang, not_found_texts["en"])
-            
+
             keyboard = [
                 [InlineKeyboardButton(texts["generate"], callback_data=f"crypto_{crypto_type}_{domain}")],
                 [InlineKeyboardButton(texts["back"], callback_data="main_menu")]
             ]
-            
+
             await query.edit_message_text(
                 f"{texts['title']}\n\n{texts['message']}",
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='Markdown'
             )
-            
+
         except Exception as e:
             logger.error(f"Error in show_payment_not_found: {e}")
 
@@ -7046,21 +7079,23 @@ class NomadlyCleanBot:
         try:
             user_id = query.from_user.id
             session = self.user_sessions.get(user_id, {})
-            
+
+            logger.info(f" ✅ ✅ ✅ ✅ ✅ ✅handle_qr_generation")
+
             # Get payment address from session (should be generated from handle_crypto_address)
             payment_address = session.get(f'{crypto_type}_address')
             if not payment_address:
                 # If no address in session, redirect to address generation
                 await self.handle_crypto_address(query, crypto_type, domain)
                 return
-            
+
             # Get domain info
             usd_amount = session.get('price', 9.87)
             #usd_amount = session.get('domain_price', 6) #AP_comment
-            
+
             # Calculate crypto amount
             crypto_amount, is_realtime = self.get_crypto_amount(usd_amount, crypto_type)
-            
+
             # Crypto info
             crypto_info = {
                 'btc': {'name': 'Bitcoin', 'symbol': '₿'},
@@ -7074,21 +7109,21 @@ class NomadlyCleanBot:
                 'ustcr': {'name': 'Tether ERC20', 'symbol': '₮'},
                 'usdt': {'name': 'Tether TRC20', 'symbol': '₮'}
             }
-            
+
             crypto_details = crypto_info.get(crypto_type, crypto_info['btc'])
-            
+
             # Generate ASCII QR code
             qr_ascii = self.generate_payment_qr_ascii_new(payment_address)
-            
+
             # Format crypto amount
             if crypto_type == 'doge' and crypto_amount >= 1:
                 crypto_display = f"{crypto_amount:.2f} DOGE"
             else:
                 crypto_display = f"{crypto_amount:.8f} {crypto_type.upper()}"
-            
+
             # Get order number from session
             order_number = session.get('order_number', 'ORD-XXXXX')
-            
+
             # Mobile-optimized QR code display with ASCII art
             qr_text = (
                 f"<b>📱 QR Code - {crypto_details['name']}</b>\n"
@@ -7101,7 +7136,7 @@ class NomadlyCleanBot:
                 f"<pre>{payment_address}</pre>\n\n"
                 f"<i>📲 Scan QR or copy address</i>"
             )
-            
+
             # Create navigation buttons for QR page (without payment check button)
             keyboard = [
                 [
@@ -7115,17 +7150,97 @@ class NomadlyCleanBot:
                     InlineKeyboardButton("← Back", callback_data=f"crypto_{crypto_type}_{domain}")
                 ]
             ]
-            
+
             # Edit the message to show QR code with navigation buttons
             await query.message.edit_text(
                 qr_text,
                 reply_markup=InlineKeyboardMarkup(keyboard),
                 parse_mode='HTML'
             )
-            
+
         except Exception as e:
             logger.error(f"Error in handle_qr_generation: {e}")
             await self.handle_crypto_address(query, crypto_type, domain)
+
+    async def handle_qr_generation_walleet_topup(self, query, crypto_type: str, domain: str):
+        """Generate QR code display for cryptocurrency payment address"""
+        try:
+            user_id = query.from_user.id
+            session = self.user_sessions.get(user_id, {})
+            crypto_type = session.get(f'wallet_funding_crypto')
+
+            # Get payment address from session (should be generated from handle_crypto_address)
+            payment_address = session.get(f'{crypto_type}_wallet_address')
+            logger.info (f"🎯🎯🎯🎯🎯🎯 in handle_qr_generation_walleet_topup: {session}, payment_address: {payment_address}, crypto_type: {crypto_type}")
+            #if not payment_address:
+                # If no address in session, redirect to address generation
+                #await self.handle_crypto_address(query, crypto_type, domain)
+                #return
+
+            # Get domain info
+            usd_amount = session.get('price', 9.87)
+            #usd_amount = session.get('domain_price', 6) #AP_comment
+
+            # Calculate crypto amount
+            crypto_amount, is_realtime = self.get_crypto_amount(usd_amount, crypto_type)
+
+            # Crypto info
+            crypto_info = {
+                'btc': {'name': 'Bitcoin', 'symbol': '₿'},
+                'eth': {'name': 'Ethereum', 'symbol': 'Ξ'},
+                'ltc': {'name': 'Litecoin', 'symbol': 'Ł'},
+                'doge': {'name': 'Dogecoin', 'symbol': 'Ð'},
+
+                'trx': {'name': 'Tron', 'symbol': '⟠'},
+                'bsc': {'name': 'Binance BSC', 'symbol': '♦'},
+                'bch': {'name': 'Bitcoin Cash', 'symbol': 'Ƀ'},
+                'ustcr': {'name': 'Tether ERC20', 'symbol': '₮'},
+                'usdt': {'name': 'Tether TRC20', 'symbol': '₮'}
+            }
+
+            crypto_details = crypto_info.get(crypto_type, crypto_info['btc'])
+
+            # Generate ASCII QR code
+            qr_ascii = self.generate_payment_qr_ascii_new(payment_address)
+
+            # Format crypto amount
+            if crypto_type == 'doge' and crypto_amount >= 1:
+                crypto_display = f"{crypto_amount:.2f} DOGE"
+            else:
+                crypto_display = f"{crypto_amount:.8f} {crypto_type.upper()}"
+
+            # Get order number from session
+            #order_number = session.get('order_number', 'ORD-XXXXX')
+
+            # Mobile-optimized QR code display with ASCII art
+            qr_text = (
+                f"<b>📱 QR Code - {crypto_details['name']}</b>\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"<b>{domain.replace('_', '.')}</b>\n"
+                f"Amount: <b>${usd_amount:.2f}</b> ({crypto_display})\n"                
+                f"<pre>{qr_ascii}</pre>\n"
+                f"<b>Payment Address:</b>\n"
+                f"<pre>{payment_address}</pre>\n\n"
+                f"<i>📲 Scan QR or copy address</i>"
+            )
+
+            # Create navigation buttons for QR page (without payment check button)
+            keyboard = [
+                [
+                    InlineKeyboardButton("← Back", callback_data=f"wallet")
+                ]
+            ]
+
+            # Edit the message to show QR code with navigation buttons
+            await query.message.edit_text(
+                qr_text,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+
+        except Exception as e:
+            logger.error(f"Error in handle_qr_generation_walleet_topup: {e}", exc_info=True)
+            #await self.handle_crypto_address(query, crypto_type, domain)
     
     async def handle_crypto_address_old(self, query, crypto_type: str, domain: str):
         """Original crypto address handler - kept for reference"""
@@ -7767,11 +7882,11 @@ class NomadlyCleanBot:
             self.save_user_sessions()
             
             instructions = {
-                "en": f"📝 Adding CNAME Record for {clean_domain}\n\nEnter the target domain:\nExample: target.example.com",
-                "fr": f"📝 Ajout d'un enregistrement CNAME pour {clean_domain}\n\nEntrez le domaine cible :\nExemple : target.example.com",
-                "hi": f"📝 {clean_domain} के लिए CNAME रिकॉर्ड जोड़ना\n\nलक्ष्य डोमेन दर्ज करें:\nउदाहरण: target.example.com",
-                "zh": f"📝 为 {clean_domain} 添加 CNAME 记录\n\n输入目标域名：\n示例：target.example.com",
-                "es": f"📝 Agregando registro CNAME para {clean_domain}\n\nIngrese el dominio objetivo:\nEjemplo: target.example.com"
+                "en": f"📝 Adding CNAME Record for \n{clean_domain}\n\nExample: yq8m.up.railway.com\n\n➡️ This will point:{clean_domain} -> \nyq8m.up.railway.com",
+                "fr": f"📝 Ajout d'un enregistrement CNAME pour \n{clean_domain}\n\nExemple: yq8m.up.railway.com\n\n➡️ Cela indiquera:{clean_domain} -> \nyq8m.up.railway.com",
+                "hi": f"📝 \n{clean_domain} के लिए CNAME रिकॉर्ड जोड़ना\n\nउदाहरण: yq8m.up.railway.com\n\n➡️ यह इंगित करेगा:{clean_domain} -> \nyq8m.up.railway.com",
+                "zh": f"📝 为 \n{clean_domain} 添加 CNAME 记录\n\n示例：yq8m.up.railway.com\n\n➡️ 这将指向:{clean_domain} -> \nyq8m.up.railway.com",
+                "es": f"📝 Agregando registro CNAME para \n{clean_domain}\n\nEjemplo: yq8m.up.railway.com\n\n➡️ Esto apuntará:{clean_domain} -> \nyq8m.up.railway.com"
             }
             
             text = instructions.get(user_lang, instructions["en"])
