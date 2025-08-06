@@ -383,7 +383,7 @@ class OpenProviderAPI:
 
             # Add nameservers OR ns_group (required by OpenProvider API)
             if nameservers:
-                data["nameservers"] = [{"name": ns} for ns in nameservers]
+                data["name_servers"] = [{"name": ns} for ns in nameservers]
             else:
                 # Use OpenProvider's DNS service as fallback
                 data["ns_group"] = "dns-openprovider"

@@ -3364,7 +3364,7 @@ class NomadlyCleanBot:
                     telegram_id=user_id,
                     transaction_type="withdrawal",
                     amount=price,
-                    description=f"withdrawal amount for order {order.order_id}",
+                    description=f"Domain purchse {clean_domain}",
                     payment_address=None,
                     blockbee_payment_id=None
                 )
@@ -3613,21 +3613,48 @@ class NomadlyCleanBot:
             return []
 
     async def get_user_transactions(self, user_id):
-        """Get user domains from database using correct telegram_id column"""
+        """Get user transactions from database using correct telegram_id column"""
+        from datetime import datetime, timedelta
         try:
-            logger.info(f"DEBUG: Fetching domains for user {user_id}")
+            logger.info(f"DEBUG: Fetching transactions for user {user_id}")
             from database import get_db_manager
             db = get_db_manager()
-            domains = db.get_user_transactions(user_id,500)
+            domains = db.get_user_transactions(user_id, 500)
 
             # Convert database objects to dictionaries for DNS interface
             domain_list = []
             for domain in domains:
-                # Get domain name safely
+                # Get created_at safely
+                created_at = getattr(domain, "created_at", None)
+                if created_at:
+                    # Check if created_at is already a datetime object
+                    if isinstance(created_at, datetime):
+                        dt = created_at
+                    else:
+                        # Assume it's a string if not a datetime
+                        try:
+                            dt = datetime.strptime(created_at, "%Y-%m-%d %H:%M:%S")
+                        except (ValueError, TypeError) as e:
+                            logger.error(f"Failed to parse created_at: {created_at}, error: {e}")
+                            formatted_date = None
+                            domain_list.append({
+                                "transaction_type": "DEBIT" if getattr(domain, "transaction_type", "").lower() == "deposit" else "CREDIT",
+                                "amount": getattr(domain, "amount", None),
+                                "date": formatted_date,
+                                "description": getattr(domain, "description", None)
+                            })
+                            continue
+                    dt -= timedelta(days=1)  # Subtract 1 day
+                    # Use %d for cross-platform compatibility and remove leading zero
+                    formatted_date = dt.strftime("%b %d, %Y").lstrip("0").replace(" 0", " ")
+                else:
+                    formatted_date = None
 
                 domain_dict = {
-                    "transaction_type": getattr(domain, "transaction_type", None),
-                    "amount": getattr(domain, "amount", None)
+                    "transaction_type": "DEBIT" if getattr(domain, "transaction_type", "").lower() == "deposit" else "CREDIT",
+                    "amount": getattr(domain, "amount", None),
+                    "date": formatted_date,
+                    "description": getattr(domain, "description", None)
                 }
                 domain_list.append(domain_dict)
 
@@ -3635,7 +3662,7 @@ class NomadlyCleanBot:
             return domain_list
 
         except Exception as e:
-            logger.error(f"Error getting user domains from database: {e}")
+            logger.error(f"Error getting user transactions from database: {e}")
             import traceback
             logger.error(f"Full traceback: {traceback.format_exc()}")
             return []
@@ -3704,6 +3731,7 @@ class NomadlyCleanBot:
                 from unified_dns_manager import unified_dns_manager
                 records = await unified_dns_manager.list_dns_records( domain_record.cloudflare_zone_id)
                 domain_record_count = len(records) # Default estimate for Cloudflare zones
+                logger.info(f"✅ Domain count: {domain_record_count}")
             else:
                 domain_record_count = 3  # Default estimate for custom nameservers
 
@@ -7486,9 +7514,11 @@ class NomadlyCleanBot:
         for i, transaction in enumerate(transactions, 1):
             transaction_type = transaction.get('transaction_type', 'Unknown')
             amount = transaction.get('amount', 'Unknown')
+            date = transaction.get('date', 'Unknown')
+            description = transaction.get('description', 'Unknown')
 
             # Add domain with status to list
-            transaction_list.append(f"{i}. {transaction_type.upper()} - ${amount}")
+            transaction_list.append(f"{i}. {transaction_type} - ${amount} - {date} - {description}")
 
         transaction_list_text = "\n".join(transaction_list)
         

@@ -370,7 +370,7 @@ def handle_blockbee_wallet_topup(user_id=None):
                 telegram_id=user_id,
                 transaction_type="deposit",
                 amount=paid_amount,
-                description="amount top up from wallet topup webhook",
+                description="Crypto deposit",
                 payment_address=None,
                 blockbee_payment_id=None
             )

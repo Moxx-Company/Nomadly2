@@ -796,7 +796,7 @@ class DomainService:
                 "admin_handle": contact_handle,
                 "tech_handle": contact_handle,
                 "billing_handle": contact_handle,
-                "nameservers": nameservers,
+                "name_servers": nameservers,
                 "auto_renew": False,
             }
 

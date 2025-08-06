@@ -234,8 +234,17 @@ class UnifiedDNSManager:
     async def get_dns_records(self, zone_id: str) -> List[Dict[str, Any]]:
         """Get DNS records for a domain (wrapper method)"""
         #zone_id = await self.get_zone_id(domain)
-        logger.info(f"✅ 1 get_dns_records: {zone_id}")
-        return await self.list_dns_records(zone_id)
+        logger.info(f"✅ 0 get_dns_records: {zone_id}")
+        from database import get_db_manager
+        db = get_db_manager()
+        domain = db.get_domain_by_name(zone_id)
+        print(domain.cloudflare_zone_id)
+        if domain:
+            _zoneid = domain.cloudflare_zone_id
+        else:
+            _zoneid = zone_id
+            logger.info(f"✅ 1 get_dns_records: {zone_id}")
+        return await self.list_dns_records(_zoneid)
         #if zone_id:
             #logger.info(f"✅ 2 get_dns_records")
         #else:
@@ -269,7 +278,7 @@ class UnifiedDNSManager:
                         logger.error(f"❌ Failed to list records: {data.get('errors', [])}")
                         return []
                 else:
-                    logger.error(f"❌ Records listing failed: {response.status_code}")
+                    logger.error(f"❌ 1 Records listing failed: {response.status_code}")
                     return []
                     
         except Exception as e:
