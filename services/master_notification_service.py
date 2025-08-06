@@ -129,8 +129,8 @@ class MasterNotificationService:
             message = (
                 f"🎁 **Overpayment Credited to Wallet!**\n\n"
                 f"💰 **Excess Amount:** ${overpayment_amount:.2f} USD\n"
-                f"💳 **New Wallet Balance:** ${new_balance:.2f} USD\n"
-                f"🔗 **Order ID:** `{order_id}`\n\n"
+                #f"💳 **New Wallet Balance:** ${new_balance:.2f} USD\n"
+                #f"🔗 **Order ID:** `{order_id}`\n\n"
                 f"✨ **No payment is ever lost - all excess funds are credited!**\n\n"
                 f"Use your wallet balance for future domain purchases."
             )

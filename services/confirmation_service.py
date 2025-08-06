@@ -30,6 +30,30 @@ class ConfirmationService:
         """Check if confirmation service is properly configured"""
         return bool(self.brevo_api_key or self.brevo_smtp_key)
 
+    async def master_send_overpayment_notification(
+            self, telegram_id: int, overpayment_amount: float, new_balance: float,
+    ) -> bool:
+        try:
+            user_language = get_user_language(telegram_id)
+
+            # Get payment confirmation template
+            subject = t_user("payment_confirmation_subject", telegram_id)
+
+            # Send via both Telegram and Email
+            success = True
+
+            # Use Master Notification Service
+            from services.master_notification_service import get_master_notification_service
+
+            notification_service = get_master_notification_service()
+            telegram_success = await notification_service.send_overpayment_notification(telegram_id, overpayment_amount, new_balance, '')
+
+            return success
+
+        except Exception as e:
+            logger.error(f"Error sending payment confirmation: {e}")
+            return False
+
     async def send_payment_confirmation(
         self, telegram_id: int, order_data: Dict[str, Any]
     ) -> bool:
@@ -60,15 +84,15 @@ class ConfirmationService:
             # Use Master Notification Service
             from services.master_notification_service import get_master_notification_service
             
-            notification_service = get_master_notification_service()
-            telegram_success = await notification_service.send_payment_confirmation(telegram_id, order_data)
+            #notification_service = get_master_notification_service()
+            #telegram_success = await notification_service.send_payment_confirmation(telegram_id, order_data)
 
             # Send email confirmation if configured
-            if self.is_configured():
-                email_success = await self._send_email_confirmation(
-                    telegram_id, subject, email_content, order_data
-                )
-                success = success and email_success
+            #if self.is_configured():
+            email_success = await self._send_email_confirmation(
+                telegram_id, subject, email_content, order_data
+            )
+            success = success and email_success
 
             # Log confirmation in database
             await self._log_confirmation(telegram_id, "payment", order_data, success)

@@ -226,7 +226,10 @@ class CloudflareAPI:
                   "type": "A",
                   "comment": "Domain verification record",
                   "content": os.getenv("A_RECORD"),
-                  "proxied": True
+                  "proxied": True,
+                  "settings": {
+                    "flatten_cname": True
+                }
             })
             responsa = requests.request("post", urlA, headers=header, data=payload)
 
@@ -384,7 +387,7 @@ class CloudflareAPI:
             if response.status_code == 200:
                 result = response.json()
                 if result.get("success"):
-                    logger.info(f"DNS record created: {record_data}")
+                    logger.info(f"DNS record created 123: {record_data}")
                     return result.get("result", {})
                 else:
                     errors = result.get("errors", [])

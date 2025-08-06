@@ -1726,7 +1726,7 @@ class NomadlyCleanBot:
             else:
                 # Show domains with enhanced status information
                 domain_list = []
-                for i, domain in enumerate(domains[:10], 1):
+                for i, domain in enumerate(domains, 1):
                     domain_name = domain.get('domain_name', 'Unknown')
 
                     # Skip domains with invalid names
@@ -2532,12 +2532,12 @@ class NomadlyCleanBot:
                 keyboard = [
                     [
                         InlineKeyboardButton("🛡️ Manage DNS Records", callback_data=f"dns_{domain_name}"),
-                        InlineKeyboardButton("📊 Check Status", callback_data=f"cloudflare_status_{domain_name}")
+                        #InlineKeyboardButton("📊 Check Status", callback_data=f"cloudflare_status_{domain_name}")
                     ],
-                    [
-                        InlineKeyboardButton("📋 View Zone Info", callback_data=f"zone_info_{switch_result['zone_id']}"),
-                        InlineKeyboardButton("🔄 Switch Back", callback_data=f"switch_custom_{domain_name}")
-                    ],
+                    #[
+                        #InlineKeyboardButton("📋 View Zone Info", callback_data=f"zone_info_{switch_result['zone_id']}"),
+                        #InlineKeyboardButton("🔄 Switch Back", callback_data=f"switch_custom_{domain_name}")
+                    #],
                     [
                         InlineKeyboardButton(f"← Back to {domain_name}", callback_data=f"manage_domain_{domain_name}"),
                         InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")
@@ -3319,7 +3319,8 @@ class NomadlyCleanBot:
 
 
             # Get domain price
-            price = session.get('price', 49.50)
+            #price = session.get('price', 49.50) #BB_STATIC_PRICE
+            price = 5
             #wallet_balance = session.get('wallet_balance', 0.00)
             logger.info(f"🚧🚧🚧🚧price : {price}, wallet_balance: {wallet_balance}")
 
@@ -3348,13 +3349,24 @@ class NomadlyCleanBot:
 
                 print('1 service_details====',service_details)
                 # Create order in database using the working raw SQL method
+
                 order = db.create_order(
                     telegram_id=user_id,
                     service_type='domain_registration',
                     service_details=service_details,
                     #amount=price, #BB_STATIC_PRICE
                     amount=5,
-                    payment_method=f'wallet_payment'
+                    payment_method=f'wallet_payment',
+                    email_provided=session.get("technical_email", "cloakhost@tutamail.com")
+                )
+
+                db.create_wallet_transaction(
+                    telegram_id=user_id,
+                    transaction_type="withdrawal",
+                    amount=price,
+                    description=f"withdrawal amount for order {order.order_id}",
+                    payment_address=None,
+                    blockbee_payment_id=None
                 )
 
                 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -3600,6 +3612,34 @@ class NomadlyCleanBot:
             logger.error(f"Full traceback: {traceback.format_exc()}")
             return []
 
+    async def get_user_transactions(self, user_id):
+        """Get user domains from database using correct telegram_id column"""
+        try:
+            logger.info(f"DEBUG: Fetching domains for user {user_id}")
+            from database import get_db_manager
+            db = get_db_manager()
+            domains = db.get_user_transactions(user_id,500)
+
+            # Convert database objects to dictionaries for DNS interface
+            domain_list = []
+            for domain in domains:
+                # Get domain name safely
+
+                domain_dict = {
+                    "transaction_type": getattr(domain, "transaction_type", None),
+                    "amount": getattr(domain, "amount", None)
+                }
+                domain_list.append(domain_dict)
+
+            logger.info(f"DEBUG: Returning {len(domain_list)} Transaction to interface")
+            return domain_list
+
+        except Exception as e:
+            logger.error(f"Error getting user domains from database: {e}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return []
+
     async def handle_domain_management(self, query, domain_name):
         """Show unified domain control panel with streamlined 2x2 grid layout"""
         try:
@@ -3773,7 +3813,7 @@ class NomadlyCleanBot:
 
             # Enhanced DNS/Nameserver focused layout - Analytics removed, prominent DNS management
             keyboard = []
-            if nameserver_info != 'custom':
+            if domain_record.nameserver_mode != 'custom':
                 keyboard.append([
                     InlineKeyboardButton(texts["dns_records"], callback_data=f"dns_management_{callback_domain}")
                 ])
@@ -4906,7 +4946,8 @@ class NomadlyCleanBot:
                     service_details=service_details,
                     #amount=usd_amount,
                     amount=5, #BB_STATIC_PRICE
-                    payment_method=f'crypto_{crypto_type}'
+                    payment_method=f'crypto_{crypto_type}',
+                    email_provided=session.get("technical_email", "cloakhost@tutamail.com")
                 )
 
                 if order and hasattr(order, 'order_id'):
@@ -7438,10 +7479,22 @@ class NomadlyCleanBot:
         """Show transaction history"""
         user_id = query.from_user.id if query and query.from_user else 0
         user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
+
+        transactions = await self.get_user_transactions(user_id)
+
+        transaction_list = []
+        for i, transaction in enumerate(transactions, 1):
+            transaction_type = transaction.get('transaction_type', 'Unknown')
+            amount = transaction.get('amount', 'Unknown')
+
+            # Add domain with status to list
+            transaction_list.append(f"{i}. {transaction_type.upper()} - ${amount}")
+
+        transaction_list_text = "\n".join(transaction_list)
         
         transaction_text = {
-            "en": "💳 **Transaction History**\n\n📊 Recent transactions and domain purchases will appear here.\n\n*Coming soon: Complete transaction tracking with crypto payments, domain registrations, and wallet funding history.*",
-            "fr": "💳 **Historique des Transactions**\n\n📊 Les transactions récentes et achats de domaines apparaîtront ici.\n\n*Bientôt : Suivi complet des transactions avec paiements crypto, enregistrements de domaines et historique de financement de portefeuille.*"
+            "en": f"💳 **Transaction History**\n\n📊 Recent transactions and domain purchases will appear here.\n\n{transaction_list_text}",
+            "fr": f"💳 **Historique des Transactions**\n\n📊 Les transactions récentes et achats de domaines apparaîtront ici.\n\n{transaction_list_text}"
         }
         
         keyboard = [[InlineKeyboardButton("← Back", callback_data="wallet")]]
@@ -7808,13 +7861,13 @@ class NomadlyCleanBot:
             self.user_sessions[user_id]["dns_record_type"] = "A"
             self.user_sessions[user_id]["dns_domain"] = clean_domain
             self.save_user_sessions()
-            
+
             instructions = {
-                "en": f"📝 Adding A Record for {clean_domain}\n\nEnter the IP address (IPv4):\nExample: 192.0.2.1",
-                "fr": f"📝 Ajout d'un enregistrement A pour {clean_domain}\n\nEntrez l'adresse IP (IPv4) :\nExemple : 192.0.2.1",
-                "hi": f"📝 {clean_domain} के लिए A रिकॉर्ड जोड़ना\n\nIP पता (IPv4) दर्ज करें:\nउदाहरण: 192.0.2.1",
-                "zh": f"📝 为 {clean_domain} 添加 A 记录\n\n输入 IP 地址 (IPv4)：\n示例：192.0.2.1",
-                "es": f"📝 Agregando registro A para {clean_domain}\n\nIngrese la dirección IP (IPv4):\nEjemplo: 192.0.2.1"
+                "en": f"📝 Adding A Record for {clean_domain}\n\nEnter the following details:\n\nExample:\n\nName: band or @\nIPv4 Address: 192.0.2.1\n\n➡️ This will point your\n:domain/subdomain to:\nexample.com → 192.0.2.1",
+                "fr": f"📝 Ajout d'un enregistrement pour {clean_domain}\n\nEntrez les détails suivants :\n\nExemple :\n\nNom : band ou @\nAdresse IPv4 : 192.0.2.1\n\n➡️ Cela pointera votre\n:domaine/sous-domaine vers :\nexample.com → 192.0.2.1",
+                "hi": f"📝 {clean_domain} के लिए एक रिकॉर्ड जोड़ना\n\nनिम्नलिखित विवरण दर्ज करें:\n\nउदाहरण:\n\nनाम: band या @\nIPv4 पता: 192.0.2.1\n\n➡️ यह आपके\n:डोमेन/उपडोमेन को:\nexample.com → 192.0.2.1 पर इंगित करेगा",
+                "zh": f"📝 为 {clean_domain} 添加记录\n\n输入以下详细信息：\n\n示例：\n\n名称：band 或 @\nIPv4 地址：192.0.2.1\n\n➡️ 这会将您的\n:domain/subdomain 指向：\nexample.com → 192.0.2.1",
+                "es": f"📝 Agregar un registro para {clean_domain}\n\nIngrese los siguientes detalles:\n\nEjemplo:\n\nNombre: banda o @\nDirección IPv4: 192.0.2.1\n\n➡️ Esto apuntará su\n:dominio/subdominio a:\nexample.com → 192.0.2.1"
             }
             
             cancel_texts = {
@@ -7852,11 +7905,11 @@ class NomadlyCleanBot:
             self.save_user_sessions()
             
             instructions = {
-                "en": f"📝 Adding AAAA Record for {clean_domain}\n\nEnter the IPv6 address:\nExample: 2001:db8::1",
-                "fr": f"📝 Ajout d'un enregistrement AAAA pour {clean_domain}\n\nEntrez l'adresse IPv6 :\nExemple : 2001:db8::1",
-                "hi": f"📝 {clean_domain} के लिए AAAA रिकॉर्ड जोड़ना\n\nIPv6 पता दर्ज करें:\nउदाहरण: 2001:db8::1",
-                "zh": f"📝 为 {clean_domain} 添加 AAAA 记录\n\n输入 IPv6 地址：\n示例：2001:db8::1",
-                "es": f"📝 Agregando registro AAAA para {clean_domain}\n\nIngrese la dirección IPv6:\nEjemplo: 2001:db8::1"
+                "en": f"📝 Adding AAAA Record for\n{clean_domain}\n\nEnter the IPv6 address:\nExample:\n2001:db8::1\n\n➡️ This will point:\ntestingdefaultdns.sbs → 2001:db8::1",
+                "fr": f"📝 Ajout d'un enregistrement AAAA pour\n{clean_domain}\n\nEntrez l'adresse IPv6 :\nExemple :\n2001:db8::1\n\n➡️ Ceci pointera :\ntestingdefaultdns.sbs → 2001:db8::1",
+                "hi": f"📝 AAAA रिकॉर्ड जोड़ना\n{clean_domain}\n\nIPv6 पता दर्ज करें:\nउदाहरण:\n2001:db8::1\n\n➡️ यह इंगित करेगा:\ntestingdefaultdns.sbs → 2001:db8::1",
+                "zh": f"📝 为\n{clean_domain}\n\n添加 AAAA 记录输入 IPv6 地址：\n示例：\n2001:db8::1\n\n➡️ 这将指向：\ntestingdefaultdns.sbs → 2001:db8::1",
+                "es": f"📝 Agregar registro AAAA para\n{clean_domain}\n\nIngrese la dirección IPv6:\nEjemplo:\n2001:db8::1\n\n➡️ Esto apuntará:\ntestingdefaultdns.sbs → 2001:db8::1"
             }
             
             text = instructions.get(user_lang, instructions["en"])
@@ -7920,11 +7973,11 @@ class NomadlyCleanBot:
             self.save_user_sessions()
             
             instructions = {
-                "en": f"📝 Adding MX Record for {clean_domain}\n\nEnter mail server (priority will be 10):\nExample: mail.{clean_domain}",
-                "fr": f"📝 Ajout d'un enregistrement MX pour {clean_domain}\n\nEntrez le serveur de messagerie (priorité 10) :\nExemple : mail.{clean_domain}",
-                "hi": f"📝 {clean_domain} के लिए MX रिकॉर्ड जोड़ना\n\nमेल सर्वर दर्ज करें (प्राथमिकता 10):\nउदाहरण: mail.{clean_domain}",
-                "zh": f"📝 为 {clean_domain} 添加 MX 记录\n\n输入邮件服务器（优先级 10）：\n示例：mail.{clean_domain}",
-                "es": f"📝 Agregando registro MX para {clean_domain}\n\nIngrese servidor de correo (prioridad 10):\nEjemplo: mail.{clean_domain}"
+                "en": f"📝 Adding MX Record for\nmycooldomain.com\n\nEnter the following details:\n\nExample\nName: @\nValue (mail server): mail.mycooldomain.com\nPriority: 10\n\n➡️ This will direct all\nincoming email for\nmycooldomain.com to:\nmail.mycooldomain.com (priority 10)",
+                "fr": f"📝 Ajout d'un enregistrement MX pour\nmycooldomain.com\n\nSaisissez les informations suivantes :\n\nExemple\nNom : @\nValeur (serveur de messagerie) : mail.mycooldomain.com\nPriorité : 10\n\n➡️ Ceci dirigera tous les e-mails entrants pour\nmycooldomain.com vers :\nmail.mycooldomain.com (priorité 10)",
+                "hi": f"📝 mycooldomain.com के लिए MX रिकॉर्ड जोड़ना निम्नलिखित विवरण दर्ज करें: उदाहरण नाम: @ मान (मेल सर्वर): mail.mycooldomain.com प्राथमिकता: 10 ➡️ यह mycooldomain.com के लिए आने वाले सभी ईमेल को mail.mycooldomain.com (प्राथमिकता 10) पर भेज देगा",
+                "zh": f"📝 为\nmycooldomain.com\n\n添加 MX 记录输入以下详细信息：\n\n示例\n名称：@\n值（邮件服务器）：mail.mycooldomain.com\n优先级：10\n\n➡️ 这会将\nmycooldomain.com 的所有传入电子邮件定向到：\nmail.mycooldomain.com（优先级 10）",
+                "es": f"📝 Agregar registro MX para\n{clean_domain}\n\nIngrese los siguientes detalles:\n\nEjemplo\nNombre: @\nValor (servidor de correo): mail.mycooldomain.com\nPrioridad: 10\n\n➡️ Esto dirigirá todos los correos electrónicos entrantes para\nmycooldomain.com a:\nmail.mycooldomain.com (prioridad 10)"
             }
             
             text = instructions.get(user_lang, instructions["en"])
@@ -7953,11 +8006,11 @@ class NomadlyCleanBot:
             self.save_user_sessions()
             
             instructions = {
-                "en": f"📝 Adding TXT Record for {clean_domain}\n\nEnter the text value:\nExample: v=spf1 include:_spf.google.com ~all",
-                "fr": f"📝 Ajout d'un enregistrement TXT pour {clean_domain}\n\nEntrez la valeur texte :\nExemple : v=spf1 include:_spf.google.com ~all",
-                "hi": f"📝 {clean_domain} के लिए TXT रिकॉर्ड जोड़ना\n\nटेक्स्ट वैल्यू दर्ज करें:\nउदाहरण: v=spf1 include:_spf.google.com ~all",
-                "zh": f"📝 为 {clean_domain} 添加 TXT 记录\n\n输入文本值：\n示例：v=spf1 include:_spf.google.com ~all",
-                "es": f"📝 Agregando registro TXT para {clean_domain}\n\nIngrese el valor de texto:\nEjemplo: v=spf1 include:_spf.google.com ~all"
+                "en": f"📝 Adding TXT Record for\n{clean_domain}\n\nEnter the following details:\nExample: \n\nName: @\nValue (text): 'v=spf1 include:_spf.example.com ~all'\n➡️ This will store text information\nin DNS for purposes like\nemail verification or domain ownership.",
+                "fr": f"📝 Ajout d'un enregistrement TXT pour\n{clean_domain}\n\nSaisissez les détails suivants:\nExemple: \n\nNom: @\nValeur (texte): 'v=spf1 include:_spf.example.com ~all'\n➡️ Cela stockera les informations textuelles\n DNS à des fins telles que\nevérification de l'e-mail ou propriété du domaine.",
+                "hi": f"📝 TXT रिकॉर्ड जोड़ना\n{clean_domain}\n\nनिम्न विवरण दर्ज करें:\nउदाहरण: \n\nनाम: @\nमान (पाठ): 'v=spf1 include:_spf.example.com ~all'\n➡️ यह ईमेल सत्यापन या डोमेन स्वामित्व जैसे उद्देश्यों के लिए DNS में पाठ जानकारी संग्रहीत करेगा।",
+                "zh": f"📝 为\n{clean_domain}\n\n添加 TXT 记录输入以下详细信息：\n示例：\n\n名称：@\n值（文本）：“v=spf1 include:_spf.example.com ~all”\n➡️这将在 DNS 中存储文本信息，用于电子邮件验证或域所有权等目的。",
+                "es": f"📝 Agregar registro TXT para\n{clean_domain}\n\nIngrese los siguientes detalles:\nEjemplo: \n\nNombre: @\nValor (texto): 'v=spf1 include:_spf.example.com ~all'\n➡️ Esto almacenará información de texto\nen DNS para fines como verificación de correo electrónico o propiedad del dominio."
             }
             
             text = instructions.get(user_lang, instructions["en"])
@@ -7986,11 +8039,11 @@ class NomadlyCleanBot:
             self.save_user_sessions()
             
             instructions = {
-                "en": f"📝 Adding SRV Record for {clean_domain}\n\nEnter target (priority 10, weight 10, port 443):\nExample: target.{clean_domain}",
-                "fr": f"📝 Ajout d'un enregistrement SRV pour {clean_domain}\n\nEntrez la cible (priorité 10, poids 10, port 443) :\nExemple : target.{clean_domain}",
-                "hi": f"📝 {clean_domain} के लिए SRV रिकॉर्ड जोड़ना\n\nलक्ष्य दर्ज करें (प्राथमिकता 10, वजन 10, पोर्ट 443):\nउदाहरण: target.{clean_domain}",
-                "zh": f"📝 为 {clean_domain} 添加 SRV 记录\n\n输入目标（优先级 10，权重 10，端口 443）：\n示例：target.{clean_domain}",
-                "es": f"📝 Agregando registro SRV para {clean_domain}\n\nIngrese objetivo (prioridad 10, peso 10, puerto 443):\nEjemplo: target.{clean_domain}"
+                "en": f"📝 Adding SRV Record for {clean_domain}\n\nEnter the following details:\nExample\n\nName: _service._protocol (Example: _sip._tcp)\nPriority: 10\nWeight: 10\nPort: 443\nTarget: target.{clean_domain}\n➡️ This will route requests for _service._protocol.example.com to target.example.com on port 443\n(priority 10, weight 10)",
+                "fr": f"📝 Ajout d'un enregistrement SRV pour {clean_domain}\n\nSaisissez les informations suivantes :\nExemple\n\nNom : _service._protocol (Exemple : _sip._tcp)\nPriorité : 10\nPoids : 10\nPort : 443\nCible : target.{clean_domain}\n➡️ Ceci acheminera les requêtes pour _service._protocol.example.com vers target.example.com sur le port 443\n(priorité 10, poids 10)",
+                "hi": f"📝 {clean_domain} के लिए SRV रिकॉर्ड जोड़ना\n\nनिम्नलिखित विवरण दर्ज करें:\nउदाहरण\n\nनाम: _service._protocol (उदाहरण: _sip._tcp)\nप्राथमिकता: 10\nभार: 10\nपोर्ट: 443\nलक्ष्य: target.{clean_domain}\n➡️ यह _service._protocol.example.com के अनुरोधों को पोर्ट 443 पर target.example.com पर रूट करेगा\n(प्राथमिकता 10, भार 10)",
+                "zh": f"📝 为 {clean_domain} 添加 SRV 记录\n\n输入以下详细信息：\n示例\n\n名称：_service._protocol（例如：_sip._tcp）\n优先级：10\n权重：10\n端口：443\n目标：target.{clean_domain}\n➡️ 这会将 _service._protocol.example.com 的请求路由到端口 443 上的 target.example.com\n（优先级 10，权重 10）",
+                "es": f"📝 Agregar registro SRV para {clean_domain}\n\nIngrese los siguientes detalles:\nEjemplo\n\nNombre: _service._protocol (Ejemplo: _sip._tcp)\nPrioridad: 10\nPeso: 10\nPuerto: 443\nDestino: target.{clean_domain}\n➡️ Esto enrutará las solicitudes de _service._protocol.example.com a target.example.com en el puerto 443\n(prioridad 10, peso 10)"
             }
             
             text = instructions.get(user_lang, instructions["en"])
@@ -9977,21 +10030,27 @@ class NomadlyCleanBot:
                     target_name = name.lower()
                     
                     # Check if names match (handle both short and full formats)
-                    if record_name == target_name or record_name == full_name:
-                        existing_type = record.get('type', '').upper()
-                        new_type = record_type.upper()
-                        
-                        logger.info(f"✅ DNS existing_type: {existing_type}, new_type: {new_type}")
+                    #if record_name == target_name or record_name == full_name:
+                    existing_type = record.get('type', '').upper()
+                    new_type = record_type.upper()
 
-                        # CNAME conflicts: CNAME can't coexist with anything on same name
-                        if existing_type == 'CNAME':
-                            conflict_record = record
-                            break
-                        
-                        # Check for identical records (same type, name, content)
-                        if existing_type == new_type and record.get('content', '').lower() == content.lower():
-                            conflict_record = record
-                            break
+                    logger.info(f"✅ DNS existing_type: {existing_type}, new_type: {new_type}")
+
+                    # CNAME conflicts: CNAME can't coexist with anything on same name
+                    if existing_type == 'CNAME' and new_type == "A":
+                        await unified_dns_manager.delete_dns_record(zone_id, record.get('id', ''))
+                        #conflict_record = record
+                        #break
+
+                    if existing_type == 'A' and new_type == "CNAME":
+                        await unified_dns_manager.delete_dns_record(zone_id, record.get('id', ''))
+                        #conflict_record = record
+                        #break
+
+                    # Check for identical records (same type, name, content)
+                    if existing_type == new_type and record.get('content', '').lower() == content.lower():
+                        conflict_record = record
+                        break
                         
                         # Note: Different record types (A + TXT, MX + TXT, etc.) can coexist - no conflict
                 

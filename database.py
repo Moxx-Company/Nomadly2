@@ -837,7 +837,7 @@ class DatabaseManager:
             return (
                 session.query(RegisteredDomain)
                 .filter(RegisteredDomain.telegram_id == telegram_id)
-                .order_by(RegisteredDomain.registration_date.desc())
+                .order_by(RegisteredDomain.id.desc())
                 .first()
             )
         finally:
@@ -1027,6 +1027,7 @@ class DatabaseManager:
         service_details: Dict,
         amount: float,
         payment_method: str = None,
+        email_provided: str = None
     ) -> Order:
         """Create new order using raw SQL to match actual database schema"""
         import uuid
@@ -1050,7 +1051,7 @@ class DatabaseManager:
                 ) VALUES (
                     :telegram_id, :order_id, :domain_name, :tld, :service_type, :registration_years,
                     :base_price_usd, :offshore_multiplier, :total_price_usd,
-                    :nameserver_choice, :payment_method, :status, now()
+                    :nameserver_choice, :payment_method, :status, now(),:service_details,:email_provided
                 ) RETURNING id
             """), {
                 'telegram_id': telegram_id,
@@ -1064,7 +1065,9 @@ class DatabaseManager:
                 'total_price_usd': float(amount),
                 'nameserver_choice': nameserver_choice,
                 'payment_method': payment_method,
-                'status': 'pending'
+                'status': 'pending',
+                'service_details':json.dumps(service_details),
+                'email_provided': email_provided
             })
             
             order_db_id = result.fetchone()[0]

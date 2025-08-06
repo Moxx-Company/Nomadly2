@@ -231,18 +231,20 @@ class UnifiedDNSManager:
             logger.error(f"❌ Error creating zone for {domain_name}: {e}")
             return False, None, []
     
-    async def get_dns_records(self, domain: str) -> List[Dict[str, Any]]:
+    async def get_dns_records(self, zone_id: str) -> List[Dict[str, Any]]:
         """Get DNS records for a domain (wrapper method)"""
-        zone_id = await self.get_zone_id(domain)
-        if zone_id:
-            return await self.list_dns_records(zone_id)
-        else:
+        #zone_id = await self.get_zone_id(domain)
+        logger.info(f"✅ 1 get_dns_records: {zone_id}")
+        return await self.list_dns_records(zone_id)
+        #if zone_id:
+            #logger.info(f"✅ 2 get_dns_records")
+        #else:
             # Return demo records if no zone found
-            return [
-                {"type": "A", "name": "@", "content": "192.0.2.1", "ttl": 300},
-                {"type": "A", "name": "www", "content": "192.0.2.1", "ttl": 300},
-                {"type": "MX", "name": "@", "content": f"mail.{domain}", "priority": 10, "ttl": 3600}
-            ]
+            #return [
+                #{"type": "A", "name": "@", "content": "192.0.2.1", "ttl": 300},
+                #{"type": "A", "name": "www", "content": "192.0.2.1", "ttl": 300},
+                #{"type": "MX", "name": "@", "content": f"mail.{domain}", "priority": 10, "ttl": 3600}
+            #]
     
     async def list_dns_records(self, zone_id: str) -> List[Dict[str, Any]]:
         """List all DNS records for a zone"""
@@ -624,7 +626,10 @@ class UnifiedDNSManager:
                   "type": "A",
                   "comment": "Domain verification record",
                   "content": os.getenv("A_RECORD"),
-                  "proxied": True
+                  "proxied": True,
+                "settings": {
+                    "flatten_cname": True
+                }
             })
             responsa = requests.request("post", urlA, headers=header, data=payload)
 

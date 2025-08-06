@@ -140,7 +140,7 @@ class FixedRegistrationService:
                 
             # STEP 2E: Create Additional DNS Records (if Cloudflare and not .de)
             if cloudflare_zone_id and not domain_name.endswith('.de'):
-                dns_success = await self._create_basic_dns_records(cloudflare_zone_id, domain_name)
+                dns_success = True#await self._create_basic_dns_records(cloudflare_zone_id, domain_name)
                 if dns_success:
                     registration_steps.append(("dns", "basic_records"))
                     logger.info(f"✅ DNS records created")

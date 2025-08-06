@@ -97,6 +97,14 @@ def handle_dynopay_webhook(order_id=None):
                     blockbee_payment_id=None
                 )
 
+                executor = ThreadPoolExecutor(max_workers=1)
+                future = executor.submit(
+                    process_overpay,
+                    order.telegram_id,
+                    credit_amu,
+                )
+                logger.info(f"Add wallet amount  {credit_amu} for order {order_id}")
+
                 logger.info(f"Add wallet amount  {credit_amu} for order {order_id}")
         except Exception as e:
             logger.error(f"===> Add wallet amount processing error: {e}", exc_info=True)
@@ -197,6 +205,12 @@ def handle_blockbee_webhook(order_id=None):
                     blockbee_payment_id=None
                 )
 
+                executor = ThreadPoolExecutor(max_workers=1)
+                future = executor.submit(
+                    process_overpay,
+                    order.telegram_id,
+                    credit_amu,
+                )
                 logger.info(f"Add wallet amount  {credit_amu} for order {order_id}")
 
             # Payment confirmed - process in background
@@ -232,6 +246,20 @@ def handle_blockbee_webhook(order_id=None):
         return jsonify({"error": "Internal server error"}), 500
 
 
+def process_overpay(telegram_id,credit_amu):
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    confirmation_service = get_confirmation_service()
+
+    # Create timeout task
+    async def process_with_timeout():
+        await confirmation_service.master_send_overpayment_notification(
+            telegram_id, credit_amu, 0.0
+        )
+
+    result = loop.run_until_complete(process_with_timeout())
+    loop.close()
 
 ########################################################        
 
@@ -485,6 +513,27 @@ def process_payment_confirmation(order_id: str, payment_data: dict):
                                     await confirmation_service.send_domain_registration_confirmation(
                                         order.telegram_id, domain_data
                                     )
+
+                                    telegram_id = order.telegram_id
+                                    amount = order.total_price_usd
+                                    service_type = order.service_type
+                                    #service_details = order.service_details
+
+                                    # Use confirmation service for both Telegram and email
+                                    order_data = {
+                                        "order_id": order_id,
+                                        "amount_usd": amount,
+                                        "payment_method": "cryptocurrency",
+                                        "service_type": service_type,
+                                        "payment_data": payment_data,
+                                        "domain_name": order.domain_name ,
+                                        #"contact_email": order.get("contact_email", "N/A") if hasattr(order, 'service_details') and order.service_details else "N/A"
+                                    }
+
+                                    await confirmation_service.send_payment_confirmation(
+                                        order.telegram_id, order_data
+                                    )
+
                                     logger.info(f"✅ Domain registration confirmation sent for order {order_id}")
                                 else:
                                     logger.warning(f"⚠️ No domain found for confirmation of order {order_id}")
