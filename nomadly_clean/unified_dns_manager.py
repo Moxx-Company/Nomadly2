@@ -283,7 +283,10 @@ class UnifiedDNSManager:
         name: str, 
         content: str, 
         ttl: int = 300, 
-        priority: Optional[int] = None
+        priority: Optional[int] = None,
+        weight: Optional[int] = None,
+        target: Optional[str] = None,
+        port: Optional[int] = None,
     ) -> Tuple[bool, Optional[str], Optional[str]]:
         """Create DNS record and return success status, record ID, and error message"""
         if not self.enabled:
@@ -298,12 +301,19 @@ class UnifiedDNSManager:
                 "proxied": True,
                 "settings": {
                     "flatten_cname": True
-                }
+                },
+                "data":{}
             }
 
             if record_data["type"] == "MX":
                 record_data["content"] = record_data["content"].replace('10 ', '')
-                #record_data['settings'] = 
+            if record_data["type"] == "SRV":
+                record_data["data"] = {
+                    "priority": priority,
+                    "weight": weight,
+                    "target": target,
+                    "port": port
+                }
 
             # Add priority for MX and SRV records
             if priority is not None and record_type.upper() in ["MX", "SRV"]:

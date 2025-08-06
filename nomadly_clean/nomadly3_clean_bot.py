@@ -9770,6 +9770,9 @@ class NomadlyCleanBot:
             name = "@"  # Default to root domain
             content = text.strip()
             priority = None
+            weight = 10
+            target = None
+            port = 443
             
             # ENHANCED CNAME HANDLING: Smart target domain completion
             if record_type == "CNAME":
@@ -9800,6 +9803,9 @@ class NomadlyCleanBot:
             
             # Enhanced validation and processing for all record types
             if record_type == "A":
+                print(f"content record_type raw 2: {content}")
+                print(f"content record_type 2: {self.extract_name_and_ip(content.lower())}")
+                name, content = self.extract_name_and_ip(content.lower())
                 if not self.is_valid_ipv4(content):
                     await message.reply_text(
                         "❌ **Invalid IPv4 Address**\n\n"
@@ -9833,6 +9839,7 @@ class NomadlyCleanBot:
                     return
                     
             elif record_type == "TXT":
+                name, content = self.extract_txt_record_info(content)
                 if not content:
                     await message.reply_text(
                         "❌ **Empty TXT Record**\n\n"
@@ -9872,14 +9879,12 @@ class NomadlyCleanBot:
             elif record_type == "MX":
                 # Enhanced MX record parsing with multiple formats
                 parts = text.strip().split()
-                if len(parts) == 2:
+                lines = text.strip().splitlines()
+                if len(lines) == 3:
                     # Determine which is priority and which is server
-                    if parts[0].isdigit():
-                        priority = int(parts[0])
-                        content = parts[1]
-                    elif parts[1].isdigit():
-                        priority = int(parts[1])
-                        content = parts[0]
+
+                    if len(lines) == 3:
+                        name, value, priority = self.extract_mx_record_info(text)
                     else:
                         await message.reply_text(
                             "❌ **Invalid MX Record Format**\n\n"
@@ -9894,7 +9899,7 @@ class NomadlyCleanBot:
                             parse_mode='Markdown'
                         )
                         return
-                    content = f"{priority} {content}"
+                    content = f"{priority} {value}"
                 elif len(parts) == 1:
                     # Single value - assume it's a mail server, use default priority 10
                     if self.is_valid_domain(content):
@@ -9933,10 +9938,13 @@ class NomadlyCleanBot:
             elif record_type == "SRV":
                 # Enhanced SRV record parsing with multiple formats
                 parts = text.strip().split()
-                if len(parts) == 4:
+                lines = text.strip().splitlines()
+
+                target, priority, weight, port = self.extract_srv_record_info(text)
+                if len(lines) == 4:
                     # Standard format: priority weight port target
-                    if all(p.isdigit() for p in parts[:3]):
-                        priority, weight, port, target = parts
+                    if len(lines) == 4:
+                        #priority, weight, port, target = parts
                         content = f"{priority} {weight} {port} {target}"
                     else:
                         await message.reply_text(
@@ -10123,7 +10131,10 @@ class NomadlyCleanBot:
                 name=name,
                 content=content,
                 ttl=3600,  # Default TTL
-                priority=priority
+                priority=priority,
+                weight=weight,
+                target=target,
+                port=port
             )
             
             if success:
@@ -10790,7 +10801,8 @@ class NomadlyCleanBot:
                 if str(record.get('id')) == str(record_id):
                     current_record = record
                     break
-            
+
+
             if not current_record:
                 await message.reply_text("❌ DNS record not found.")
                 return
@@ -10804,6 +10816,9 @@ class NomadlyCleanBot:
             
             # Validate input based on record type
             if record_type == "A":
+                print(f"content record_type: {content}")
+                print(f"content record_type: {self.extract_name_and_ip(content)}")
+
                 if not self.is_valid_ipv4(content):
                     await message.reply_text(
                         "❌ **Invalid IPv4 Address**\n\n"
@@ -10990,7 +11005,92 @@ class NomadlyCleanBot:
         except Exception as e:
             logger.error(f"Error in handle_dns_edit_input: {e}")
             await message.reply_text("❌ An error occurred processing your DNS record update.")
-    
+
+    def extract_name_and_ip(self, text):
+        import re
+        lines = text.strip().splitlines()
+        if len(lines) != 2:
+            raise ValueError("Input must be exactly two lines")
+
+        # Line 1: Name or key:value
+        line1 = lines[0].strip()
+        if ':' in line1:
+            name = line1.split(':', 1)[1].strip()
+        else:
+            name = line1
+
+        # Line 2: IP (clean any label like "IPv4 Address:")
+        line2 = lines[1]
+        ip_match = re.search(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', line2)
+        ip = ip_match.group() if ip_match else None
+
+        # Remove any spaces from name and IP
+        name = name.replace(" ", "")
+        ip = ip.replace(" ", "") if ip else None
+
+        return name, ip
+
+    def extract_srv_record_info(self, text):
+        lines = text.strip().splitlines()
+        if len(lines) != 4:
+            raise ValueError("Input must be exactly four lines")
+
+        values = []
+        for line in lines:
+            if ':' in line:
+                _, value = line.split(':', 1)
+            else:
+                value = line
+            value = value.strip().replace(" ", "")
+            values.append(value)
+
+        name = values[0]
+        priority = int(values[1])
+        weight = int(values[2])
+        port = int(values[3])
+
+        return name, priority, weight, port
+
+    def extract_txt_record_info(self, text):
+        lines = text.strip().splitlines()
+        if len(lines) != 2:
+            raise ValueError("Input must be exactly two lines")
+
+        values = []
+        for line in lines:
+            if ':' in line:
+                _, value = line.split(':', 1)
+            else:
+                value = line
+            value = value.strip().strip('"')  # remove quotes
+            values.append(value)
+
+        name = values[0].replace(" ", "")
+        value = values[1].strip()
+
+        return name, value
+
+    def extract_mx_record_info(self, text):
+        lines = text.strip().splitlines()
+        if len(lines) != 3:
+            raise ValueError("Input must be exactly three lines")
+
+        values = []
+        for line in lines:
+            if ':' in line:
+                _, value = line.split(':', 1)
+            else:
+                value = line
+            value = value.strip().replace(" ", "")
+            values.append(value)
+
+        name = values[0]
+        value = values[1]
+        priority = int(values[2])
+
+        return name, value, priority
+
+
     async def handle_dns_replace_record(self, query, domain, record_type):
         """Handle DNS record replacement for conflicts - replace existing with new"""
 

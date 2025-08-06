@@ -920,7 +920,7 @@ class DatabaseManager:
                 SELECT id, telegram_id, order_id, domain_name, tld, 
                        registration_years, base_price_usd, offshore_multiplier,
                        total_price_usd, nameserver_choice, email_provided,
-                       payment_method, crypto_currency, status, created_at, completed_at,crypto_address,service_type, transaction_id
+                       payment_method, crypto_currency, status, created_at, completed_at,crypto_address,service_type, transaction_id,service_details
                 FROM orders 
                 WHERE order_id = :order_id
             """), {'order_id': order_id})
@@ -949,6 +949,7 @@ class DatabaseManager:
                         self.crypto_address = row_data[16]
                         self.service_type = row_data[17]
                         self.transaction_id = row_data[18]
+                        self.service_details = row_data[19]
 
                         
                 return SimpleOrder(row)
