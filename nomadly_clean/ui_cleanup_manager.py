@@ -44,11 +44,11 @@ class UICleanupManager:
                     is_navigation = any(query.data.startswith(pattern) for pattern in navigation_patterns)
             
             # Check if content is identical to avoid "Message is not modified" error (but skip for navigation)
-            cached_content = self.message_cache.get(user_id, {}).get('text', '')
-            if cached_content == new_text and not is_navigation:
-                logger.info(f"Skipping identical message edit for user {user_id}")
-                await query.answer("Already up to date")
-                return True
+            # cached_content = self.message_cache.get(user_id, {}).get('text', '')
+            # if cached_content == new_text and not is_navigation:
+            #     logger.info(f"Skipping identical message edit for user {user_id}")
+            #     await query.answer("Already up to date")
+            #     return True
             
             # Try to edit the message
             await query.edit_message_text(
