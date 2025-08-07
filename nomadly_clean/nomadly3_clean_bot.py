@@ -3319,8 +3319,8 @@ class NomadlyCleanBot:
 
 
             # Get domain price
-            #price = session.get('price', 49.50) #BB_STATIC_PRICE
-            price = 5
+            price = session.get('price', 49.50) #BB_STATIC_PRICE
+            #price = 5
             #wallet_balance = session.get('wallet_balance', 0.00)
             logger.info(f"🚧🚧🚧🚧price : {price}, wallet_balance: {wallet_balance}")
 
@@ -3436,8 +3436,8 @@ class NomadlyCleanBot:
                     telegram_id=user_id,
                     service_type='domain_registration',
                     service_details=service_details,
-                    #amount=price, #BB_STATIC_PRICE
-                    amount=5,
+                    amount=price, #BB_STATIC_PRICE
+                    #amount=5,
                     payment_method=f'wallet_payment',
                     email_provided=session.get("technical_email", "cloakhost@tutamail.com")
                 )
@@ -5053,8 +5053,8 @@ class NomadlyCleanBot:
                     telegram_id=user_id,
                     service_type='domain_registration',
                     service_details=service_details,
-                    #amount=usd_amount,
-                    amount=5, #BB_STATIC_PRICE
+                    amount=usd_amount,
+                    #amount=5, #BB_STATIC_PRICE
                     payment_method=f'crypto_{crypto_type}',
                     email_provided=session.get("technical_email", "cloakhost@tutamail.com")
                 )
@@ -5111,8 +5111,8 @@ class NomadlyCleanBot:
                     address_response = dynopay.create_payment_address(
                         cryptocurrency=crypto_type,
                         callback_url=callback_url,
-                        #amount=usd_amount #BB_STATIC_PRICE
-                        amount=5
+                        amount=usd_amount #BB_STATIC_PRICE
+                        #amount=5
                     )
 
                     logger.info(f"✅ Creating payment ${usd_amount}")
@@ -5137,8 +5137,8 @@ class NomadlyCleanBot:
                     address_response = blockbee.create_payment_address(
                         cryptocurrency=crypto_type,
                         callback_url=callback_url,
-                        #amount=usd_amount #BB_STATIC_PRICE
-                        amount=5
+                        amount=usd_amount #BB_STATIC_PRICE
+                        #amount=5
                     )
 
                     logger.info(f"✅ Creating payment ${usd_amount}")
@@ -5506,9 +5506,9 @@ class NomadlyCleanBot:
             is_available = api_result.get("available", False)
             price = api_result.get("price", 0)
 
-            #if price < 25: #BB_STATIC_PRICE
-            #    price = 25 #BB_STATIC_PRICE
-            price = 5
+            if price < 25: #BB_STATIC_PRICE
+                price = 25 #BB_STATIC_PRICE
+            #price = 5
             currency = api_result.get("currency", "USD")
             is_premium = api_result.get("premium", False)
 
