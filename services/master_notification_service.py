@@ -38,17 +38,39 @@ class MasterNotificationService:
             domain_name = payment_data.get('domain_name', 'N/A')
             amount = payment_data.get('amount_usd', payment_data.get('total_price_usd', 0))
             
+            import random
+            import string
+            from datetime import datetime
+
+            order_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            order_number = f"TXN-{order_suffix}"
+            
+            now = datetime.now()
+            formatted_date = now.strftime("%B %d, %Y – %I:%M %p").replace(" 0", " ").lstrip("0")
+            
+            # telegram_message = (
+            #     f"💰 **Payment Confirmed!**\n\n"
+            #     f"✅ **Domain:** `{domain_name}`\n"
+            #     f"💰 **Amount:** ${amount} USD\n"
+            #     f"🎉 **Status:** Active & Ready!\n\n"
+            #     f"Your domain was already registered and is working perfectly.\n"
+            #     #f"Use /mydomains to manage your domain."
+            # )
+
             telegram_message = (
-                f"💰 **Payment Confirmed!**\n\n"
-                f"✅ **Domain:** `{domain_name}`\n"
-                f"💰 **Amount:** ${amount} USD\n"
-                f"🎉 **Status:** Active & Ready!\n\n"
-                f"Your domain was already registered and is working perfectly.\n"
-                f"Use /mydomains to manage your domain."
+                f"🎉 Success! We’ve received your payment for domain registration.\n"
+                f"📛 **Domain Name:** {domain_name}\n"
+                f"💰 **Amount Paid:** ${amount:.2f} USD\n"
+                f"🧾 **Transaction ID:** #{order_number}\n"
+                f"📅 **Date:** {formatted_date}\n\n"
+                f"🛠️ We’re now securing your domain and setting things up. This usually takes just a moment.\n\n"
+                f"⚠️ You’ll receive another update once your domain is fully registered and active."
             )
             
             # Send Telegram notification
-            telegram_success = await self._send_telegram_message(telegram_id, telegram_message)
+            payment_method = payment_data.get('payment_method')
+            if payment_method != 'wallet_payment':
+                telegram_success = await self._send_telegram_message(telegram_id, telegram_message)
             
             # Send email if user has real email
             email_success = await self._send_payment_email(telegram_id, payment_data)
@@ -67,12 +89,18 @@ class MasterNotificationService:
             
             domain_name = domain_data.get('domain_name', 'N/A')
             
+            from datetime import datetime
+            registration_date = datetime.now()
+            formatted_registration = registration_date.strftime("Registration Date: %B %d, %Y").replace(" 0", " ")
+            valid_until_date = registration_date.replace(year=registration_date.year + 1)
+            formatted_valid_until = valid_until_date.strftime("Valid Until: %B %d, %Y").replace(" 0", " ")
+
             telegram_message = (
-                f"💰 **Payment Confirmed!**\n\n"
-                f"✅ **Domain:** `{domain_name}`\n"
-                f"🎉 **Status:** Active & Ready!\n\n"
-                f"Your domain registered and is working perfectly.\n"
-                f"What would you like to do next?"
+                f"🎉 Your new domain is live and officially yours — congratulations! \n\n"
+                f"🏷️ Domain Name: {domain_name}\n"
+                f"📅 {formatted_registration}\n"
+                f"🗓️ {formatted_valid_until}\n"
+                f"🔐 Status: Active & Secured\n"
             )
             
             # Create inline keyboard with user-requested buttons
@@ -80,7 +108,7 @@ class MasterNotificationService:
                 "inline_keyboard": [
                     [
                         {"text": "🌐 My Domains", "callback_data": "my_domains"},
-                        {"text": "🔍 Register Domain", "callback_data": "search_domain"}
+                        {"text": "🏠 Main menu", "callback_data": "main_menu"}
                     ]
                 ]
             }

@@ -3350,6 +3350,88 @@ class NomadlyCleanBot:
                 print('1 service_details====',service_details)
                 # Create order in database using the working raw SQL method
 
+                import random
+                import string
+                from datetime import datetime
+
+                order_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                order_number = f"TXN-{order_suffix}"
+                
+                now = datetime.now()
+                formatted_date = now.strftime("%B %d, %Y – %I:%M %p").replace(" 0", " ").lstrip("0")
+
+                success_texts = {
+                    "en": {
+                        "title": "✅ **Domain Registration Successful!**",
+                        "details": (
+                            f"🎉 Success! We’ve received your payment for domain registration.\n"
+                            f"📛 **Domain Name:** {clean_domain}\n"
+                            f"💰 **Amount Paid:** ${price:.2f} USD\n"
+                            f"🧾 **Transaction ID:** #{order_number}\n"
+                            f"📅 **Date:** {formatted_date}\n\n"
+                            f"🛠️ We’re now securing your domain and setting things up. This usually takes just a moment.\n\n"
+                            f"⚠️ You’ll receive another update once your domain is fully registered and active."
+                        )
+                    },
+                    "fr": {
+                        "title": "✅ **Enregistrement de domaine réussi !**",
+                        "details": (
+                            f"🎉 Succès ! Nous avons bien reçu votre paiement pour l'enregistrement de votre domaine.\n"
+                            f"📛 **Nom de domaine :** {clean_domain}\n"
+                            f"💰 **Montant payé :** ${price:.2f} USD\n"
+                            f"🧾 **ID de transaction :** #{order_number}\n"
+                            f"📅 **Date :** {formatted_date}\n\n"
+                            f"🛠️ Nous sécurisons et configurons actuellement votre domaine. Cela ne prend généralement que quelques instants.\n\n"
+                            f"⚠️ Vous recevrez une nouvelle notification une fois votre domaine entièrement enregistré et actif."
+                        )
+                    },
+                    "hi": {
+                        "title": "✅ **डोमेन पंजीकरण सफल!**",
+                        "details": (
+                            f"🎉 सफल! हमें डोमेन पंजीकरण के लिए आपका भुगतान प्राप्त हो गया है।\n"
+                            f"📛 **डोमेन नाम:** {clean_domain}\n"
+                            f"💰 **भुगतान की गई राशि:** ${price:.2f} USD\n"
+                            f"🧾 **लेनदेन आईडी:** #{order_number}\n"
+                            f"📅 **दिनांक:** {formatted_date}\n\n"
+                            f"🛠️ अब हम आपके डोमेन को सुरक्षित कर रहे हैं और चीज़ें सेट अप कर रहे हैं। इसमें आमतौर पर बस कुछ ही पल लगते हैं।\n\n"
+                            f"⚠️ आपका डोमेन पूरी तरह से पंजीकृत और सक्रिय होने के बाद आपको एक और अपडेट प्राप्त होगा।"
+                        )
+                    },
+                    "zh": {
+                        "title": "✅ **域名注册成功！**",
+                        "details": (
+                            f"🎉 成功！我们已收到您的域名注册付款。\n"
+                            f"📛 **域名：** {clean_domain}\n"
+                            f"💰 **支付金额：** ${price:.2f} 美元\n"
+                            f"🧾 **交易 ID：** #{order_number}\n"
+                            f"📅 **日期：** {formatted_date}\n\n"
+                            f"🛠️ 我们正在保护您的域名并进行设置。这通常只需片刻。\n\n"
+                            f"⚠️ 您的域名完全注册并生效后，您将再次收到更新信息。"
+                        )
+                    },
+                    "es": {
+                        "title": "✅ **Registro de dominio exitoso!**",
+                        "details": (
+                            f"🎉 Éxito! Hemos recibido tu pago por el registro de tu dominio.\n"
+                            f"📛 **Nombre de dominio:** {clean_domain}\n"
+                            f"💰 **Monto pagado:** ${price:.2f} USD\n"
+                            f"🧾 **ID de transacción:** #{order_number}\n"
+                            f"📅 **Fecha:** {formatted_date}\n\n"
+                            f"🛠️ Estamos protegiendo tu dominio y configurando todo. Esto suele tardar solo unos minutos.\n\n"
+                            f"⚠️ Recibirás otra actualización cuando tu dominio esté completamente registrado y activo."
+                        )
+                    }
+                }
+
+
+                texts = success_texts.get(user_lang, success_texts["en"])
+
+                success_text = (                    
+                    f"{texts['details']}"
+                )
+
+                await query.edit_message_text(success_text, parse_mode='Markdown')
+
                 order = db.create_order(
                     telegram_id=user_id,
                     service_type='domain_registration',
@@ -3369,79 +3451,78 @@ class NomadlyCleanBot:
                     blockbee_payment_id=None
                 )
 
-                sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+                # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-                from webhook_server import process_payment_confirmation
+                # from webhook_server import process_payment_confirmation
 
-                executor = ThreadPoolExecutor(max_workers=1)
-                future = executor.submit(
-                    process_payment_confirmation,
-                    order.order_id,
-                    {
-                        "status": "confirmed",
-                        #"txid": txid,
-                        #"confirmations": confirmations,
-                        "value_coin": '-',
-                        "coin": 0,
-                    },
-                )
+                # executor = ThreadPoolExecutor(max_workers=1)
+                # future = executor.submit(
+                #     process_payment_confirmation,
+                #     order.order_id,
+                #     {
+                #         "status": "confirmed",
+                #         #"txid": txid,
+                #         #"confirmations": confirmations,
+                #         "value_coin": '-',
+                #         "coin": 0,
+                #     },
+                # )
+
+                # from services.master_notification_service import get_master_notification_service
+                # notification_service = get_master_notification_service()
+                # await notification_service.send_progress_notification(user_id, clean_domain, "payment_confirmed")
+
+                
 
                 #sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
                 # Multilingual success messages
-                success_texts = {
-                    "en": {
-                        "title": "✅ **Domain Registration Successful!**",
-                        "details": f"🏴‍☠️ **Domain:** {session.get('domain', domain.replace('_', '.'))}\n💰 **Paid:** ${price:.2f} USD\n💳 **Remaining Balance:** ${new_balance:.2f} USD\n\n🎉 **Your domain is being configured!**\n⚡ DNS propagation will begin shortly",
-                        "manage_domain": "⚙️ Manage Domain",
-                        "register_more": "🔍 Register More Domains",
-                        "back_menu": "← Back to Menu"
-                    },
-                    "fr": {
-                        "title": "✅ **Enregistrement de Domaine Réussi!**",
-                        "details": f"🏴‍☠️ **Domaine:** {session.get('domain', domain.replace('_', '.'))}\n💰 **Payé:** ${price:.2f} USD\n💳 **Solde Restant:** ${new_balance:.2f} USD\n\n🎉 **Votre domaine est en cours de configuration!**\n⚡ La propagation DNS va commencer sous peu",
-                        "manage_domain": "⚙️ Gérer Domaine",
-                        "register_more": "🔍 Enregistrer Plus de Domaines",
-                        "back_menu": "← Retour au Menu"
-                    },
-                    "hi": {
-                        "title": "✅ **डोमेन पंजीकरण सफल!**",
-                        "details": f"🏴‍☠️ **डोमेन:** {session.get('domain', domain.replace('_', '.'))}\n💰 **भुगतान:** ${price:.2f} USD\n💳 **शेष बैलेंस:** ${new_balance:.2f} USD\n\n🎉 **आपका डोमेन कॉन्फ़िगर हो रहा है!**\n⚡ DNS प्रसार शीघ्र ही शुरू होगा",
-                        "manage_domain": "⚙️ डोमेन प्रबंधित करें",
-                        "register_more": "🔍 और डोमेन पंजीकृत करें",
-                        "back_menu": "← मेनू पर वापस"
-                    },
-                    "zh": {
-                        "title": "✅ **域名注册成功！**",
-                        "details": f"🏴‍☠️ **域名:** {session.get('domain', domain.replace('_', '.'))}\n💰 **支付:** ${price:.2f} USD\n💳 **剩余余额:** ${new_balance:.2f} USD\n\n🎉 **您的域名正在配置中！**\n⚡ DNS传播即将开始",
-                        "manage_domain": "⚙️ 管理域名",
-                        "register_more": "🔍 注册更多域名",
-                        "back_menu": "← 返回菜单"
-                    },
-                    "es": {
-                        "title": "✅ **¡Registro de Dominio Exitoso!**",
-                        "details": f"🏴‍☠️ **Dominio:** {session.get('domain', domain.replace('_', '.'))}\n💰 **Pagado:** ${price:.2f} USD\n💳 **Saldo Restante:** ${new_balance:.2f} USD\n\n🎉 **¡Su dominio se está configurando!**\n⚡ La propagación DNS comenzará pronto",
-                        "manage_domain": "⚙️ Gestionar Dominio",
-                        "register_more": "🔍 Registrar Más Dominios",
-                        "back_menu": "← Volver al Menú"
-                    }
-                }
+                # success_texts = {
+                #     "en": {
+                #         "title": "✅ **Domain Registration Successful!**",
+                #         "details": f"🏴‍☠️ **Domain:** {session.get('domain', domain.replace('_', '.'))}\n💰 **Paid:** ${price:.2f} USD\n💳 **Remaining Balance:** ${new_balance:.2f} USD\n\n🎉 **Your domain is being configured!**\n⚡ DNS propagation will begin shortly",
+                #         "manage_domain": "⚙️ Manage Domain",
+                #         "register_more": "🔍 Register More Domains",
+                #         "back_menu": "← Back to Menu"
+                #     },
+                #     "fr": {
+                #         "title": "✅ **Enregistrement de Domaine Réussi!**",
+                #         "details": f"🏴‍☠️ **Domaine:** {session.get('domain', domain.replace('_', '.'))}\n💰 **Payé:** ${price:.2f} USD\n💳 **Solde Restant:** ${new_balance:.2f} USD\n\n🎉 **Votre domaine est en cours de configuration!**\n⚡ La propagation DNS va commencer sous peu",
+                #         "manage_domain": "⚙️ Gérer Domaine",
+                #         "register_more": "🔍 Enregistrer Plus de Domaines",
+                #         "back_menu": "← Retour au Menu"
+                #     },
+                #     "hi": {
+                #         "title": "✅ **डोमेन पंजीकरण सफल!**",
+                #         "details": f"🏴‍☠️ **डोमेन:** {session.get('domain', domain.replace('_', '.'))}\n💰 **भुगतान:** ${price:.2f} USD\n💳 **शेष बैलेंस:** ${new_balance:.2f} USD\n\n🎉 **आपका डोमेन कॉन्फ़िगर हो रहा है!**\n⚡ DNS प्रसार शीघ्र ही शुरू होगा",
+                #         "manage_domain": "⚙️ डोमेन प्रबंधित करें",
+                #         "register_more": "🔍 और डोमेन पंजीकृत करें",
+                #         "back_menu": "← मेनू पर वापस"
+                #     },
+                #     "zh": {
+                #         "title": "✅ **域名注册成功！**",
+                #         "details": f"🏴‍☠️ **域名:** {session.get('domain', domain.replace('_', '.'))}\n💰 **支付:** ${price:.2f} USD\n💳 **剩余余额:** ${new_balance:.2f} USD\n\n🎉 **您的域名正在配置中！**\n⚡ DNS传播即将开始",
+                #         "manage_domain": "⚙️ 管理域名",
+                #         "register_more": "🔍 注册更多域名",
+                #         "back_menu": "← 返回菜单"
+                #     },
+                #     "es": {
+                #         "title": "✅ **¡Registro de Dominio Exitoso!**",
+                #         "details": f"🏴‍☠️ **Dominio:** {session.get('domain', domain.replace('_', '.'))}\n💰 **Pagado:** ${price:.2f} USD\n💳 **Saldo Restante:** ${new_balance:.2f} USD\n\n🎉 **¡Su dominio se está configurando!**\n⚡ La propagación DNS comenzará pronto",
+                #         "manage_domain": "⚙️ Gestionar Dominio",
+                #         "register_more": "🔍 Registrar Más Dominios",
+                #         "back_menu": "← Volver al Menú"
+                #     }
+                # }
 
-                texts = success_texts.get(user_lang, success_texts["en"])
+                import httpx
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        f"{os.getenv('FLASK_WEB_HOOK')}webhook/walletpayment/{order.order_id}",
+                        timeout=10
+                    )
 
-                success_text = (
-                    f"{texts['title']}\n\n"
-                    f"{texts['details']}"
-                )
-
-                keyboard = [
-                    [InlineKeyboardButton(texts["manage_domain"], callback_data=f"manage_domain_{domain}")],
-                    [InlineKeyboardButton(texts["register_more"], callback_data="search_domain")],
-                    [InlineKeyboardButton(texts["back_menu"], callback_data="main_menu")]
-                ]
-
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                await query.edit_message_text(success_text, reply_markup=reply_markup, parse_mode='Markdown')
+                
 
             else:
                 # Insufficient funds - show crypto payment options with multilingual support
@@ -3559,7 +3640,7 @@ class NomadlyCleanBot:
                 )
 
         except Exception as e:
-            logger.error(f"Error in handle_wallet_payment_for_domain: {e}")
+            logger.error(f"Error in handle_wallet_payment_for_domain: {e}", exc_info=True)
             if query:
                 await query.edit_message_text("🚧 Wallet payment failed. Please try again.")
 
@@ -7893,11 +7974,11 @@ class NomadlyCleanBot:
             self.save_user_sessions()
 
             instructions = {
-                "en": f"📝 Adding A Record for {clean_domain}\n\nEnter the following details:\n\nExample:\n\nName: band or @\nIPv4 Address: 192.0.2.1\n\n➡️ This will point your\n:domain/subdomain to:\nexample.com → 192.0.2.1",
-                "fr": f"📝 Ajout d'un enregistrement pour {clean_domain}\n\nEntrez les détails suivants :\n\nExemple :\n\nNom : band ou @\nAdresse IPv4 : 192.0.2.1\n\n➡️ Cela pointera votre\n:domaine/sous-domaine vers :\nexample.com → 192.0.2.1",
-                "hi": f"📝 {clean_domain} के लिए एक रिकॉर्ड जोड़ना\n\nनिम्नलिखित विवरण दर्ज करें:\n\nउदाहरण:\n\nनाम: band या @\nIPv4 पता: 192.0.2.1\n\n➡️ यह आपके\n:डोमेन/उपडोमेन को:\nexample.com → 192.0.2.1 पर इंगित करेगा",
-                "zh": f"📝 为 {clean_domain} 添加记录\n\n输入以下详细信息：\n\n示例：\n\n名称：band 或 @\nIPv4 地址：192.0.2.1\n\n➡️ 这会将您的\n:domain/subdomain 指向：\nexample.com → 192.0.2.1",
-                "es": f"📝 Agregar un registro para {clean_domain}\n\nIngrese los siguientes detalles:\n\nEjemplo:\n\nNombre: banda o @\nDirección IPv4: 192.0.2.1\n\n➡️ Esto apuntará su\n:dominio/subdominio a:\nexample.com → 192.0.2.1"
+                "en": f"📝 Adding A Record for {clean_domain}\n\nEnter the following details:\n\nExample:\n\nband or @\n192.0.2.1\n\n➡️ This will point your\n:domain/subdomain to:\nexample.com → 192.0.2.1",
+                "fr": f"📝 Ajout d'un enregistrement pour {clean_domain}\n\nSaisissez les détails suivants :\n\nExemple :\n\nband ou @\n192.0.2.1\n\n➡️ Cela pointera votre\n:domaine/sous-domaine vers :\nexample.com → 192.0.2.1",
+                "hi": f"📝 {clean_domain} के लिए एक रिकॉर्ड जोड़ना\n\nनिम्नलिखित विवरण दर्ज करें:\n\nउदाहरण:\n\nband या @\n192.0.2.1\n\n➡️ यह आपके\n:डोमेन/उपडोमेन को इस ओर इंगित करेगा:\nexample.com → 192.0.2.1",
+                "zh": f"📝 为 {clean_domain} 添加记录\n\n输入以下详细信息：\n\n示例：\n\nband 或 @\n192.0.2.1\n\n➡️ 这会将您的\n:domain/subdomain 指向：\nexample.com → 192.0.2.1",
+                "es": f"📝 Agregar un registro para {clean_domain}\n\nIngrese los siguientes detalles:\n\nEjemplo:\n\nband o @\n192.0.2.1\n\n➡️ Esto apuntará su\n:dominio/subdominio a:\nexample.com → 192.0.2.1"
             }
             
             cancel_texts = {
@@ -7936,7 +8017,7 @@ class NomadlyCleanBot:
             
             instructions = {
                 "en": f"📝 Adding AAAA Record for\n{clean_domain}\n\nEnter the IPv6 address:\nExample:\n2001:db8::1\n\n➡️ This will point:\ntestingdefaultdns.sbs → 2001:db8::1",
-                "fr": f"📝 Ajout d'un enregistrement AAAA pour\n{clean_domain}\n\nEntrez l'adresse IPv6 :\nExemple :\n2001:db8::1\n\n➡️ Ceci pointera :\ntestingdefaultdns.sbs → 2001:db8::1",
+                "fr": f"📝 Ajout d'un enregistrement AAAA pour\n{clean_domain}\n\nEntrez l'adresse IPv6 :\nExemple :\n2001:db8::1\n\n➡️ Ceci pointera :\ntestingdefaultdns.sbs → 2001:db8::1",
                 "hi": f"📝 AAAA रिकॉर्ड जोड़ना\n{clean_domain}\n\nIPv6 पता दर्ज करें:\nउदाहरण:\n2001:db8::1\n\n➡️ यह इंगित करेगा:\ntestingdefaultdns.sbs → 2001:db8::1",
                 "zh": f"📝 为\n{clean_domain}\n\n添加 AAAA 记录输入 IPv6 地址：\n示例：\n2001:db8::1\n\n➡️ 这将指向：\ntestingdefaultdns.sbs → 2001:db8::1",
                 "es": f"📝 Agregar registro AAAA para\n{clean_domain}\n\nIngrese la dirección IPv6:\nEjemplo:\n2001:db8::1\n\n➡️ Esto apuntará:\ntestingdefaultdns.sbs → 2001:db8::1"
@@ -8003,11 +8084,11 @@ class NomadlyCleanBot:
             self.save_user_sessions()
             
             instructions = {
-                "en": f"📝 Adding MX Record for\nmycooldomain.com\n\nEnter the following details:\n\nExample\nName: @\nValue (mail server): mail.mycooldomain.com\nPriority: 10\n\n➡️ This will direct all\nincoming email for\nmycooldomain.com to:\nmail.mycooldomain.com (priority 10)",
-                "fr": f"📝 Ajout d'un enregistrement MX pour\nmycooldomain.com\n\nSaisissez les informations suivantes :\n\nExemple\nNom : @\nValeur (serveur de messagerie) : mail.mycooldomain.com\nPriorité : 10\n\n➡️ Ceci dirigera tous les e-mails entrants pour\nmycooldomain.com vers :\nmail.mycooldomain.com (priorité 10)",
-                "hi": f"📝 mycooldomain.com के लिए MX रिकॉर्ड जोड़ना निम्नलिखित विवरण दर्ज करें: उदाहरण नाम: @ मान (मेल सर्वर): mail.mycooldomain.com प्राथमिकता: 10 ➡️ यह mycooldomain.com के लिए आने वाले सभी ईमेल को mail.mycooldomain.com (प्राथमिकता 10) पर भेज देगा",
-                "zh": f"📝 为\nmycooldomain.com\n\n添加 MX 记录输入以下详细信息：\n\n示例\n名称：@\n值（邮件服务器）：mail.mycooldomain.com\n优先级：10\n\n➡️ 这会将\nmycooldomain.com 的所有传入电子邮件定向到：\nmail.mycooldomain.com（优先级 10）",
-                "es": f"📝 Agregar registro MX para\n{clean_domain}\n\nIngrese los siguientes detalles:\n\nEjemplo\nNombre: @\nValor (servidor de correo): mail.mycooldomain.com\nPrioridad: 10\n\n➡️ Esto dirigirá todos los correos electrónicos entrantes para\nmycooldomain.com a:\nmail.mycooldomain.com (prioridad 10)"
+                "en": f"📝 Adding MX Record for\nmycooldomain.com\n\nEnter the following details:\n\nExample\n@\nmail.mycooldomain.com\n10\n\n➡️ This will direct all\nincoming email for\nmycooldomain.com to:\nmail.mycooldomain.com (priority 10)",
+                "fr": f"📝 Ajout d'un enregistrement MX pour\nmycooldomain.com\n\nSaisissez les informations suivantes :\n\nExemple\n@\nmail.mycooldomain.com\n10\n\n➡️ Cela dirigera tous les e-mails entrants pour\nmycooldomain.com vers :\nmail.mycooldomain.com (priorité 10)",
+                "hi": f"📝 \nmycooldomain.com के लिए MX रिकॉर्ड जोड़ना \n\nनिम्नलिखित विवरण दर्ज करें:\n\nउदाहरण\n@\nmail.mycooldomain.com\n10\n\n➡️ यह \nmycooldomain.com के लिए आने वाले सभी ईमेल को \nmail.mycooldomain.com पर भेज देगा (प्राथमिकता 10)",
+                "zh": f"📝 为 \nmycooldomain.com\n\n 添加 MX 记录输入以下详细信息：\n\n示例\n@\nmail.mycooldomain.com\n10\n\n➡️ 这会将 \nmycooldomain.com 的所有传入电子邮件定向到：\nmail.mycooldomain.com（优先级 10",
+                "es": f"📝 Cómo agregar un registro MX para mycooldomain.com Ingrese los siguientes detalles: Ejemplo \n@ \nmail.mycooldomain.com \n10 \n\n➡️ Esto dirigirá todos los correos electrónicos entrantes de \nmycooldomain.com a \nmail.mycooldomain.com (prioridad 10)"
             }
             
             text = instructions.get(user_lang, instructions["en"])
@@ -8036,11 +8117,11 @@ class NomadlyCleanBot:
             self.save_user_sessions()
             
             instructions = {
-                "en": f"📝 Adding TXT Record for\n{clean_domain}\n\nEnter the following details:\nExample: \n\nName: @\nValue (text): 'v=spf1 include:_spf.example.com ~all'\n➡️ This will store text information\nin DNS for purposes like\nemail verification or domain ownership.",
-                "fr": f"📝 Ajout d'un enregistrement TXT pour\n{clean_domain}\n\nSaisissez les détails suivants:\nExemple: \n\nNom: @\nValeur (texte): 'v=spf1 include:_spf.example.com ~all'\n➡️ Cela stockera les informations textuelles\n DNS à des fins telles que\nevérification de l'e-mail ou propriété du domaine.",
-                "hi": f"📝 TXT रिकॉर्ड जोड़ना\n{clean_domain}\n\nनिम्न विवरण दर्ज करें:\nउदाहरण: \n\nनाम: @\nमान (पाठ): 'v=spf1 include:_spf.example.com ~all'\n➡️ यह ईमेल सत्यापन या डोमेन स्वामित्व जैसे उद्देश्यों के लिए DNS में पाठ जानकारी संग्रहीत करेगा।",
-                "zh": f"📝 为\n{clean_domain}\n\n添加 TXT 记录输入以下详细信息：\n示例：\n\n名称：@\n值（文本）：“v=spf1 include:_spf.example.com ~all”\n➡️这将在 DNS 中存储文本信息，用于电子邮件验证或域所有权等目的。",
-                "es": f"📝 Agregar registro TXT para\n{clean_domain}\n\nIngrese los siguientes detalles:\nEjemplo: \n\nNombre: @\nValor (texto): 'v=spf1 include:_spf.example.com ~all'\n➡️ Esto almacenará información de texto\nen DNS para fines como verificación de correo electrónico o propiedad del dominio."
+                "en": f"📝 Adding TXT Record for\n{clean_domain}\n\nEnter the following details:\nExample: \n@\nv=spf1 include:_spf.example.com ~all\n\n➡️ This will store text information\nin DNS for purposes like\nemail verification or domain ownership.",
+                "fr": f"📝 Ajout d'un enregistrement TXT pour\n{clean_domain}\n\nSaisissez les détails suivants :\nExemple : \n\n@\nv=spf1 include:_spf.example.com ~all\n\n➡️ Cela stockera les informations textuelles\n DNS à des fins telles que la vérification des e-mails ou la propriété du domaine.",
+                "hi": f"📝 TXT रिकॉर्ड जोड़ना\n{clean_domain}\n\nनिम्न विवरण दर्ज करें:\nउदाहरण: \n\n@\nv=spf1 include:_spf.example.com ~all\n\n➡️ यह ईमेल सत्यापन या डोमेन स्वामित्व जैसे उद्देश्यों के लिए DNS में पाठ जानकारी संग्रहीत करेगा।",
+                "zh": f"📝 为\n{clean_domain}\n\n添加 TXT 记录输入以下详细信息：\n示例：\n\n@\nv=spf1 include:_spf.example.com ~all\n\n➡️这将在 DNS 中存储文本信息，用于诸如电子邮件验证或域所有权等目的。",
+                "es": f"📝 Agregar registro TXT para\n{clean_domain}\n\nIngrese los siguientes detalles:\nEjemplo: \n\n@\nv=spf1 include:_spf.example.com ~all\n\n➡️ Esto almacenará información de texto\nen DNS para fines como verificación de correo electrónico o propiedad del dominio."
             }
             
             text = instructions.get(user_lang, instructions["en"])
@@ -8069,11 +8150,11 @@ class NomadlyCleanBot:
             self.save_user_sessions()
             
             instructions = {
-                "en": f"📝 Adding SRV Record for {clean_domain}\n\nEnter the following details:\nExample\n\nName: _service._protocol (Example: _sip._tcp)\nPriority: 10\nWeight: 10\nPort: 443\nTarget: target.{clean_domain}\n➡️ This will route requests for _service._protocol.example.com to target.example.com on port 443\n(priority 10, weight 10)",
-                "fr": f"📝 Ajout d'un enregistrement SRV pour {clean_domain}\n\nSaisissez les informations suivantes :\nExemple\n\nNom : _service._protocol (Exemple : _sip._tcp)\nPriorité : 10\nPoids : 10\nPort : 443\nCible : target.{clean_domain}\n➡️ Ceci acheminera les requêtes pour _service._protocol.example.com vers target.example.com sur le port 443\n(priorité 10, poids 10)",
-                "hi": f"📝 {clean_domain} के लिए SRV रिकॉर्ड जोड़ना\n\nनिम्नलिखित विवरण दर्ज करें:\nउदाहरण\n\nनाम: _service._protocol (उदाहरण: _sip._tcp)\nप्राथमिकता: 10\nभार: 10\nपोर्ट: 443\nलक्ष्य: target.{clean_domain}\n➡️ यह _service._protocol.example.com के अनुरोधों को पोर्ट 443 पर target.example.com पर रूट करेगा\n(प्राथमिकता 10, भार 10)",
-                "zh": f"📝 为 {clean_domain} 添加 SRV 记录\n\n输入以下详细信息：\n示例\n\n名称：_service._protocol（例如：_sip._tcp）\n优先级：10\n权重：10\n端口：443\n目标：target.{clean_domain}\n➡️ 这会将 _service._protocol.example.com 的请求路由到端口 443 上的 target.example.com\n（优先级 10，权重 10）",
-                "es": f"📝 Agregar registro SRV para {clean_domain}\n\nIngrese los siguientes detalles:\nEjemplo\n\nNombre: _service._protocol (Ejemplo: _sip._tcp)\nPrioridad: 10\nPeso: 10\nPuerto: 443\nDestino: target.{clean_domain}\n➡️ Esto enrutará las solicitudes de _service._protocol.example.com a target.example.com en el puerto 443\n(prioridad 10, peso 10)"
+                "en": f"📝 Adding SRV Record for {clean_domain}\n\nEnter the following details:\nExample\n_service._protocol (Example: _sip._tcp)\n10\n10\n443\ntarget.{clean_domain}\n\n➡️ This will route requests for _service._protocol.example.com to target.example.com on port 443\n(priority 10, weight 10)",
+                "fr": f"📝 Ajout d'un enregistrement SRV pour {clean_domain}\n\nSaisissez les détails suivants :\nExemple\n_service._protocol (Exemple : _sip._tcp)\n10\n10\n443\ntarget.{clean_domain}\n\n➡️ Ceci acheminera les requêtes pour _service._protocol.example.com vers target.example.com sur le port 443\n(priorité 10, pondération 10)",
+                "hi": f"📝 {clean_domain} के लिए SRV रिकॉर्ड जोड़ना\n\nनिम्नलिखित विवरण दर्ज करें:\nउदाहरण\n_service._protocol (उदाहरण: _sip._tcp)\n10\n10\n443\ntarget.{clean_domain}\n\n➡️ यह _service._protocol.example.com के अनुरोधों को पोर्ट 443 पर target.example.com पर रूट करेगा\n(प्राथमिकता 10, भार 10)",
+                "zh": f"📝 为 {clean_domain} 添加 SRV 记录\n\n输入以下详细信息：\n示例\n_service._protocol（例如：_sip._tcp）\n10\n10\n443\ntarget.{clean_domain}\n\n➡️ 这会将 _service._protocol.example.com 的请求路由到端口 443 上的 target.example.com\n（优先级 10，权重 10",
+                "es": f"📝 Agregar registro SRV para {clean_domain}\n\nIngrese los siguientes detalles:\nEjemplo\n_service._protocol (Ejemplo: _sip._tcp)\n10\n10\n443\ntarget.{clean_domain}\n\n➡️ Esto enrutará las solicitudes de _service._protocol.example.com a target.example.com en el puerto 443\n(prioridad 10, peso 10)"
             }
             
             text = instructions.get(user_lang, instructions["en"])
@@ -9970,10 +10051,10 @@ class NomadlyCleanBot:
                 parts = text.strip().split()
                 lines = text.strip().splitlines()
 
-                target, priority, weight, port = self.extract_srv_record_info(text)
-                if len(lines) == 4:
+                name, priority, weight, port, target = self.extract_srv_record_info(text)
+                if len(lines) == 5:
                     # Standard format: priority weight port target
-                    if len(lines) == 4:
+                    if len(lines) == 5:
                         #priority, weight, port, target = parts
                         content = f"{priority} {weight} {port} {target}"
                     else:
@@ -10039,7 +10120,6 @@ class NomadlyCleanBot:
                     if d.get('domain_name') == domain:
                         domain_record = d
                         break
-                
                 if domain_record and domain_record.get('cloudflare_zone_id'):
                     zone_id = domain_record.get('cloudflare_zone_id')
                     logger.info(f"Found zone_id {zone_id} for domain {domain}")
@@ -10071,16 +10151,25 @@ class NomadlyCleanBot:
                     #if record_name == target_name or record_name == full_name:
                     existing_type = record.get('type', '').upper()
                     new_type = record_type.upper()
+                    existing_record_name = record.get('name', '').lower()
+
+                    if(existing_record_name == domain):
+                        existing_record_name = "@"
 
                     logger.info(f"✅ DNS existing_type: {existing_type}, new_type: {new_type}")
 
                     # CNAME conflicts: CNAME can't coexist with anything on same name
-                    if existing_type == 'CNAME' and new_type == "A":
+                    if existing_type == 'CNAME' and new_type in ["A","AAAA"] and existing_record_name == name.lower():
                         await unified_dns_manager.delete_dns_record(zone_id, record.get('id', ''))
                         #conflict_record = record
                         #break
 
-                    if existing_type == 'A' and new_type == "CNAME":
+                    if existing_type == 'A' and new_type in ["CNAME","AAAA"] and existing_record_name == name.lower():
+                        await unified_dns_manager.delete_dns_record(zone_id, record.get('id', ''))
+                        #conflict_record = record
+                        #break
+
+                    if existing_type == 'AAAA' and new_type in ["CNAME","A"] and existing_record_name == name.lower():
                         await unified_dns_manager.delete_dns_record(zone_id, record.get('id', ''))
                         #conflict_record = record
                         #break
@@ -10152,7 +10241,7 @@ class NomadlyCleanBot:
                     return
                     
             except Exception as e:
-                logger.warning(f"Error checking existing records: {e}, proceeding with creation")
+                logger.warning(f"Error checking existing records: {e}, proceeding with creation", exc_info=True)
             
             # Create the DNS record using unified manager
             success, record_id, error_msg = await unified_dns_manager.create_dns_record(
@@ -11044,10 +11133,10 @@ class NomadlyCleanBot:
 
         # Line 1: Name or key:value
         line1 = lines[0].strip()
-        if ':' in line1:
-            name = line1.split(':', 1)[1].strip()
-        else:
-            name = line1
+        # if ':' in line1:
+        #     name = line1.split(':', 1)[1].strip()
+        # else:
+        name = line1
 
         # Line 2: IP (clean any label like "IPv4 Address:")
         line2 = lines[1]
@@ -11062,15 +11151,15 @@ class NomadlyCleanBot:
 
     def extract_srv_record_info(self, text):
         lines = text.strip().splitlines()
-        if len(lines) != 4:
-            raise ValueError("Input must be exactly four lines")
+        if len(lines) != 5:
+            raise ValueError("Input must be exactly five lines")
 
         values = []
         for line in lines:
-            if ':' in line:
-                _, value = line.split(':', 1)
-            else:
-                value = line
+            # if ':' in line:
+            #     _, value = line.split(':', 1)
+            # else:
+            value = line
             value = value.strip().replace(" ", "")
             values.append(value)
 
@@ -11078,8 +11167,9 @@ class NomadlyCleanBot:
         priority = int(values[1])
         weight = int(values[2])
         port = int(values[3])
+        target = values[4]
 
-        return name, priority, weight, port
+        return name, priority, weight, port, target
 
     def extract_txt_record_info(self, text):
         lines = text.strip().splitlines()
@@ -11088,10 +11178,10 @@ class NomadlyCleanBot:
 
         values = []
         for line in lines:
-            if ':' in line:
-                _, value = line.split(':', 1)
-            else:
-                value = line
+            # if ':' in line:
+            #     _, value = line.split(':', 1)
+            # else:
+            value = line
             value = value.strip().strip('"')  # remove quotes
             values.append(value)
 
@@ -11107,10 +11197,10 @@ class NomadlyCleanBot:
 
         values = []
         for line in lines:
-            if ':' in line:
-                _, value = line.split(':', 1)
-            else:
-                value = line
+            # if ':' in line:
+            #     _, value = line.split(':', 1)
+            # else:
+            value = line
             value = value.strip().replace(" ", "")
             values.append(value)
 
@@ -12426,7 +12516,13 @@ def main():
             logger.error(f"⚠️ Failed to connect payment monitor: {e}")
         
         # Start the bot
-        application.run_polling()
+        #application.run_polling()
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=8443,
+            url_path="/webhook",
+            webhook_url=os.getenv("BOT_WEBHOOK")
+        )
         
     except Exception as e:
         logger.exception(f"❌ Error starting bot: {e}")

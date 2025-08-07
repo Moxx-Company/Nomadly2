@@ -148,6 +148,34 @@ def handle_dynopay_webhook(order_id=None):
         return jsonify({"error": "Internal server error"}), 500
 
 
+@app.route("/webhook/walletpayment/<order_id>", methods=["GET", "POST"])
+def handle_walletpayment_webhook(order_id=None):
+    """Handle Dynopay payment confirmation webhooks"""
+    try:
+
+        if request.method == "GET":
+            data = request.args.to_dict()
+        else:
+            data = request.get_json() or {}
+        
+        # Payment confirmed - process in background
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(
+            process_payment_confirmation,
+            order_id,
+            {
+                "status": "confirmed"
+            }
+        )
+
+        return jsonify(
+                {"status": "pending", "message": "Waiting for confirmations"}
+            )
+
+    except Exception as e:
+        logger.error(f"Webhook processing error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
 @app.route("/webhook/blockbee/<order_id>", methods=["GET", "POST"])
 def handle_blockbee_webhook(order_id=None):
     """Handle BlockBee payment confirmation webhooks"""
@@ -469,10 +497,13 @@ def process_payment_confirmation(order_id: str, payment_data: dict):
                     
                     else:
                         # Process domain registration with timeout for other service types
+                        print('123')
+                        # TEMP_CHANGE START
                         result = await asyncio.wait_for(
                             payment_service.complete_domain_registration(order_id, payment_data),
                             timeout=timeout_seconds
                         )
+                        # TEMP_CHANGE END
                     
                     # ANCHORS AWAY MILESTONE: Check success flag validation
                     db_manager = get_db_manager()
@@ -481,6 +512,7 @@ def process_payment_confirmation(order_id: str, payment_data: dict):
                     should_send_confirmation = False
                     
                     # CRITICAL: Check both result AND payment service success flag (ANCHORS AWAY MILESTONE)
+                    #if True: # TEMP_CHANGE START
                     if result and payment_service.last_domain_registration_success:
                         logger.info(f"✅ Domain registration completed successfully for order {order_id}")
                         should_send_confirmation = True
@@ -499,6 +531,7 @@ def process_payment_confirmation(order_id: str, payment_data: dict):
                             if order:
                                 # Get latest domain registration for this user
                                 domain = db_manager.get_latest_domain_by_telegram_id(order.telegram_id)
+                                logger.info(f"✅ IN should_send_confirmation 1")
                                 if domain:
                                     domain_data = {
                                         "domain_name": domain.domain_name,
@@ -507,32 +540,20 @@ def process_payment_confirmation(order_id: str, payment_data: dict):
                                         "openprovider_domain_id": domain.openprovider_domain_id,
                                         "cloudflare_zone_id": domain.cloudflare_zone_id,
                                         "nameservers": domain.nameservers or ["anderson.ns.cloudflare.com", "leanna.ns.cloudflare.com"],
-                                        "dns_info": f"DNS configured with Cloudflare Zone ID: {domain.cloudflare_zone_id}"
+                                        "dns_info": f"DNS configured with Cloudflare Zone ID: {domain.cloudflare_zone_id}",
+                                        "amount_usd": order.total_price_usd,
+                                        "payment_method": order.payment_method
                                     }
+
+                                    #if order.payment_method != 'wallet_payment':
+                                    await confirmation_service.send_payment_confirmation(
+                                        order.telegram_id, domain_data
+                                        )
                                     
                                     await confirmation_service.send_domain_registration_confirmation(
                                         order.telegram_id, domain_data
                                     )
 
-                                    telegram_id = order.telegram_id
-                                    amount = order.total_price_usd
-                                    service_type = order.service_type
-                                    #service_details = order.service_details
-
-                                    # Use confirmation service for both Telegram and email
-                                    order_data = {
-                                        "order_id": order_id,
-                                        "amount_usd": amount,
-                                        "payment_method": "cryptocurrency",
-                                        "service_type": service_type,
-                                        "payment_data": payment_data,
-                                        "domain_name": order.domain_name ,
-                                        #"contact_email": order.get("contact_email", "N/A") if hasattr(order, 'service_details') and order.service_details else "N/A"
-                                    }
-
-                                    await confirmation_service.send_payment_confirmation(
-                                        order.telegram_id, order_data
-                                    )
 
                                     logger.info(f"✅ Domain registration confirmation sent for order {order_id}")
                                 else:

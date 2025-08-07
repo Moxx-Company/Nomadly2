@@ -9,23 +9,20 @@ import httpx
 import json
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-from fresh_database import get_db_manager
-# Translation helper functions
-def t_user(key, telegram_id, **kwargs):
-    """Simple translation helper"""
-    return key.format(**kwargs) if kwargs else key
-
-def get_user_language(telegram_id):
-    """Get user language preference"""
-    return 'en'  # Default to English
+from database import get_db_manager
+#from utils.translation_helper import t_user, get_user_language
 
 logger = logging.getLogger(__name__)
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 class MasterNotificationService:
     """Centralized notification service handling ALL notifications"""
     
     def __init__(self):
-        self.bot_token = "8058274028:AAFSNDsJ5upG_gLEkWOl9M5apgTypkNDecQ"
+        self.bot_token = os.environ.get("BOT_TOKEN")#"8058274028:AAFSNDsJ5upG_gLEkWOl9M5apgTypkNDecQ" AP_comment
         self.db = get_db_manager()
         
         # Email configuration
@@ -40,18 +37,40 @@ class MasterNotificationService:
             # Format payment confirmation message
             domain_name = payment_data.get('domain_name', 'N/A')
             amount = payment_data.get('amount_usd', payment_data.get('total_price_usd', 0))
+
+            import random
+            import string
+            from datetime import datetime
+
+            order_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            order_number = f"TXN-{order_suffix}"
             
+            now = datetime.now()
+            formatted_date = now.strftime("%B %d, %Y – %I:%M %p").replace(" 0", " ").lstrip("0")
+            
+            # telegram_message = (
+            #     f"💰 **Payment Confirmed!**\n\n"
+            #     f"✅ **Domain:** `{domain_name}`\n"
+            #     f"💰 **Amount:** ${amount} USD\n"
+            #     f"🎉 **Status:** Active & Ready!\n\n"
+            #     f"Your domain was already registered and is working perfectly.\n"
+            #     #f"Use /mydomains to manage your domain."
+            # )
+
             telegram_message = (
-                f"💰 **Payment Confirmed!**\n\n"
-                f"✅ **Domain:** `{domain_name}`\n"
-                f"💰 **Amount:** ${amount} USD\n"
-                f"🎉 **Status:** Active & Ready!\n\n"
-                f"Your domain was already registered and is working perfectly.\n"
-                f"Use /mydomains to manage your domain."
+                f"🎉 Success! We’ve received your payment for domain registration.\n"
+                f"📛 **Domain Name:** {domain_name}\n"
+                f"💰 **Amount Paid:** ${amount:.2f} USD\n"
+                f"🧾 **Transaction ID:** #{order_number}\n"
+                f"📅 **Date:** {formatted_date}\n\n"
+                f"🛠️ We’re now securing your domain and setting things up. This usually takes just a moment.\n\n"
+                f"⚠️ You’ll receive another update once your domain is fully registered and active."
             )
             
             # Send Telegram notification
-            telegram_success = await self._send_telegram_message(telegram_id, telegram_message)
+            payment_method = payment_data.get('payment_method')
+            if payment_method != 'wallet_payment':
+                telegram_success = await self._send_telegram_message(telegram_id, telegram_message)
             
             # Send email if user has real email
             email_success = await self._send_payment_email(telegram_id, payment_data)
@@ -70,8 +89,18 @@ class MasterNotificationService:
             
             domain_name = domain_data.get('domain_name', 'N/A')
             
+            from datetime import datetime
+            registration_date = datetime.now()
+            formatted_registration = registration_date.strftime("Registration Date: %B %d, %Y").replace(" 0", " ")
+            valid_until_date = registration_date.replace(year=registration_date.year + 1)
+            formatted_valid_until = valid_until_date.strftime("Valid Until: %B %d, %Y").replace(" 0", " ")
+
             telegram_message = (
-                f"What would you like to do next?"
+                f"🎉 Your new domain is live and officially yours — congratulations! \n\n"
+                f"🏷️ Domain Name: {domain_name}"
+                f"📅 Registration Date: {formatted_registration}"
+                f"🗓️ Valid Until: {formatted_valid_until}"
+                f"🔐 Status: Active & Secured"
             )
             
             # Create inline keyboard with user-requested buttons
@@ -79,7 +108,7 @@ class MasterNotificationService:
                 "inline_keyboard": [
                     [
                         {"text": "🌐 My Domains", "callback_data": "my_domains"},
-                        {"text": "🔍 Register Domain", "callback_data": "search_domain"}
+                        {"text": "🏠 Main menu", "callback_data": "search_domain"}
                     ]
                 ]
             }
@@ -98,14 +127,23 @@ class MasterNotificationService:
             return False
     
     async def send_progress_notification(self, telegram_id: int, domain: str, stage: str, details: Optional[Dict] = None) -> bool:
-        """SECURE progress notification - only for REAL blockchain confirmations"""
+        """Send domain registration progress notification - streamlined version"""
         try:
-            logger.warning(f"🚨 BLOCKED false progress notification: {stage} for {domain} (user {telegram_id})")
-            logger.warning("🚨 Progress notifications disabled due to security vulnerability")
+            logger.info(f"⏳ Sending progress notification: {stage} for {domain}")
             
-            # SECURITY FIX: Completely disable progress notifications until payment system is secure
-            # This prevents false "payment confirmed" messages without real blockchain verification
-            return True  # Return success but don't send anything
+            # Option A: Just 2 messages - payment confirmed and complete
+            stage_messages = {
+                "payment_confirmed": f"💰 Payment confirmed! Registering `{domain}`...",
+                "registration_complete": f"🎉 `{domain}` is now live and ready!"
+            }
+            
+            # Skip dns_configuring, contacting_registrar, and domain_registering stages
+            if stage not in stage_messages:
+                return True  # Skip these stages silently
+            
+            message = stage_messages[stage]
+            
+            return await self._send_telegram_message(telegram_id, message)
             
         except Exception as e:
             logger.error(f"❌ Progress notification failed: {e}")
@@ -119,8 +157,8 @@ class MasterNotificationService:
             message = (
                 f"🎁 **Overpayment Credited to Wallet!**\n\n"
                 f"💰 **Excess Amount:** ${overpayment_amount:.2f} USD\n"
-                f"💳 **New Wallet Balance:** ${new_balance:.2f} USD\n"
-                f"🔗 **Order ID:** `{order_id}`\n\n"
+                #f"💳 **New Wallet Balance:** ${new_balance:.2f} USD\n"
+                #f"🔗 **Order ID:** `{order_id}`\n\n"
                 f"✨ **No payment is ever lost - all excess funds are credited!**\n\n"
                 f"Use your wallet balance for future domain purchases."
             )
@@ -143,6 +181,24 @@ class MasterNotificationService:
                 f"⚠️ **Shortage:** ${shortage:.2f} USD\n\n"
                 f"✅ **Your ${amount_received:.2f} USD has been credited to your wallet!**\n\n"
                 f"💡 *Add ${shortage:.2f} more to complete your purchase.*\n\n"
+                f"🏴‍☠️ *No payment is ever lost - all funds are credited!*"
+            )
+            
+            return await self._send_telegram_message(telegram_id, message)
+            
+        except Exception as e:
+            logger.error(f"❌ Underpayment notification failed: {e}")
+            return False
+
+    async def send_wallet_topup_notification(self, telegram_id: int, amount_received: float) -> bool:
+        """Send underpayment wallet credit notification"""
+        try:
+            logger.info(f"⚠️ Sending underpayment notification to user {telegram_id}")
+            
+            message = (
+                f"💳 **Payment Credited to Wallet**\n\n"
+                f"💰 **You Sent:** ${amount_received:.2f} USD\n"
+                f"✅ **Your ${amount_received:.2f} USD has been credited to your wallet!**\n\n"
                 f"🏴‍☠️ *No payment is ever lost - all funds are credited!*"
             )
             

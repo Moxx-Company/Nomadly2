@@ -67,6 +67,7 @@ class ConfirmationService:
         Returns:
             Success status
         """
+        logger.info(f"✅ IN send_payment_confirmation 1")
         try:
             user_language = get_user_language(telegram_id)
 
@@ -84,14 +85,15 @@ class ConfirmationService:
             # Use Master Notification Service
             from services.master_notification_service import get_master_notification_service
             
-            #notification_service = get_master_notification_service()
-            #telegram_success = await notification_service.send_payment_confirmation(telegram_id, order_data)
+            notification_service = get_master_notification_service()
+            telegram_success = await notification_service.send_payment_confirmation(telegram_id, order_data)
 
             # Send email confirmation if configured
-            #if self.is_configured():
-            email_success = await self._send_email_confirmation(
-                telegram_id, subject, email_content, order_data
-            )
+            if self.is_configured():
+                email_success = await self._send_email_confirmation(
+                    telegram_id, subject, email_content, order_data
+                )
+            logger.info(f"✅ IN send_payment_confirmation order_data: {order_data}, {email_success} 1")
             success = success and email_success
 
             # Log confirmation in database
@@ -116,6 +118,8 @@ class ConfirmationService:
         Returns:
             Success status
         """
+
+        logger.info(f"✅ IN send_domain_registration_confirmation 1")
         try:
             user_language = get_user_language(telegram_id)
 
@@ -141,6 +145,7 @@ class ConfirmationService:
                 email_success = await self._send_email_confirmation(
                     telegram_id, subject, email_content, domain_data
                 )
+                logger.info(f"✅ IN send_domain_registration_confirmation domain_data: {domain_data}, {email_success} : 1")
                 success = success and email_success
 
             # Log confirmation in database
@@ -351,6 +356,8 @@ Use /my_domains to manage your domain."""
                 if user and hasattr(user, 'technical_email'):
                     recipient_email = user.technical_email
             
+            logger.info(f"recipient_email: {recipient_email}, subject.lower(): {subject.lower()}")
+
             # Skip if no valid email or using default privacy email
             if not recipient_email or recipient_email == 'cloakhost@tutamail.com':
                 logger.info(f"No custom email found for user {telegram_id}, skipping email notification")

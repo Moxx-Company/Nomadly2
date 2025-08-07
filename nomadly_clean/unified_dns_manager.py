@@ -238,7 +238,7 @@ class UnifiedDNSManager:
         from database import get_db_manager
         db = get_db_manager()
         domain = db.get_domain_by_name(zone_id)
-        print(domain.cloudflare_zone_id)
+        #print(domain.cloudflare_zone_id)
         if domain:
             _zoneid = domain.cloudflare_zone_id
         else:
@@ -323,6 +323,9 @@ class UnifiedDNSManager:
                     "target": target,
                     "port": port
                 }
+
+            if record_type.upper() in ["TXT","MX","SRV"]:
+                record_data["proxied"] = False
 
             # Add priority for MX and SRV records
             if priority is not None and record_type.upper() in ["MX", "SRV"]:
