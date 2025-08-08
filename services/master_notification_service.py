@@ -271,7 +271,7 @@ class MasterNotificationService:
                 return True
             
             # Send email via Brevo API
-            subject = "Payment Confirmation - Nomadly Domain Service"
+            subject = f"Payment Confirmation - {os.getenv('PROJECT_NAME')} Domain Service"
             html_content = self._build_payment_email_html(payment_data)
             
             return await self._send_brevo_email(user_email, subject, html_content)
@@ -316,7 +316,7 @@ class MasterNotificationService:
                     },
                     json={
                         "sender": {
-                            "name": "Nomadly Domain Service",
+                            "name": f"{os.getenv('PROJECT_NAME')} Domain Service",
                             "email": self.from_email
                         },
                         "to": [{"email": to_email}],
@@ -384,7 +384,7 @@ class MasterNotificationService:
         return f"""
         <html>
         <body>
-            <h2>🏴‍☠️ Payment Confirmation - Nomadly Domain Service</h2>
+            <h2>🏴‍☠️ Payment Confirmation - {os.getenv('PROJECT_NAME')} Domain Service</h2>
             <p>Your cryptocurrency payment has been successfully confirmed!</p>
             
             <h3>Payment Details:</h3>
@@ -396,9 +396,9 @@ class MasterNotificationService:
             </ul>
             
             <p>Your domain is now active and ready to use!</p>
-            <p>Use the Nomadly Telegram bot to manage your domain settings.</p>
+            <p>Use the {os.getenv('PROJECT_NAME')} Telegram bot to manage your domain settings.</p>
             
-            <p><em>Nomadly Domain Services - Resilience • Discretion • Independence</em></p>
+            <p><em>{os.getenv('PROJECT_NAME')} Domain Services - Resilience • Discretion • Independence</em></p>
         </body>
         </html>
         """
@@ -410,7 +410,7 @@ class MasterNotificationService:
         return f"""
         <html>
         <body>
-            <h2>🎉 Domain Registration Complete - Nomadly Domain Service</h2>
+            <h2>🎉 Domain Registration Complete - {os.getenv('PROJECT_NAME')} Domain Service</h2>
             <p>Your offshore domain registration has been successfully completed!</p>
             
             <h3>Domain Details:</h3>
@@ -422,12 +422,12 @@ class MasterNotificationService:
             </ul>
             
             <p>Your domain is now live and ready to use!</p>
-            <p>You can manage DNS records and domain settings through the Nomadly Telegram bot.</p>
+            <p>You can manage DNS records and domain settings through the {os.getenv('PROJECT_NAME')} Telegram bot.</p>
             
             <p><strong>Privacy Protection:</strong> Your domain uses anonymous contact information for enhanced privacy.</p>
             
             <p><em>Welcome to the offshore community!</em></p>
-            <p><em>Nomadly Domain Services - Resilience • Discretion • Independence</em></p>
+            <p><em>{os.getenv('PROJECT_NAME')} Domain Services - Resilience • Discretion • Independence</em></p>
         </body>
         </html>
         """

@@ -170,7 +170,7 @@ class NomadlyCleanBot:
         self.new_dns_ui = NewDNSUI(self)
         logger.info("✅ New DNS UI initialized")
         
-        logger.info("🏴‍☠️ Nomadly Clean Bot initialized")
+        logger.info(f"🏴‍☠️ {os.getenv('PROJECT_NAME')} Clean Bot initialized")
         
         # Connect to payment monitor and add any existing payment addresses
         try:
@@ -1574,7 +1574,7 @@ class NomadlyCleanBot:
             # Define multilingual text directly
             menu_texts = {
                 "en": {
-                    "main_title": "🏴‍☠️ Nomadly",
+                    "main_title": f"🏴‍☠️ {os.getenv('PROJECT_NAME')}",
                     "search_domain": "Register Domain",
                     "my_domains": "My Domains",
                     "wallet": "Wallet",
@@ -1582,7 +1582,7 @@ class NomadlyCleanBot:
                     "language": "Language"
                 },
                 "fr": {
-                    "main_title": "🏴‍☠️ Nomadly",
+                    "main_title": f"🏴‍☠️ {os.getenv('PROJECT_NAME')}",
                     "search_domain": "Enregistrer Domaine",
                     "my_domains": "Mes Domaines",
                     "wallet": "Portefeuille",
@@ -1590,7 +1590,7 @@ class NomadlyCleanBot:
                     "language": "Langue"
                 },
                 "hi": {
-                    "main_title": "🏴‍☠️ नॉमाडली",
+                    "main_title": f"🏴‍☠️ {os.getenv('PROJECT_NAME')}",
                     "search_domain": "डोमेन पंजीकृत करें",
                     "my_domains": "मेरे डोमेन",
                     "wallet": "वॉलेट",
@@ -1598,7 +1598,7 @@ class NomadlyCleanBot:
                     "language": "भाषा"
                 },
                 "zh": {
-                    "main_title": "🏴‍☠️ Nomadly",
+                    "main_title": f"🏴‍☠️ {os.getenv('PROJECT_NAME')}",
                     "search_domain": "注册域名",
                     "my_domains": "我的域名",
                     "wallet": "钱包",
@@ -1606,7 +1606,7 @@ class NomadlyCleanBot:
                     "language": "语言"
                 },
                 "es": {
-                    "main_title": "🏴‍☠️ Nomadly",
+                    "main_title": f"🏴‍☠️ {os.getenv('PROJECT_NAME')}",
                     "search_domain": "Registrar Dominio",
                     "my_domains": "Mis Dominios",
                     "wallet": "Billetera",
@@ -1657,11 +1657,11 @@ class NomadlyCleanBot:
 
             # Multilingual main menu text
             menu_texts = {
-                "en": "🏴‍☠️ **Nomadly Hub**\n**No noise. No leaks. Just total control.**\n\n🌊 **What do you want to handle today?**",
-                "fr": "🏴‍☠️ **Nomadly Hub**\n**Pas de bruit. Pas de fuites. Juste un contrôle total.**\n\n🌊 **Que voulez-vous gérer aujourd'hui?**",
-                "hi": "🏴‍☠️ **नोमैडली हब**\n**कोई शोर नहीं। कोई लीक नहीं। बस पूर्ण नियंत्रण।**\n\n🌊 **आज आप क्या संभालना चाहते हैं?**",
-                "zh": "🏴‍☠️ **Nomadly 中心**\n**无噪音。无泄露。只有完全控制。**\n\n🌊 **今天您想处理什么？**",
-                "es": "🏴‍☠️ **Centro Nomadly**\n**Sin ruido. Sin filtraciones. Solo control total.**\n\n🌊 **¿Qué quieres manejar hoy?**"
+                "en": f"🏴‍☠️ **{os.getenv('PROJECT_NAME')} Hub**\n**No noise. No leaks. Just total control.**\n\n🌊 **What do you want to handle today?**",
+                "fr": f"🏴‍☠️ **{os.getenv('PROJECT_NAME')} Hub**\n**Pas de bruit. Pas de fuites. Juste un contrôle total.**\n\n🌊 **Que voulez-vous gérer aujourd'hui?**",
+                "hi": f"🏴‍☠️ **{os.getenv('PROJECT_NAME')} हब**\n**कोई शोर नहीं। कोई लीक नहीं। बस पूर्ण नियंत्रण।**\n\n🌊 **आज आप क्या संभालना चाहते हैं?**",
+                "zh": f"🏴‍☠️ **{os.getenv('PROJECT_NAME')} 中心**\n**无噪音。无泄露。只有完全控制。**\n\n🌊 **今天您想处理什么？**",
+                "es": f"🏴‍☠️ **Centro {os.getenv('PROJECT_NAME')}**\n**Sin ruido. Sin filtraciones. Solo control total.**\n\n🌊 **¿Qué quieres manejar hoy?**"
             }
 
             # Multilingual button texts
@@ -1874,15 +1874,15 @@ class NomadlyCleanBot:
         lang = self.user_sessions.get(user_id, {}).get("language", "en")
 
         texts = {
-            "en": ("🏴‍☠️ <b>Nomadly</b>\n"
+            "en": (f"🏴‍☠️ <b>{os.getenv('PROJECT_NAME')}</b>\n"
                    "<i>Welcome back to Private Domain Registration</i>"),
-            "fr": ("🏴‍☠️ <b>Nomadly</b>\n"
+            "fr": (f"🏴‍☠️ <b>{os.getenv('PROJECT_NAME')}</b>\n"
                    "<i>Bon retour à l'Enregistrement de Domaine Privé</i>"),
-            "hi": ("🏴‍☠️ <b>Nomadly</b>\n"
+            "hi": (f"🏴‍☠️ <b>{os.getenv('PROJECT_NAME')}</b>\n"
                    "<i>निजी डोमेन पंजीकरण में वापस स्वागत है</i>"),
-            "zh": ("🏴‍☠️ <b>Nomadly</b>\n"
+            "zh": (f"🏴‍☠️ <b>{os.getenv('PROJECT_NAME')}</b>\n"
                    "<i>欢迎回到私人域名注册</i>"),
-            "es": ("🏴‍☠️ <b>Nomadly</b>\n"
+            "es": (f"🏴‍☠️ <b>{os.getenv('PROJECT_NAME')}</b>\n"
                    "<i>Bienvenido de nuevo al Registro de Dominio Privado</i>")
         }
 
@@ -1898,7 +1898,7 @@ class NomadlyCleanBot:
         try:
             # Mobile-optimized multilingual welcome
             welcome_text = (
-                "<b>🏴‍☠️ Nomadly</b>\n\n"
+                f"<b>🏴‍☠️ {os.getenv('PROJECT_NAME')}</b>\n\n"
                 "<i>Welcome • Bienvenue • स्वागत • 欢迎 • Bienvenido</i>\n\n"
                 "<b>Choose your language:</b>"
             )
@@ -1937,7 +1937,7 @@ class NomadlyCleanBot:
         try:
             # Same welcome as initial screen
             welcome_text = (
-                "<b>🏴‍☠️ Nomadly</b>\n\n"
+                f"<b>🏴‍☠️ {os.getenv('PROJECT_NAME')}</b>\n\n"
                 "<i>Welcome • Bienvenue • स्वागत • 欢迎 • Bienvenido</i>\n\n"
                 "<b>Choose your language:</b>"
             )
@@ -2121,11 +2121,11 @@ class NomadlyCleanBot:
                 text = loyalty_texts.get(user_lang, loyalty_texts["en"])
             elif option == "support":
                 support_texts = {
-                    "en": "📞 **Support**\n\n🔗 Telegram: @nomadly_support\n📧 Email: support@nomadly.com\n\n24/7 support for all services.",
-                    "fr": "📞 **Support**\n\n🔗 Telegram: @nomadly_support\n📧 Email: support@nomadly.com\n\nSupport 24/7 pour tous les services.",
-                    "hi": "📞 **सहायता**\n\n🔗 Telegram: @nomadly_support\n📧 Email: support@nomadly.com\n\nसभी सेवाओं के लिए 24/7 सहायता।",
-                    "zh": "📞 **支持**\n\n🔗 Telegram: @nomadly_support\n📧 Email: support@nomadly.com\n\n所有服务的24/7支持。",
-                    "es": "📞 **Soporte**\n\n🔗 Telegram: @nomadly_support\n📧 Email: support@nomadly.com\n\nSoporte 24/7 para todos los servicios."
+                    "en": f"📞 **Support**\n\n🔗 Telegram: @{os.getenv('TELEGRAM_SUPPORT')}\n📧 Email: {os.getenv('SUPPORT_EMAIL')}\n\n24/7 support for all services.",
+                    "fr": f"📞 **Support**\n\n🔗 Telegram: @{os.getenv('TELEGRAM_SUPPORT')}\n📧 Email: {os.getenv('SUPPORT_EMAIL')}\n\nSupport 24/7 pour tous les services.",
+                    "hi": f"📞 **सहायता**\n\n🔗 Telegram: @{os.getenv('TELEGRAM_SUPPORT')}\n📧 Email: {os.getenv('SUPPORT_EMAIL')}\n\nसभी सेवाओं के लिए 24/7 सहायता।",
+                    "zh": f"📞 **支持**\n\n🔗 Telegram: @{os.getenv('TELEGRAM_SUPPORT')}\n📧 Email: {os.getenv('SUPPORT_EMAIL')}\n\n所有服务的24/7支持。",
+                    "es": f"📞 **Soporte**\n\n🔗 Telegram: @{os.getenv('TELEGRAM_SUPPORT')}\n📧 Email: {os.getenv('SUPPORT_EMAIL')}\n\nSoporte 24/7 para todos los servicios."
                 }
                 text = support_texts.get(user_lang, support_texts["en"])
             elif option == "change_language":
@@ -2703,10 +2703,10 @@ class NomadlyCleanBot:
                 [InlineKeyboardButton(current_texts["back"], callback_data="support_menu")]
             ])
 
-            await ui_cleanup.safe_edit_message(query, message, keyboard, parse_mode='HTML')
+            await ui_cleanup.safe_edit_message(query, message, keyboard) # to fix FAQ & guides issue
 
         except Exception as e:
-            logger.error(f"Error in show_faq_guides: {e}")
+            logger.error(f"Error in show_faq_guides: {e}", exc_info=True)
             await ui_cleanup.safe_edit_message(query, "🚧 Service temporarily unavailable. Please try again.")
 
     async def show_loyalty_dashboard(self, query):
@@ -2932,35 +2932,35 @@ class NomadlyCleanBot:
             support_texts = {
                 "en": {
                     "title": "<b>🆘 Support & Help</b>",
-                    "contact": "Telegram: @nomadly_support",
+                    "contact": f"Telegram: @{os.getenv('TELEGRAM_SUPPORT')}",
                     "faq": "FAQ & Guides",
                     "loyalty": "Loyalty Program",
                     "back": "Back"
                 },
                 "fr": {
                     "title": "<b>🆘 Support & Aide</b>",
-                    "contact": "Telegram: @nomadly_support",
+                    "contact": f"Telegram: @{os.getenv('TELEGRAM_SUPPORT')}",
                     "faq": "FAQ & Guides",
                     "loyalty": "Programme de Fidélité",
                     "back": "Retour"
                 },
                 "hi": {
                     "title": "<b>🆘 सहायता और मदद</b>",
-                    "contact": "Telegram: @nomadly_support",
+                    "contact": f"Telegram: @{os.getenv('TELEGRAM_SUPPORT')}",
                     "faq": "FAQ और गाइड",
                     "loyalty": "वफादारी कार्यक्रम",
                     "back": "वापस"
                 },
                 "zh": {
                     "title": "<b>🆘 支持与帮助</b>",
-                    "contact": "Telegram: @nomadly_support",
+                    "contact": f"Telegram: @{os.getenv('TELEGRAM_SUPPORT')}",
                     "faq": "FAQ 和指南",
                     "loyalty": "忠诚度计划",
                     "back": "返回"
                 },
                 "es": {
                     "title": "<b>🆘 Soporte y Ayuda</b>",
-                    "contact": "Telegram: @nomadly_support",
+                    "contact": f"Telegram: @{os.getenv('TELEGRAM_SUPPORT')}",
                     "faq": "FAQ y Guías",
                     "loyalty": "Programa de Lealtad",
                     "back": "Atrás"
@@ -4622,7 +4622,7 @@ class NomadlyCleanBot:
         """Show detailed security information to build trust"""
         try:
             security_text = (
-                "🛡️ **Nomadly Security & Privacy Guarantee**\n\n"
+                f"🛡️ **{os.getenv('PROJECT_NAME')} Security & Privacy Guarantee**\n\n"
                 "**🔒 Technical Security Measures:**\n"
                 "• **End-to-End Encryption** - All communications encrypted with AES-256\n"
                 "• **No-Log Policy** - We don't store your personal information or browsing data\n"
@@ -5435,11 +5435,11 @@ class NomadlyCleanBot:
 
             # Multilingual loading messages
             loading_texts = {
-                "en": "🔍 **Checking domain availability...**\n\n⏳ Querying Nomadly registry...",
-                "fr": "🔍 **Vérification de la disponibilité du domaine...**\n\n⏳ Interrogation du registre Nomadly...",
-                "hi": "🔍 **डोमेन उपलब्धता की जांच...**\n\n⏳ नोमैडली रजिस्ट्री से पूछताछ...",
-                "zh": "🔍 **检查域名可用性...**\n\n⏳ 查询 Nomadly 注册表...",
-                "es": "🔍 **Verificando disponibilidad del dominio...**\n\n⏳ Consultando registro Nomadly..."
+                "en": f"🔍 **Checking domain availability...**\n\n⏳ Querying {os.getenv('PROJECT_NAME')} registry...",
+                "fr": f"🔍 **Vérification de la disponibilité du domaine...**\n\n⏳ Interrogation du registre {os.getenv('PROJECT_NAME')}...",
+                "hi": f"🔍 **डोमेन उपलब्धता की जांच...**\n\n⏳ {os.getenv('PROJECT_NAME')} रजिस्ट्री से पूछताछ...",
+                "zh": f"🔍 **检查域名可用性...**\n\n⏳ 查询 {os.getenv('PROJECT_NAME')} 注册表...",
+                "es": f"🔍 **Verificando disponibilidad del dominio...**\n\n⏳ Consultando registro {os.getenv('PROJECT_NAME')}..."
             }
 
             # Use Nomadly for real availability and pricing
@@ -5459,7 +5459,7 @@ class NomadlyCleanBot:
 
                     print(f"=========== {api_result} =========")
                     if api_result.get("error"):
-                        await checking_msg.edit_text(f"⚠️ **Error checking domain**\n\n{api_result['error']}\n\n🔄 Using Nomadly pricing estimates...", parse_mode='Markdown')
+                        await checking_msg.edit_text(f"⚠️ **Error checking domain**\n\n{api_result['error']}\n\n🔄 Using {os.getenv('PROJECT_NAME')} pricing estimates...", parse_mode='Markdown')
                         # Fallback on API error
                         extension = full_domain.split('.')[1]
                         api_result = {
@@ -5470,8 +5470,8 @@ class NomadlyCleanBot:
                             "fallback": True
                         }
                 except Exception as e:
-                    logger.error(f"Nomadly exception: {e}")
-                    await checking_msg.edit_text("⚠️ **API Connection Issue**\n\n🔄 Using Nomadly pricing estimates...", parse_mode='Markdown')
+                    logger.error(f"{os.getenv('PROJECT_NAME')} exception: {e}")
+                    await checking_msg.edit_text(f"⚠️ **API Connection Issue**\n\n🔄 Using {os.getenv('PROJECT_NAME')} pricing estimates...", parse_mode='Markdown')
                     # Fallback on exception
                     extension = full_domain.split('.')[1]
                     api_result = {
@@ -5690,11 +5690,11 @@ class NomadlyCleanBot:
 
             # Multilingual loading messages for multiple extensions
             multiple_loading_texts = {
-                "en": "🔍 **Checking domain availability...**\n\n⏳ Querying Nomadly registry for multiple extensions...",
-                "fr": "🔍 **Vérification de la disponibilité du domaine...**\n\n⏳ Interrogation du registre Nomadly pour plusieurs extensions...",
-                "hi": "🔍 **डोमेन उपलब्धता की जांच...**\n\n⏳ कई एक्सटेंशन के लिए नोमैडली रजिस्ट्री से पूछताछ...",
-                "zh": "🔍 **检查域名可用性...**\n\n⏳ 查询 Nomadly 注册表以获取多个扩展...",
-                "es": "🔍 **Verificando disponibilidad del dominio...**\n\n⏳ Consultando registro Nomadly para múltiples extensiones..."
+                "en": f"🔍 **Checking domain availability...**\n\n⏳ Querying {os.getenv('PROJECT_NAME')} registry for multiple extensions...",
+                "fr": f"🔍 **Vérification de la disponibilité du domaine...**\n\n⏳ Interrogation du registre {os.getenv('PROJECT_NAME')} pour plusieurs extensions...",
+                "hi": f"🔍 **डोमेन उपलब्धता की जांच...**\n\n⏳ कई एक्सटेंशन के लिए {os.getenv('PROJECT_NAME')} रजिस्ट्री से पूछताछ...",
+                "zh": f"🔍 **检查域名可用性...**\n\n⏳ 查询 {os.getenv('PROJECT_NAME')} 注册表以获取多个扩展...",
+                "es": f"🔍 **Verificando disponibilidad del dominio...**\n\n⏳ Consultando registro {os.getenv('PROJECT_NAME')} para múltiples extensiones..."
             }
 
             # Show checking message
@@ -5994,7 +5994,7 @@ class NomadlyCleanBot:
                 else:
                     ns_display = "🌐 Not configured"
             else:
-                ns_display = "🌐 Nomadly/Cloudflare"
+                ns_display = f"🌐 {os.getenv('PROJECT_NAME')}/Cloudflare"
 
             # Build trustee information if applicable
             trustee_info = current_session.get('trustee_info', {})
@@ -6300,7 +6300,7 @@ class NomadlyCleanBot:
                     f"**Domain:** `{session.get('domain', domain.replace('_', '.'))}`\n\n"
                     f"**Current Choice:** {session.get('nameserver_choice', 'nomadly').title()}\n\n"
                     f"**Choose your nameserver setup:**\n\n"
-                    f"⚡ **Nomadly/Cloudflare (Recommended)**\n"
+                    f"⚡ **{os.getenv('PROJECT_NAME')}/Cloudflare (Recommended)**\n"
                     f"   • Lightning-fast DNS resolution\n"
                     f"   • Built-in DDoS protection\n"
                     f"   • Global CDN acceleration\n"
@@ -6316,7 +6316,7 @@ class NomadlyCleanBot:
                     f"**Domaine:** `{session.get('domain', domain.replace('_', '.'))}`\n\n"
                     f"**Choix Actuel:** {session.get('nameserver_choice', 'nomadly').title()}\n\n"
                     f"**Choisissez votre configuration de serveurs de noms:**\n\n"
-                    f"⚡ **Nomadly/Cloudflare (Recommandé)**\n"
+                    f"⚡ **{os.getenv('PROJECT_NAME')}/Cloudflare (Recommandé)**\n"
                     f"   • Résolution DNS ultra-rapide\n"
                     f"   • Protection DDoS intégrée\n"
                     f"   • Accélération CDN mondiale\n"
@@ -6332,7 +6332,7 @@ class NomadlyCleanBot:
                     f"**डोमेन:** `{session.get('domain', domain.replace('_', '.'))}`\n\n"
                     f"**वर्तमान विकल्प:** {session.get('nameserver_choice', 'nomadly').title()}\n\n"
                     f"**अपना नेमसर्वर सेटअप चुनें:**\n\n"
-                    f"⚡ **Nomadly/Cloudflare (अनुशंसित)**\n"
+                    f"⚡ **{os.getenv('PROJECT_NAME')}/Cloudflare (अनुशंसित)**\n"
                     f"   • बिजली-तेज़ DNS समाधान\n"
                     f"   • अंतर्निहित DDoS सुरक्षा\n"
                     f"   • वैश्विक CDN त्वरण\n"
@@ -6348,7 +6348,7 @@ class NomadlyCleanBot:
                     f"**域名:** `{session.get('domain', domain.replace('_', '.'))}`\n\n"
                     f"**当前选择:** {session.get('nameserver_choice', 'nomadly').title()}\n\n"
                     f"**选择您的域名服务器设置:**\n\n"
-                    f"⚡ **Nomadly/Cloudflare (推荐)**\n"
+                    f"⚡ **{os.getenv('PROJECT_NAME')}/Cloudflare (推荐)**\n"
                     f"   • 闪电般快速的DNS解析\n"
                     f"   • 内置DDoS保护\n"
                     f"   • 全球CDN加速\n"
@@ -6364,7 +6364,7 @@ class NomadlyCleanBot:
                     f"**Dominio:** `{session.get('domain', domain.replace('_', '.'))}`\n\n"
                     f"**Elección Actual:** {session.get('nameserver_choice', 'nomadly').title()}\n\n"
                     f"**Elija su configuración de servidores de nombres:**\n\n"
-                    f"⚡ **Nomadly/Cloudflare (Recomendado)**\n"
+                    f"⚡ **{os.getenv('PROJECT_NAME')}/Cloudflare (Recomendado)**\n"
                     f"   • Resolución DNS ultrarrápida\n"
                     f"   • Protección DDoS integrada\n"
                     f"   • Aceleración CDN global\n"
@@ -6380,27 +6380,27 @@ class NomadlyCleanBot:
             # Multilingual buttons for nameserver selection
             button_texts = {
                 "en": {
-                    "nomadly": "⚡ Nomadly/Cloudflare",
+                    "nomadly": f"⚡ {os.getenv('PROJECT_NAME')}/Cloudflare",
                     "custom": "🔧 Custom Nameservers",
                     "back": "← Back to Registration"
                 },
                 "fr": {
-                    "nomadly": "⚡ Nomadly/Cloudflare",
+                    "nomadly": f"⚡ {os.getenv('PROJECT_NAME')}/Cloudflare",
                     "custom": "🔧 Serveurs de Noms Personnalisés",
                     "back": "← Retour à l'Enregistrement"
                 },
                 "hi": {
-                    "nomadly": "⚡ Nomadly/Cloudflare",
+                    "nomadly": f"⚡ {os.getenv('PROJECT_NAME')}/Cloudflare",
                     "custom": "🔧 कस्टम नेमसर्वर",
                     "back": "← पंजीकरण पर वापस"
                 },
                 "zh": {
-                    "nomadly": "⚡ Nomadly/Cloudflare",
+                    "nomadly": f"⚡ {os.getenv('PROJECT_NAME')}/Cloudflare",
                     "custom": "🔧 自定义域名服务器",
                     "back": "← 返回注册"
                 },
                 "es": {
-                    "nomadly": "⚡ Nomadly/Cloudflare",
+                    "nomadly": f"⚡ {os.getenv('PROJECT_NAME')}/Cloudflare",
                     "custom": "🔧 Servidores de Nombres Personalizados",
                     "back": "← Volver al Registro"
                 }
@@ -6490,7 +6490,7 @@ class NomadlyCleanBot:
                 await message.reply_text(
                     f"✅ **Email Updated**\n\n"
                     f"Technical email set to: `{email}`\n\n"
-                    f"🎉 **Welcome to Nomadly!**\n"
+                    f"🎉 **Welcome to {os.getenv('PROJECT_NAME')}!**\n"
                     f"You'll receive updates and domain registration confirmation at this email.\n\n"
                     f"Returning to registration setup...",
                     parse_mode='Markdown'
@@ -7748,8 +7748,8 @@ class NomadlyCleanBot:
         user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
         
         feature_text = {
-            "en": "⚖️ **Feature Comparison**\n\n🏴‍☠️ **Nomadly vs Standard Registrars:**\n\n✅ **Nomadly Advantages:**\n• 🔒 Complete WHOIS privacy\n• 💰 Crypto-only payments\n• 🌍 Offshore hosting focus\n• 🛡️ Advanced DDoS protection\n• 🚫 No identity verification\n• ⚡ Instant domain activation\n\n❌ **Standard Registrars:**\n• 👤 Personal data required\n• 💳 Credit card tracking\n• 🏛️ Government compliance\n• 📝 Extensive documentation\n• ⏰ Verification delays",
-            "fr": "⚖️ **Comparaison des Fonctionnalités**\n\n🏴‍☠️ **Nomadly vs Bureaux d'Enregistrement Standard:**\n\n✅ **Avantages Nomadly:**\n• 🔒 Confidentialité WHOIS complète\n• 💰 Paiements crypto uniquement\n• 🌍 Focus hébergement offshore\n• 🛡️ Protection DDoS avancée\n• 🚫 Pas de vérification d'identité\n• ⚡ Activation domaine instantanée\n\n❌ **Bureaux d'Enregistrement Standard:**\n• 👤 Données personnelles requises\n• 💳 Traçage carte de crédit\n• 🏛️ Conformité gouvernementale\n• 📝 Documentation extensive\n• ⏰ Délais de vérification"
+            "en": f"⚖️ **Feature Comparison**\n\n🏴‍☠️ **{os.getenv('PROJECT_NAME')} vs Standard Registrars:**\n\n✅ **{os.getenv('PROJECT_NAME')} Advantages:**\n• 🔒 Complete WHOIS privacy\n• 💰 Crypto-only payments\n• 🌍 Offshore hosting focus\n• 🛡️ Advanced DDoS protection\n• 🚫 No identity verification\n• ⚡ Instant domain activation\n\n❌ **Standard Registrars:**\n• 👤 Personal data required\n• 💳 Credit card tracking\n• 🏛️ Government compliance\n• 📝 Extensive documentation\n• ⏰ Verification delays",
+            "fr": f"⚖️ **Comparaison des Fonctionnalités**\n\n🏴‍☠️ **{os.getenv('PROJECT_NAME')} vs Bureaux d'Enregistrement Standard:**\n\n✅ **Avantages {os.getenv('PROJECT_NAME')}:**\n• 🔒 Confidentialité WHOIS complète\n• 💰 Paiements crypto uniquement\n• 🌍 Focus hébergement offshore\n• 🛡️ Protection DDoS avancée\n• 🚫 Pas de vérification d'identité\n• ⚡ Activation domaine instantanée\n\n❌ **Bureaux d'Enregistrement Standard:**\n• 👤 Données personnelles requises\n• 💳 Traçage carte de crédit\n• 🏛️ Conformité gouvernementale\n• 📝 Documentation extensive\n• ⏰ Délais de vérification"
         }
         
         keyboard = [[InlineKeyboardButton("← Back", callback_data="main_menu")]]
@@ -11345,7 +11345,7 @@ class NomadlyCleanBot:
             
             # Content texts
             content_texts = {
-                "en": """WHOIS Privacy Protection: ✅ Enabled
+                "en": f"""WHOIS Privacy Protection: ✅ Enabled
 
 Your personal information is protected:
 • Name: Hidden
@@ -11353,8 +11353,8 @@ Your personal information is protected:
 • Phone: Masked
 • Address: Private
 
-All WHOIS queries show Nomadly privacy service instead of your personal details.""",
-                "fr": """Protection de la Confidentialité WHOIS : ✅ Activée
+All WHOIS queries show {os.getenv('PROJECT_NAME')} privacy service instead of your personal details.""",
+                "fr": f"""Protection de la Confidentialité WHOIS : ✅ Activée
 
 Vos informations personnelles sont protégées :
 • Nom : Masqué
@@ -11362,8 +11362,8 @@ Vos informations personnelles sont protégées :
 • Téléphone : Masqué
 • Adresse : Privée
 
-Toutes les requêtes WHOIS affichent le service de confidentialité Nomadly.""",
-                "hi": """WHOIS गोपनीयता सुरक्षा: ✅ सक्षम
+Toutes les requêtes WHOIS affichent le service de confidentialité {os.getenv('PROJECT_NAME')}.""",
+                "hi": f"""WHOIS गोपनीयता सुरक्षा: ✅ सक्षम
 
 आपकी व्यक्तिगत जानकारी सुरक्षित है:
 • नाम: छुपा हुआ
@@ -11371,8 +11371,8 @@ Toutes les requêtes WHOIS affichent le service de confidentialité Nomadly.""",
 • फोन: मास्क किया गया
 • पता: निजी
 
-सभी WHOIS प्रश्न Nomadly गोपनीयता सेवा दिखाते हैं।""",
-                "zh": """WHOIS 隐私保护：✅ 已启用
+सभी WHOIS प्रश्न {os.getenv('PROJECT_NAME')} गोपनीयता सेवा दिखाते हैं।""",
+                "zh": f"""WHOIS 隐私保护：✅ 已启用
 
 您的个人信息受到保护：
 • 姓名：隐藏
@@ -11380,8 +11380,8 @@ Toutes les requêtes WHOIS affichent le service de confidentialité Nomadly.""",
 • 电话：屏蔽
 • 地址：私密
 
-所有 WHOIS 查询显示 Nomadly 隐私服务。""",
-                "es": """Protección de Privacidad WHOIS: ✅ Habilitada
+所有 WHOIS 查询显示 {os.getenv('PROJECT_NAME')} 隐私服务。""",
+                "es": f"""Protección de Privacidad WHOIS: ✅ Habilitada
 
 Su información personal está protegida:
 • Nombre: Oculto
@@ -11389,7 +11389,7 @@ Su información personal está protegida:
 • Teléfono: Enmascarado
 • Dirección: Privada
 
-Todas las consultas WHOIS muestran el servicio de privacidad Nomadly."""
+Todas las consultas WHOIS muestran el servicio de privacidad {os.getenv('PROJECT_NAME')}."""
             }
             
             back_texts = {

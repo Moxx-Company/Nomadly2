@@ -241,7 +241,7 @@ class ConfirmationService:
         cloudflare_zone = domain_data.get("cloudflare_zone_id", "N/A")
 
         content = f"""
-🏴‍☠️ NOMADLY2 DOMAIN REGISTRATION COMPLETE 🏴‍☠️
+🏴‍☠️ {os.getenv('PROJECT_NAME')} DOMAIN REGISTRATION COMPLETE 🏴‍☠️
 
 Your offshore domain registration has been successfully completed!
 
@@ -260,7 +260,7 @@ DNS CONFIGURATION:
 • Status: Fully configured and operational
 
 DOMAIN MANAGEMENT:
-Your domain is now live and ready to use. You can manage DNS records, update nameservers, and configure hosting through your Nomadly2 bot interface.
+Your domain is now live and ready to use. You can manage DNS records, update nameservers, and configure hosting through your {os.getenv('PROJECT_NAME')} bot interface.
 
 Use /my_domains command in the bot to access domain management features.
 
@@ -268,12 +268,12 @@ OFFSHORE PRIVACY:
 Your domain registration uses anonymous contact information for enhanced privacy. All technical details are handled through our offshore infrastructure for maximum discretion.
 
 SUPPORT:
-For any questions or assistance with your domain, contact our offshore support team through the Nomadly2 bot interface.
+For any questions or assistance with your domain, contact our offshore support team through the {os.getenv('PROJECT_NAME')} bot interface.
 
 Welcome to the offshore community!
 
 ---
-Nomadly2 Offshore Domain Services
+{os.getenv('PROJECT_NAME')} Offshore Domain Services
 Resilience • Discretion • Independence
 """
         return content
