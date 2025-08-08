@@ -3114,6 +3114,14 @@ class NomadlyCleanBot:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
 
+            user_info = query.from_user
+            user = db.get_or_create_user(
+                telegram_id=user_id,
+                username=user_info.username if user_info else None,
+                first_name=user_info.first_name if user_info else None,
+                last_name=user_info.last_name if user_info else None
+            )
+
             # Generate unique wallet funding address
             wallet_address = self.generate_crypto_address(crypto_type, user_id, "wallet_funding")
 
@@ -3316,6 +3324,15 @@ class NomadlyCleanBot:
             db = get_db_manager()
 
             wallet_balance = db.get_user_balance(user_id)
+
+
+            user_info = query.from_user
+            user = db.get_or_create_user(
+                telegram_id=user_id,
+                username=user_info.username if user_info else None,
+                first_name=user_info.first_name if user_info else None,
+                last_name=user_info.last_name if user_info else None
+            )
 
 
             # Get domain price
@@ -5672,7 +5689,7 @@ class NomadlyCleanBot:
             await checking_msg.edit_text(result_text, reply_markup=reply_markup, parse_mode='Markdown')
 
         except Exception as e:
-            logger.error(f"Error in check_specific_domain: {e}")
+            logger.error(f"Error in check_specific_domain: {e}", exc_info=True)
             try:
                 if 'checking_msg' in locals():
                     await checking_msg.edit_text("🚧 **Service Issue**\n\nPlease try again or contact support.", parse_mode='Markdown')
