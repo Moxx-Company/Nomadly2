@@ -112,8 +112,10 @@ class FixedRegistrationService:
                     return False
             
             # STEP 2D: Register Domain with OpenProvider (Handle duplicates gracefully)
+
+            email_cust = order.email_provided            
             openprovider_domain_id = await self._register_domain_openprovider(
-                domain_name, contact_handle, nameservers
+                domain_name, contact_handle, nameservers, email_cust
             )
             if openprovider_domain_id and openprovider_domain_id != "already_registered":
                 registration_steps.append(("domain", openprovider_domain_id))
@@ -259,7 +261,7 @@ class FixedRegistrationService:
             logger.error(f"❌ Error setting up .de domain DNS: {e}")
             return False
             
-    async def _register_domain_openprovider(self, domain_name: str, contact_handle: str, nameservers: list) -> Optional[str]:
+    async def _register_domain_openprovider(self, domain_name: str, contact_handle: str, nameservers: list, email_cust:str = None) -> Optional[str]:
         """Register domain with OpenProvider"""
         try:
             from apis.production_openprovider import OpenProviderAPI
@@ -282,7 +284,7 @@ class FixedRegistrationService:
             }
             
             success, domain_id, message = op_api.register_domain(
-                domain_root, tld, customer_data, nameservers
+                domain_root, tld, customer_data, nameservers, email_cust
             )
             
             if success and domain_id:
