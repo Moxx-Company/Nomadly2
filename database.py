@@ -179,6 +179,9 @@ class WalletTransaction(Base):
 
     created_at = Column(DateTime, default=func.now())
     confirmed_at = Column(DateTime)
+    order_name = Column(String(100))
+    domain_name = Column(String(100))
+    transaction_name = Column(String(100))
 
     user = relationship("User", back_populates="wallet_transactions")
 
@@ -908,7 +911,9 @@ class DatabaseManager:
                 SELECT id, telegram_id, order_id, domain_name, tld, 
                        registration_years, base_price_usd, offshore_multiplier,
                        total_price_usd, nameserver_choice, email_provided,
-                       payment_method, crypto_currency, status, created_at, completed_at,crypto_address,service_type, transaction_id,service_details
+                       payment_method, crypto_currency, status, created_at, completed_at,
+                       crypto_address,service_type, transaction_id,service_details,
+                       order_number
                 FROM orders 
                 WHERE order_id = :order_id
             """), {'order_id': order_id})
@@ -938,6 +943,7 @@ class DatabaseManager:
                         self.service_type = row_data[17]
                         self.transaction_id = row_data[18]
                         self.service_details = row_data[19]
+                        self.order_number = row_data[20]
                         
                 return SimpleOrder(row)
             return None
@@ -961,24 +967,40 @@ class DatabaseManager:
         self,
         telegram_id: int,
         transaction_type: str,
-        amount: float,
+        amount_usd: float,
         description: str = None,
-        order_id: str = None,
+        order_name: str = None,
+        trans_name: str = None,
+        domain_name: str = None,
+        crypto_currency:str=None
     ):
         """Create transaction record"""
+
+        from sqlalchemy import text
         session = self.get_session()
         try:
-            transaction = Transaction(
-                telegram_id=telegram_id,
-                transaction_type=transaction_type,
-                amount=amount,
-                description=description,
-                order_id=order_id,
-            )
-            session.add(transaction)
+            result = session.execute(text("""
+                INSERT INTO transactions (
+                    telegram_id, transaction_type, amount_usd, description, created_at,order_name,trans_name,domain_name,
+                    crypto_currency
+                ) VALUES (
+                    :telegram_id, :transaction_type, :amount_usd, :description, now(),:order_name,:trans_name,:domain_name,
+                    :crypto_currency
+                ) RETURNING id
+            """), {
+                'telegram_id': telegram_id,
+                'transaction_type': transaction_type,
+                'amount_usd': amount_usd,
+                'description': description,
+                'order_name':order_name,
+                'trans_name':trans_name,
+                'domain_name':domain_name,
+                'crypto_currency':crypto_currency
+            })
+
+            trans_db_id = result.fetchone()[0]
             session.commit()
-            session.refresh(transaction)
-            return transaction
+            return True
         finally:
             session.close()
 
@@ -993,6 +1015,39 @@ class DatabaseManager:
                 .limit(20)
                 .all()
             )
+        finally:
+            session.close()
+
+    def get_user_transactions_new(self, telegram_id: int) -> List:
+        """Get user transaction history"""
+        from sqlalchemy import text
+        
+        session = self.get_session()
+        try:
+            result = session.execute(text("""
+                SELECT id, crypto_currency, transaction_type, domain_name, order_name, 
+                       trans_name, amount_usd, created_at
+                FROM transactions 
+                WHERE telegram_id = :telegram_id
+            """), {'telegram_id': telegram_id})
+            
+            rows = result.fetchall()  # Fetch all rows instead of just one
+            if not rows:
+                return []
+            
+            # Create a simple order object with the actual data
+            class SimpleTransactions:
+                def __init__(self, row_data):
+                    self.id = row_data[0]
+                    self.crypto_currency = row_data[1] 
+                    self.transaction_type = row_data[2]
+                    self.domain_name = row_data[3]
+                    self.order_name = row_data[4]
+                    self.trans_name = row_data[5]
+                    self.amount_usd = row_data[6]
+                    self.created_at = row_data[7]
+            
+            return [SimpleTransactions(row) for row in rows]
         finally:
             session.close()
 
@@ -1029,7 +1084,8 @@ class DatabaseManager:
         service_details: Dict,
         amount: float,
         payment_method: str = None,
-        email_provided: str = None
+        email_provided: str = None,
+        order_number: str = None,
     ) -> Order:
         """Create new order using raw SQL to match actual database schema"""
         import uuid
@@ -1049,11 +1105,11 @@ class DatabaseManager:
                 INSERT INTO orders (
                     telegram_id, order_id, domain_name, tld, service_type, registration_years,
                     base_price_usd, offshore_multiplier, total_price_usd,
-                    nameserver_choice, payment_method, status, created_at
+                    nameserver_choice, payment_method, status, created_at, service_details, email_provided, order_number
                 ) VALUES (
                     :telegram_id, :order_id, :domain_name, :tld, :service_type, :registration_years,
                     :base_price_usd, :offshore_multiplier, :total_price_usd,
-                    :nameserver_choice, :payment_method, :status, now(),:service_details,:email_provided
+                    :nameserver_choice, :payment_method, :status, now(),:service_details,:email_provided,:order_number
                 ) RETURNING id
             """), {
                 'telegram_id': telegram_id,
@@ -1069,7 +1125,8 @@ class DatabaseManager:
                 'payment_method': payment_method,
                 'status': 'pending',
                 'service_details':json.dumps(service_details),
-                'email_provided': email_provided
+                'email_provided': email_provided,
+                'order_number': order_number
             })
             
             order_db_id = result.fetchone()[0]
@@ -1145,6 +1202,9 @@ class DatabaseManager:
         crypto_currency: str = None,
         payment_address: str = None,
         blockbee_payment_id: str = None,
+        order_name: str = None,
+        domain_name: str = None,
+        transaction_name: str = None,
     ) -> WalletTransaction:
         """Create wallet transaction record"""
         session = self.get_session()
@@ -1157,6 +1217,9 @@ class DatabaseManager:
                 crypto_currency=crypto_currency,
                 payment_address=payment_address,
                 blockbee_payment_id=blockbee_payment_id,
+                order_name=order_name,
+                domain_name=domain_name,
+                transaction_name=transaction_name
             )
             session.add(transaction)
             session.commit()

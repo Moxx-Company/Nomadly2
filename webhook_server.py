@@ -79,6 +79,16 @@ def handle_dynopay_webhook(order_id=None):
 
             logger.info(f"Paid amount {paid_amount} for order_amount {order.total_price_usd}")
 
+            db_manager.create_transaction(
+                telegram_id=order.telegram_id,
+                transaction_type='DEBIT',
+                amount_usd=paid_amount,
+                crypto_currency=data.get("paid_currency", 0),
+                order_name=order.order_number,
+                #trans_name=order.crypto_currency,
+                domain_name=order.domain_name,
+            )
+
             if paid_amount > order.total_price_usd:
 
                 credit_amu = paid_amount - float(order.total_price_usd)
@@ -87,6 +97,22 @@ def handle_dynopay_webhook(order_id=None):
                     order.telegram_id,
                     credit_amu
                     )
+
+                import random
+                import string
+
+                order_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                tran_number = f"TXN-{order_suffix}"
+
+                db_manager.create_transaction(
+                    telegram_id=order.telegram_id,
+                    transaction_type='CREDIT',
+                    amount_usd=credit_amu,
+                    crypto_currency=data.get("paid_currency", 0),
+                    order_name=order.order_number,
+                    trans_name=tran_number,
+                    domain_name=order.domain_name,
+                )
 
                 db_manager.create_wallet_transaction(
                     telegram_id=order.telegram_id,
@@ -216,6 +242,16 @@ def handle_blockbee_webhook(order_id=None):
 
             logger.info(f"Paid amount {paid_amount} for order_amount {order.total_price_usd}")
 
+            db_manager.create_transaction(
+                telegram_id=order.telegram_id,
+                transaction_type='DEBIT',
+                amount_usd=paid_amount,
+                crypto_currency=data.get("coin", 0),
+                order_name=order.order_number,
+                #trans_name=order.crypto_currency,
+                domain_name=order.domain_name,
+            )
+
             if paid_amount > order.total_price_usd:
 
                 credit_amu = paid_amount - float(order.total_price_usd)
@@ -224,13 +260,32 @@ def handle_blockbee_webhook(order_id=None):
                     credit_amu
                     )
 
+                import random
+                import string
+
+                order_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+                tran_number = f"TXN-{order_suffix}"
+
+                db_manager.create_transaction(
+                    telegram_id=order.telegram_id,
+                    transaction_type='CREDIT',
+                    amount_usd=credit_amu,
+                    crypto_currency=data.get("coin", 0),
+                    order_name=order.order_number,
+                    trans_name=tran_number,
+                    domain_name=order.domain_name,
+                )
+
                 db_manager.create_wallet_transaction(
                     telegram_id=order.telegram_id,
-                    transaction_type="deposit",
+                    transaction_type="CREDIT",
                     amount=credit_amu,
                     description="amount top up from payment webhook",
                     payment_address=None,
-                    blockbee_payment_id=None
+                    blockbee_payment_id=None,
+                    order_name=order.order_number,
+                    domain_name=order.domain_name,
+                    transaction_name=tran_number
                 )
 
                 executor = ThreadPoolExecutor(max_workers=1)
@@ -315,6 +370,19 @@ def handle_dynopay_wallet_topup(user_id=None):
                 paid_amount
                 )
 
+            order_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            tran_number = f"TXN-{order_suffix}"
+
+            db_manager.create_transaction(
+                telegram_id=user_id,
+                transaction_type='CREDIT',
+                amount_usd=paid_amount,
+                crypto_currency=data.get("paid_currency", 0),
+                #order_name=order.order_number,
+                trans_name=tran_number,
+                #domain_name=order.domain_name,
+            )
+
             db_manager.create_wallet_transaction(
                 telegram_id=user_id,
                 transaction_type="deposit",
@@ -393,6 +461,22 @@ def handle_blockbee_wallet_topup(user_id=None):
                 user_id,
                 paid_amount
                 )
+
+            import random
+            import string
+
+            order_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            tran_number = f"TXN-{order_suffix}"
+
+            db_manager.create_transaction(
+                telegram_id=user_id,
+                transaction_type='CREDIT',
+                amount_usd=paid_amount,
+                crypto_currency=data.get("coin", 0),
+                #order_name=order.order_number,
+                trans_name=tran_number,
+                #domain_name=order.domain_name,
+            )
 
             db_manager.create_wallet_transaction(
                 telegram_id=user_id,

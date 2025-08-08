@@ -71,6 +71,8 @@ class MasterNotificationService:
             payment_method = payment_data.get('payment_method')
             if payment_method != 'wallet_payment':
                 telegram_success = await self._send_telegram_message(telegram_id, telegram_message)
+            else:
+                telegram_success = True
             
             # Send email if user has real email
             email_success = await self._send_payment_email(telegram_id, payment_data)

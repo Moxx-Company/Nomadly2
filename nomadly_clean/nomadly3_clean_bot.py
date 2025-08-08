@@ -3115,6 +3115,9 @@ class NomadlyCleanBot:
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
 
             user_info = query.from_user
+
+            from database import get_db_manager
+            db = get_db_manager()
             user = db.get_or_create_user(
                 telegram_id=user_id,
                 username=user_info.username if user_info else None,
@@ -3372,7 +3375,7 @@ class NomadlyCleanBot:
                 from datetime import datetime
 
                 order_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-                order_number = f"TXN-{order_suffix}"
+                tran_number = f"TXN-{order_suffix}"
                 
                 now = datetime.now()
                 formatted_date = now.strftime("%B %d, %Y – %I:%M %p").replace(" 0", " ").lstrip("0")
@@ -3384,7 +3387,7 @@ class NomadlyCleanBot:
                             f"🎉 Success! We’ve received your payment for domain registration.\n"
                             f"📛 **Domain Name:** {clean_domain}\n"
                             f"💰 **Amount Paid:** ${price:.2f} USD\n"
-                            f"🧾 **Transaction ID:** #{order_number}\n"
+                            f"🧾 **Transaction ID:** #{tran_number}\n"
                             f"📅 **Date:** {formatted_date}\n\n"
                             f"🛠️ We’re now securing your domain and setting things up. This usually takes just a moment.\n\n"
                             f"⚠️ You’ll receive another update once your domain is fully registered and active."
@@ -3396,7 +3399,7 @@ class NomadlyCleanBot:
                             f"🎉 Succès ! Nous avons bien reçu votre paiement pour l'enregistrement de votre domaine.\n"
                             f"📛 **Nom de domaine :** {clean_domain}\n"
                             f"💰 **Montant payé :** ${price:.2f} USD\n"
-                            f"🧾 **ID de transaction :** #{order_number}\n"
+                            f"🧾 **ID de transaction :** #{tran_number}\n"
                             f"📅 **Date :** {formatted_date}\n\n"
                             f"🛠️ Nous sécurisons et configurons actuellement votre domaine. Cela ne prend généralement que quelques instants.\n\n"
                             f"⚠️ Vous recevrez une nouvelle notification une fois votre domaine entièrement enregistré et actif."
@@ -3408,7 +3411,7 @@ class NomadlyCleanBot:
                             f"🎉 सफल! हमें डोमेन पंजीकरण के लिए आपका भुगतान प्राप्त हो गया है।\n"
                             f"📛 **डोमेन नाम:** {clean_domain}\n"
                             f"💰 **भुगतान की गई राशि:** ${price:.2f} USD\n"
-                            f"🧾 **लेनदेन आईडी:** #{order_number}\n"
+                            f"🧾 **लेनदेन आईडी:** #{tran_number}\n"
                             f"📅 **दिनांक:** {formatted_date}\n\n"
                             f"🛠️ अब हम आपके डोमेन को सुरक्षित कर रहे हैं और चीज़ें सेट अप कर रहे हैं। इसमें आमतौर पर बस कुछ ही पल लगते हैं।\n\n"
                             f"⚠️ आपका डोमेन पूरी तरह से पंजीकृत और सक्रिय होने के बाद आपको एक और अपडेट प्राप्त होगा।"
@@ -3420,7 +3423,7 @@ class NomadlyCleanBot:
                             f"🎉 成功！我们已收到您的域名注册付款。\n"
                             f"📛 **域名：** {clean_domain}\n"
                             f"💰 **支付金额：** ${price:.2f} 美元\n"
-                            f"🧾 **交易 ID：** #{order_number}\n"
+                            f"🧾 **交易 ID：** #{tran_number}\n"
                             f"📅 **日期：** {formatted_date}\n\n"
                             f"🛠️ 我们正在保护您的域名并进行设置。这通常只需片刻。\n\n"
                             f"⚠️ 您的域名完全注册并生效后，您将再次收到更新信息。"
@@ -3432,7 +3435,7 @@ class NomadlyCleanBot:
                             f"🎉 Éxito! Hemos recibido tu pago por el registro de tu dominio.\n"
                             f"📛 **Nombre de dominio:** {clean_domain}\n"
                             f"💰 **Monto pagado:** ${price:.2f} USD\n"
-                            f"🧾 **ID de transacción:** #{order_number}\n"
+                            f"🧾 **ID de transacción:** #{tran_number}\n"
                             f"📅 **Fecha:** {formatted_date}\n\n"
                             f"🛠️ Estamos protegiendo tu dominio y configurando todo. Esto suele tardar solo unos minutos.\n\n"
                             f"⚠️ Recibirás otra actualización cuando tu dominio esté completamente registrado y activo."
@@ -3449,6 +3452,17 @@ class NomadlyCleanBot:
 
                 await query.edit_message_text(success_text, parse_mode='Markdown')
 
+                if 'order_number' not in session:
+                    import random
+                    import string
+                    # Generate order number in format: ORD-XXXXX (e.g., ORD-A7B3K)
+                    order_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+                    order_number = f"ORD-{order_suffix}"
+                    if user_id in self.user_sessions:
+                        self.user_sessions[user_id]['order_number'] = order_number
+                else:
+                    order_number = session.get('order_number')
+
                 order = db.create_order(
                     telegram_id=user_id,
                     service_type='domain_registration',
@@ -3456,7 +3470,18 @@ class NomadlyCleanBot:
                     amount=price, #BB_STATIC_PRICE
                     #amount=5,
                     payment_method=f'wallet_payment',
-                    email_provided=session.get("technical_email", "cloakhost@tutamail.com")
+                    email_provided=session.get("technical_email", "cloakhost@tutamail.com"),
+                    order_number=order_number
+                )
+
+                db.create_transaction(
+                    telegram_id=user_id,
+                    transaction_type='DEBIT',
+                    amount_usd=price,
+                    crypto_currency=None,
+                    order_name=order_number,
+                    #trans_name=order.crypto_currency,
+                    domain_name=clean_domain,
                 )
 
                 db.create_wallet_transaction(
@@ -3465,7 +3490,10 @@ class NomadlyCleanBot:
                     amount=price,
                     description=f"Domain purchse {clean_domain}",
                     payment_address=None,
-                    blockbee_payment_id=None
+                    blockbee_payment_id=None,
+                    order_name=order_number,
+                    domain_name=clean_domain,
+                    transaction_name=tran_number
                 )
 
                 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -3717,7 +3745,7 @@ class NomadlyCleanBot:
             logger.info(f"DEBUG: Fetching transactions for user {user_id}")
             from database import get_db_manager
             db = get_db_manager()
-            domains = db.get_user_transactions(user_id, 500)
+            domains = db.get_user_transactions_new(user_id)
 
             # Convert database objects to dictionaries for DNS interface
             domain_list = []
@@ -3748,11 +3776,26 @@ class NomadlyCleanBot:
                 else:
                     formatted_date = None
 
+                if getattr(domain, "transaction_type", None) == 'DEBIT':
+                    description = f"🛒 Domain purchase -- {getattr(domain, "domain_name", None)}\n {getattr(domain, "order_name", None)}"
+                else:
+                    coin = {
+                    "btc": "₿",
+                    "eth": "Ξ",
+                    "ltc": "Ł",
+                    "doge": "Ð",
+                    "trx": "⟠",
+                    "bsc": "♦",
+                    "bch": "Ƀ",
+                    "ustcr": "₮",
+                    "usdt": "₮",
+                    }
+                    description = f"{coin[getattr(domain, "crypto_currency", "₿")]} Crypto deposit -- {getattr(domain, "trans_name", None)}"
                 domain_dict = {
-                    "transaction_type": "DEBIT" if getattr(domain, "transaction_type", "").lower() == "deposit" else "CREDIT",
-                    "amount": getattr(domain, "amount", None),
+                    "transaction_type": getattr(domain, "transaction_type", ""),
+                    "amount_usd": getattr(domain, "amount_usd", None),
                     "date": formatted_date,
-                    "description": getattr(domain, "description", None)
+                    "description": description
                 }
                 domain_list.append(domain_dict)
 
@@ -5073,7 +5116,8 @@ class NomadlyCleanBot:
                     amount=usd_amount,
                     #amount=5, #BB_STATIC_PRICE
                     payment_method=f'crypto_{crypto_type}',
-                    email_provided=session.get("technical_email", "cloakhost@tutamail.com")
+                    email_provided=session.get("technical_email", "cloakhost@tutamail.com"),
+                    order_number=order_number
                 )
 
                 if order and hasattr(order, 'order_id'):
@@ -7611,17 +7655,17 @@ class NomadlyCleanBot:
         transaction_list = []
         for i, transaction in enumerate(transactions, 1):
             transaction_type = transaction.get('transaction_type', 'Unknown')
-            amount = transaction.get('amount', 'Unknown')
+            amount = transaction.get('amount_usd', 'Unknown')
             date = transaction.get('date', 'Unknown')
             description = transaction.get('description', 'Unknown')
 
             # Add domain with status to list
-            transaction_list.append(f"{i}. {transaction_type} - ${amount} - {date} - {description}")
+            transaction_list.append(f"{i}. {transaction_type} · ${amount} · {date} \n{description}\n")
 
         transaction_list_text = "\n".join(transaction_list)
         
         transaction_text = {
-            "en": f"💳 **Transaction History**\n\n📊 Recent transactions and domain purchases will appear here.\n\n{transaction_list_text}",
+            "en": f"💳 **Transaction History**\n\n📊 Your recent transactions & domain purchases:\n\n{transaction_list_text}",
             "fr": f"💳 **Historique des Transactions**\n\n📊 Les transactions récentes et achats de domaines apparaîtront ici.\n\n{transaction_list_text}"
         }
         
