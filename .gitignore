@@ -102,7 +102,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
@@ -120,7 +119,6 @@ tests/data/
 .lsp/
 
 # Development tools
-.vscode/
 .idea/
 
 # Spyder project settings
@@ -148,7 +146,6 @@ yarn-debug.log*
 yarn-error.log*
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo
@@ -163,3 +160,8 @@ test_results.json
 nomadly2.log
 *.cpython-*
 .cache/
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
+branch_structure.json
+config.bat

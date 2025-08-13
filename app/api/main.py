@@ -3,6 +3,9 @@ Main FastAPI Application for Nomadly3 API Layer
 Complete FastAPI router configuration with modular structure
 """
 
+import utils.http_session
+import utils.transport
+import utils.session
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
