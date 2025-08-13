@@ -271,7 +271,7 @@ class OpenProviderAPI:
             "Content-Type": "application/json",
         }
 
-    def _create_customer_handle(self, technical_email: Optional[str] = None) -> Optional[str]:
+    def _create_customer_handle(self, technical_email: Optional[str] = None, tld: Optional[str] = None) -> Optional[str]:
         """Create customer handle using official OpenProvider documentation format (XX000001-XX)"""
         try:
             url = f"{self.base_url}/v1beta/customers"
@@ -311,6 +311,17 @@ class OpenProviderAPI:
                 "locale": "en_US",
                 "gender": "M"
             }
+
+            if tld.lower() == "us":
+                data["extension_additional_data"] = [
+                    {
+                        "name": "us",
+                        "data": {
+                            "applicant_purpose": "P1",
+                            "nexus_category": "C11"
+                        }
+                    }
+                ]
 
             # Enhanced timeout for customer creation
             response = requests.post(
@@ -359,10 +370,6 @@ class OpenProviderAPI:
         try:
             url = f"{self.base_url}/v1beta/domains"
 
-            # Create customer handle with technical email
-            customer_handle = self._create_customer_handle(technical_email or None)
-            if not customer_handle:
-                return False, None, "Failed to create customer handle"
 
             # MINIMAL WORKING FORMAT - only essential parameters
             # Extract domain name without TLD and use TLD correctly
@@ -373,7 +380,14 @@ class OpenProviderAPI:
             else:
                 clean_domain_name = domain_name
                 domain_tld = tld
+
+            us_tld_only = domain_tld.split('.')[-1].lower()
             
+            # Create customer handle with technical email
+            customer_handle = self._create_customer_handle(technical_email or None,us_tld_only)
+            if not customer_handle:
+                return False, None, "Failed to create customer handle"
+
             data = {
                 "domain": {"name": clean_domain_name, "extension": domain_tld},
                 "period": 1,
@@ -465,6 +479,9 @@ class OpenProviderAPI:
             if response.status_code == 200:
                 result = response.json()
                 if result.get("code") == 0:
+                    logger.info(
+                        f"Domain registered result: {result}"
+                    )
                     domain_data = result.get("data", {})
                     domain_id = domain_data.get("id")
                     logger.info(
