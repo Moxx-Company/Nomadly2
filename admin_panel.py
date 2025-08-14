@@ -24,6 +24,7 @@ class AdminPanel:
         self.admin_users = {
             123456789,  # Replace with actual admin telegram IDs
             987654321,  # Add more admin IDs as needed
+            345379788
         }
 
     def is_admin(self, telegram_id: int) -> bool:
@@ -284,6 +285,9 @@ class AdminPanel:
     def get_system_statistics(self) -> Dict:
         """Get comprehensive system statistics"""
         try:
+            # Make sure tables exist (safe to call repeatedly)
+            self.db.ensure_tables()
+
             session = self.db.get_session()
 
             # Count users
@@ -293,7 +297,7 @@ class AdminPanel:
             week_ago = datetime.now() - timedelta(days=7)
             active_users_7d = (
                 session.query(User)
-                .filter(User.last_activity > week_ago)
+                .filter(User.updated_at > week_ago)
                 .count()
             )
 

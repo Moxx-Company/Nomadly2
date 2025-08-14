@@ -13,6 +13,8 @@ import json
 import random
 import time
 from datetime import datetime, timedelta
+import os, json, asyncio
+from telegram.error import Forbidden, RetryAfter, TimedOut, NetworkError
 # Optional Sentry integration (graceful fallback if not installed)
 try:
     import sentry_sdk
@@ -26,6 +28,7 @@ except ImportError:
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from telegram.request._httpxrequest import HTTPXRequest
+from telegram import ReplyKeyboardRemove
 from api_services import OpenProviderAPI
 from apis.fastforex import FastForexAPI
 from trustee_service_manager import TrusteeServiceManager
@@ -34,6 +37,10 @@ from ui_cleanup_manager import ui_cleanup
 from new_dns_ui import NewDNSUI
 from dns_propagation_checker import propagation_checker
 from dotenv import load_dotenv
+# allow importing admin_panel from project root
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from admin_panel import get_admin_panel
+from nomadly_clean.database import get_db_manager
 
 # Simple caching for speed optimization
 response_cache = {}
@@ -121,7 +128,10 @@ class NomadlyCleanBot:
     def __init__(self):
         # Load user sessions first to restore language preferences
         self.load_user_sessions()
-        
+
+        self.db = get_db_manager()
+        self.user_sessions = {}
+
         # Cross-platform optimizations
         self.mobile_button_width = 28  # Optimal for mobile touch
         self.desktop_button_width = 45 # Wider for desktop
@@ -133,6 +143,20 @@ class NomadlyCleanBot:
             'desktop': {'max_buttons_per_row': 3, 'button_text_length': 45, 'show_extended_info': True},
             'web': {'max_buttons_per_row': 2, 'button_text_length': 32, 'show_extended_info': True}
         }
+        self.admin_panel = get_admin_panel()
+        self.admin_compose_mode = set()  # telegram user IDs currently composing a broadcast
+
+        # (Optional) make admin list come from env instead of hard-coded in admin_panel.py
+        # admin_env = os.getenv("ADMIN_IDS")
+        # if admin_env:
+        #     try:
+        #         self.admin_panel.admin_users = {
+        #             int(x.strip()) for x in admin_env.split(",") if x.strip().isdigit()
+        #         }
+        #     except Exception:
+        #         pass
+
+
         # Initialize Nomadly service for dynamic pricing
         openprovider_username = os.getenv("OPENPROVIDER_USERNAME")
         openprovider_password = os.getenv("OPENPROVIDER_PASSWORD")
@@ -305,46 +329,154 @@ class NomadlyCleanBot:
             "has_custom_email": has_custom_email,
             "has_custom_ns": has_custom_ns
         }
-        
-    async def start_command(self, update: Update, context):
-        """Handle /start command with language persistence"""
+
+
+    def _collect_recipient_ids(self) -> set[int]:
+        ids: set[int] = set()
+
+        # 1) Primary source: DB (persisted users)
         try:
-            user_id = update.effective_user.id if update.effective_user else 0
-            logger.info(f"👤 User {user_id} started bot")
-            
-            # Debug logging for session data
+            self.db.ensure_tables()
+            ids.update(self.db.get_all_user_ids())
+        except Exception as e:
+            logger.warning(f"DB user fetch failed: {e}")
+
+        # 2) Fallbacks: in-memory sessions + JSON cache
+        try:
+            ids.update(int(uid) for uid in self.user_sessions.keys())
+        except Exception:
+            pass
+
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            path = os.path.join(base_dir, "user_sessions.json")
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        for k, sess in data.items():
+                            # prefer a telegram user id if present; else chat_id
+                            uid = sess.get("telegram_id") or sess.get("chat_id") or sess.get("telegram_chat_id")
+                            if isinstance(uid, int):
+                                ids.add(uid)
+        except Exception as e:
+            logger.warning(f"Failed to read user_sessions.json: {e}")
+
+        return ids
+
+
+    async def _broadcast_to_all(self, text: str) -> tuple[int, int]:
+        sent = failed = 0
+        recipients = self._collect_recipient_ids()
+        if not recipients:
+            return (0, 0)
+
+        for uid in recipients:
+            try:
+                await self.application.bot.send_message(chat_id=uid, text=text, parse_mode="Markdown")
+                sent += 1
+                await asyncio.sleep(0.05)  # small throttle helps
+            except Forbidden:
+                failed += 1  # user blocked bot / never started
+            except RetryAfter as e:
+                await asyncio.sleep(e.retry_after + 1)
+                try:
+                    await self.application.bot.send_message(chat_id=uid, text=text, parse_mode="Markdown")
+                    sent += 1
+                except Exception:
+                    failed += 1
+            except (TimedOut, NetworkError):
+                failed += 1
+            except Exception as e:
+                failed += 1
+                logger.warning(f"Broadcast to {uid} failed: {e}")
+
+        return (sent, failed)
+
+
+    async def start_command(self, update: Update, context): 
+        """Handle /start command with language persistence"""       
+        try:
+            user = update.effective_user
+            user_id = user.id if user else 0  # <-- define early
+
+            if user:
+                # Save/ensure user exists in DB (this also ensures tables lazily)
+                self.db.get_or_create_user(
+                    telegram_id=user.id,
+                    username=user.username,
+                    first_name=user.first_name,
+                    last_name=user.last_name,
+                )
+                # Optionally stash chat_id for later broadcasts
+                if update.effective_chat:
+                    sess = self.user_sessions.setdefault(user.id, {})
+                    sess["chat_id"] = update.effective_chat.id
+
+            # Ensure any stale ReplyKeyboard is hidden (only once per user)
+            if update.message:
+                session = self.user_sessions.setdefault(user_id, {})
+                if not session.get("keyboard_cleared"):
+                    await update.message.reply_text("Updating menu…", reply_markup=ReplyKeyboardRemove())
+                    session["keyboard_cleared"] = True
+
+            # existing logic…
+            user_id = user.id if user else 0
             user_session = self.user_sessions.get(user_id, {})
-            user_language = user_session.get("language")
-            logger.info(f"🔍 User {user_id} session check: language={user_language}, session_exists={user_id in self.user_sessions}")
-    
-            # Check if user already has a language preference
-            if user_id in self.user_sessions and "language" in self.user_sessions[user_id]:
-                # User has used bot before, get their language and show main menu
-                saved_language = self.user_sessions[user_id]["language"]
-                logger.info(f"✅ User {user_id} has saved language: {saved_language}")
-                
-                # Directly show main menu for returning users
+            if user_id in self.user_sessions and "language" in user_session:
                 if update.message:
                     await self.show_main_menu_returning_user(update.message, user_id)
             else:
-                # New user, show language selection with greetings in all languages
                 await self.show_multilingual_welcome(update)
-
         except Exception as e:
             logger.error(f"Error in start_command: {e}")
             if update.message:
                 await update.message.reply_text("🚧 Service temporarily unavailable. Please try again.")
+
 
     async def handle_callback_query(self, update: Update, context):
         """Handle all callback queries"""
         logger.info(f"🎯 CALLBACK HANDLER REACHED")
         try:
             query = update.callback_query
+            data = query.data or ""
             logger.info(f"🎯 QUERY OBJECT: {query}")
             if query:
                 # Immediate acknowledgment with relevant feedback
                 if query.data and query.data.startswith("lang_"):
                     await query.answer("✅ Selected")
+                
+
+                # Only admins can use admin callbacks
+                elif query.data.startswith("admin_"):
+                    uid = query.from_user.id if query.from_user else 0
+                    if not self.admin_panel.is_admin(uid):
+                        await query.answer("⚠️ Unauthorized", show_alert=True)
+                        return
+
+                    if data == "admin_dashboard":
+                        await self.admin_panel.show_admin_dashboard(query)
+                        return
+
+                    if data == "admin_broadcast":
+                        await self.admin_panel.send_broadcast_message(query)
+                        return
+
+                    if data == "admin_compose_broadcast":
+                        # Put this admin into compose mode
+                        self.admin_compose_mode.add(uid)
+                        await query.edit_message_text(
+                            "✍️ *Send your broadcast message now.*\n\n"
+                            "_Your next text message will be sent to all users._",
+                            parse_mode="Markdown",
+                            reply_markup=InlineKeyboardMarkup(
+                                [[InlineKeyboardButton("⬅️ Back", callback_data="admin_broadcast")]]
+                            ),
+                        )
+                        return
+
+                    # (optionally: handle other admin_* callbacks ...)
+
                 elif query.data == "main_menu":
                     await query.answer("🏴‍☠️ Loading...")
                 elif query.data == "search_domain":
@@ -4818,6 +4950,22 @@ class NomadlyCleanBot:
 
                 # Check if user is waiting for specific input
                 session = self.user_sessions.get(user_id, {})
+
+                # One-time keyboard removal for this user
+                session = self.user_sessions.setdefault(user_id, {})
+                if not session.get("keyboard_cleared"):
+                    await update.message.reply_text("OK.", reply_markup=ReplyKeyboardRemove())
+                    session["keyboard_cleared"] = True
+
+                # Admin composing a broadcast?
+                if user_id in self.admin_compose_mode and self.admin_panel.is_admin(user_id):
+                    msg = update.message.text.strip()
+                    self.admin_compose_mode.discard(user_id)
+
+                    await update.message.reply_text("🚀 Sending broadcast…")
+                    sent, failed = await self._broadcast_to_all(msg)
+                    await update.message.reply_text(f"✅ Sent: {sent}  |  ❌ Failed: {failed}")
+                    return
 
                 if "waiting_for_dns_input" in session and session.get("dns_workflow_step") == "field_input":
                     # Handle new DNS field validation workflow - PRIORITY: Check this first
@@ -12539,11 +12687,29 @@ Todas las consultas WHOIS muestran el servicio de privacidad {os.getenv('PROJECT
             logger.error(f"Error in handle_security_settings: {e}")
             await query.edit_message_text("🚧 Service temporarily unavailable.")
 
+    async def admin_command(self, update: Update, context):
+        if not update.message:
+            return
+        uid = update.effective_user.id if update.effective_user else 0
+        if not self.admin_panel.is_admin(uid):
+            await update.message.reply_text("⚠️ Unauthorized.")
+            return
+
+        # Kick off with a button that loads the dashboard (AdminPanel expects a callback query)
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton("Open Admin Dashboard", callback_data="admin_dashboard")]])
+        await update.message.reply_text("🛠 Admin Panel", reply_markup=kb)
+
+
 
 def main():
     """Main bot function"""
     try:
         logger.info("🚀 Starting Nomadly Clean Bot...")
+
+        # Ensure DB schema exists
+        db = get_db_manager()
+        db.ensure_tables()
+        logger.info("🗄️ Database tables ensured.")
         
         # Create bot instance
         bot = NomadlyCleanBot()
@@ -12556,9 +12722,10 @@ def main():
         
         # Connect payment monitor to bot instance after handlers are added
         logger.info("🔗 Setting up payment monitor connection...")
-        
+    
         # Add handlers
         application.add_handler(CommandHandler("start", bot.start_command))
+        application.add_handler(CommandHandler("admin", bot.admin_command))
         application.add_handler(CallbackQueryHandler(bot.handle_callback_query))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
         
@@ -12577,13 +12744,13 @@ def main():
             logger.error(f"⚠️ Failed to connect payment monitor: {e}")
         
         # Start the bot
-        #application.run_polling()
-        application.run_webhook(
-            listen="0.0.0.0",
-            port=8443,
-            url_path="/webhook",
-            webhook_url=os.getenv("BOT_WEBHOOK")
-        )
+        application.run_polling()
+        # application.run_webhook(
+        #     listen="0.0.0.0",
+        #     port=8443,
+        #     url_path="/webhook",
+        #     webhook_url=os.getenv("BOT_WEBHOOK")
+        # )
         
     except Exception as e:
         logger.exception(f"❌ Error starting bot: {e}")

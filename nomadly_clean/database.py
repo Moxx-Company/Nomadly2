@@ -523,6 +523,18 @@ class DatabaseManager:
             return False
         finally:
             session.close()
+    
+    def get_all_user_ids(self):
+        """Get all user IDs for broadcasting"""
+        session = self.get_session()
+        try:
+            user_ids = session.query(User.telegram_id).all()
+            return [user_id[0] for user_id in user_ids]
+        except Exception as e:
+            logger.error(f"Error getting all user IDs: {e}")
+            return []
+        finally:
+            session.close()
 
     def get_user_technical_email(self, telegram_id: int) -> Optional[str]:
         """Get user's stored technical email"""
