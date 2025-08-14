@@ -24,7 +24,6 @@ class AdminPanel:
         self.admin_users = {
             123456789,  # Replace with actual admin telegram IDs
             987654321,  # Add more admin IDs as needed
-            345379788
         }
 
     def is_admin(self, telegram_id: int) -> bool:
