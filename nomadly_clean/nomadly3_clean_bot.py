@@ -14,6 +14,7 @@ import random
 import time
 from datetime import datetime, timedelta
 import os, json, asyncio
+from telegram.ext import ContextTypes
 from telegram.error import Forbidden, RetryAfter, TimedOut, NetworkError
 # Optional Sentry integration (graceful fallback if not installed)
 try:
@@ -146,17 +147,6 @@ class NomadlyCleanBot:
         self.admin_panel = get_admin_panel()
         self.admin_compose_mode = set()  # telegram user IDs currently composing a broadcast
 
-        # (Optional) make admin list come from env instead of hard-coded in admin_panel.py
-        # admin_env = os.getenv("ADMIN_IDS")
-        # if admin_env:
-        #     try:
-        #         self.admin_panel.admin_users = {
-        #             int(x.strip()) for x in admin_env.split(",") if x.strip().isdigit()
-        #         }
-        #     except Exception:
-        #         pass
-
-
         # Initialize Nomadly service for dynamic pricing
         openprovider_username = os.getenv("OPENPROVIDER_USERNAME")
         openprovider_password = os.getenv("OPENPROVIDER_PASSWORD")
@@ -218,6 +208,13 @@ class NomadlyCleanBot:
                         logger.info(f"Re-added existing payment {address} to monitoring")
         except Exception as e:
             logger.warning(f"Could not connect to payment monitor: {e}")
+
+    # -- admin-only helper
+    def _is_admin(self, user_id: int) -> bool:
+        try:
+            return self.admin_panel.is_admin(user_id)
+        except Exception:
+            return False
     
     def load_user_sessions(self):
         """Load user sessions from file with enhanced error handling"""
@@ -4943,82 +4940,95 @@ class NomadlyCleanBot:
     async def handle_message(self, update: Update, context):
         """Handle text messages for domain search"""
         try:
-            if update.message and update.message.text:
-                text = update.message.text.strip()
-                user_id = update.message.from_user.id if update.message.from_user else 0
-                logger.info(f"👤 User {user_id} sent message: {text}")
+            if not (update.message and update.message.text):
+                return
+            
+            text = update.message.text.strip()
+            user = update.message.from_user
+            user_id = user.id if user else 0
+            logger.info(f"👤 User {user_id} sent message: {text}")
 
-                # Check if user is waiting for specific input
-                session = self.user_sessions.get(user_id, {})
+            # --- Admin compose mode (first so it wins) ---
+            if user_id in self.admin_compose_mode and self.admin_panel.is_admin(user_id):
+                self.admin_compose_mode.discard(user_id)
+                await update.message.reply_text("🚀 Sending broadcast…")
+                # Use the DB-backed sender (rename yours or use the _text version)
+                sent, failed = await self._broadcast_to_all(text)
+                await update.message.reply_text(f"✅ Sent: {sent}  |  ❌ Failed: {failed}")
+                return
+            
+            # if update.message and update.message.text:
+            #     text = update.message.text.strip()
+            #     user_id = update.message.from_user.id if update.message.from_user else 0
+            #     logger.info(f"👤 User {user_id} sent message: {text}")
 
-                # One-time keyboard removal for this user
-                session = self.user_sessions.setdefault(user_id, {})
-                if not session.get("keyboard_cleared"):
-                    await update.message.reply_text("OK.", reply_markup=ReplyKeyboardRemove())
-                    session["keyboard_cleared"] = True
+            # --- One-time keyboard removal per user ---
+            session = self.user_sessions.setdefault(user_id, {})
+            if not session.get("keyboard_cleared"):
+                await update.message.reply_text("OK.", reply_markup=ReplyKeyboardRemove())
+                session["keyboard_cleared"] = True
 
-                # Admin composing a broadcast?
-                if user_id in self.admin_compose_mode and self.admin_panel.is_admin(user_id):
-                    msg = update.message.text.strip()
-                    self.admin_compose_mode.discard(user_id)
 
-                    await update.message.reply_text("🚀 Sending broadcast…")
-                    sent, failed = await self._broadcast_to_all(msg)
-                    await update.message.reply_text(f"✅ Sent: {sent}  |  ❌ Failed: {failed}")
-                    return
-
-                if "waiting_for_dns_input" in session and session.get("dns_workflow_step") == "field_input":
-                    # Handle new DNS field validation workflow - PRIORITY: Check this first
-                    logger.info(f"DEBUG: Routing to DNS field validation handler for user {user_id}")
-                    await self.handle_dns_field_input(update.message, text)
-                elif "waiting_for_dns_input" in session:
-                    # Handle legacy DNS record input - PRIORITY: Check this first to prevent domain search confusion
-                    logger.info(f"DEBUG: Routing to DNS record input handler for user {user_id}")
-                    await self.handle_dns_record_input(update.message, text)
-                elif "waiting_for_dns_edit" in session:
-                    # Handle DNS record edit input
-                    await self.handle_dns_edit_input(update.message, text)
-                elif "waiting_for_nameservers" in session:
-                    # Handle custom nameserver list input
-                    await self.process_nameserver_input(update.message, text, session["waiting_for_nameservers"])
-                elif "waiting_for_email" in session:
-                    # Handle custom email input
-                    await self.handle_custom_email_input(update.message, text, session["waiting_for_email"])
-                elif "waiting_for_ns" in session:
-                    # Handle custom nameserver input
-                    await self.handle_custom_nameserver_input(update.message, text, session["waiting_for_ns"])
-                elif self.is_valid_email(text):
-                    # User sent an email but we're not expecting one - provide guidance
-                    await update.message.reply_text(
-                        f"📧 **Email Address Detected**\n\n"
-                        f"I see you've entered an email address: `{text}`\n\n"
-                        f"**To set this as your technical contact email:**\n"
-                        f"1. Start domain registration by searching for a domain\n"
-                        f"2. Use the \"📧 Change Email\" button during registration\n\n"
-                        f"**Or use the main menu to navigate:**",
-                        parse_mode='Markdown',
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("🔍 Search Domain", callback_data="search_domain")],
-                            [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
-                        ])
-                    )
-                elif text and not text.startswith('/') and self.looks_like_domain(text):
-                    # Only treat as domain search if it looks like a domain
-                    await self.handle_text_domain_search(update.message, text)
-                else:
-                    # Unknown text input - provide guidance
-                    await update.message.reply_text(
-                        f"🤔 **Not sure what to do with:** `{text}`\n\n"
-                        f"**Here's what I can help with:**\n"
-                        f"• **Domain search** - Type a domain name (e.g., `example.com`)\n"
-                        f"• **Navigation** - Use the menu buttons below\n\n"
-                        f"**Or try these common actions:**",
-                        parse_mode='Markdown',
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("🔍 Search Domain", callback_data="search_domain")],
-                            [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
-                        ])
-                    )
+            if "waiting_for_dns_input" in session and session.get("dns_workflow_step") == "field_input":
+                # Handle new DNS field validation workflow - PRIORITY: Check this first
+                logger.info(f"DEBUG: Routing to DNS field validation handler for user {user_id}")
+                await self.handle_dns_field_input(update.message, text)
+                return
+            if "waiting_for_dns_input" in session:
+                # Handle legacy DNS record input - PRIORITY: Check this first to prevent domain search confusion
+                logger.info(f"DEBUG: Routing to DNS record input handler for user {user_id}")
+                await self.handle_dns_record_input(update.message, text)
+                return
+            if "waiting_for_dns_edit" in session:
+                # Handle DNS record edit input
+                await self.handle_dns_edit_input(update.message, text)
+                return
+            if "waiting_for_nameservers" in session:
+                # Handle custom nameserver list input
+                await self.process_nameserver_input(update.message, text, session["waiting_for_nameservers"])
+                return
+            if "waiting_for_email" in session:
+                # Handle custom email input
+                await self.handle_custom_email_input(update.message, text, session["waiting_for_email"])
+                return
+            if "waiting_for_ns" in session:
+                # Handle custom nameserver input
+                await self.handle_custom_nameserver_input(update.message, text, session["waiting_for_ns"])
+                return
+            if self.is_valid_email(text):
+                # User sent an email but we're not expecting one - provide guidance
+                await update.message.reply_text(
+                    f"📧 **Email Address Detected**\n\n"
+                    f"I see you've entered an email address: `{text}`\n\n"
+                    f"**To set this as your technical contact email:**\n"
+                    f"1. Start domain registration by searching for a domain\n"
+                    f"2. Use the \"📧 Change Email\" button during registration\n\n"
+                    f"**Or use the main menu to navigate:**",
+                    parse_mode='Markdown',
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🔍 Search Domain", callback_data="search_domain")],
+                        [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
+                    ])
+                )
+                return
+            if text and not text.startswith('/') and self.looks_like_domain(text):
+                # Only treat as domain search if it looks like a domain
+                await self.handle_text_domain_search(update.message, text)
+                return
+            
+            # Unknown text input - provide guidance
+            await update.message.reply_text(
+                f"🤔 **Not sure what to do with:** `{text}`\n\n"
+                f"**Here's what I can help with:**\n"
+                f"• **Domain search** - Type a domain name (e.g., `example.com`)\n"
+                f"• **Navigation** - Use the menu buttons below\n\n"
+                f"**Or try these common actions:**",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔍 Search Domain", callback_data="search_domain")],
+                    [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
+                ])
+            )
 
         except Exception as e:
             logger.error(f"Error in handle_message: {e}")
@@ -12507,6 +12517,36 @@ Todas las consultas WHOIS muestran el servicio de privacidad {os.getenv('PROJECT
             logger.error(f"Error in show_dns_records_view: {e}")
             await query.edit_message_text("🚧 Service temporarily unavailable.")
     
+    async def broadcast_all_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Admin-only: /broadcast_all [text] -> broadcast; no text -> compose mode."""
+        if not update.message or not update.effective_user:
+            return
+
+        admin_id = update.effective_user.id
+        if not self._is_admin(admin_id):
+            await update.message.reply_text("⚠️ Unauthorized.")
+            return
+
+        # If message has text after the command, send immediately
+        text_arg = None
+        if update.message.text:
+            parts = update.message.text.split(" ", 1)
+            if len(parts) > 1 and parts[1].strip():
+                text_arg = parts[1].strip()
+
+        if text_arg:
+            sent, failed = await self._broadcast_to_all(text_arg)
+            await update.message.reply_text(f"📢 Broadcast: sent **{sent}**, failed **{failed}**.", parse_mode="Markdown")
+            return
+
+        # Otherwise enter compose mode (next message becomes the broadcast)
+        self.admin_compose_mode.add(admin_id)
+        await update.message.reply_text(
+            "✍️ *Send your broadcast message now.*\n\n"
+            "_Your next text message will be sent to all users._\n"
+            "Use /cancel_broadcast to abort."
+        )
+    
     async def show_add_dns_record_menu(self, query, domain):
         """Show menu to add DNS record"""
         try:
@@ -12686,6 +12726,11 @@ Todas las consultas WHOIS muestran el servicio de privacidad {os.getenv('PROJECT
         except Exception as e:
             logger.error(f"Error in handle_security_settings: {e}")
             await query.edit_message_text("🚧 Service temporarily unavailable.")
+    
+    async def cancel_broadcast_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if update.message and update.effective_user:
+            self.admin_compose_mode.discard(update.effective_user.id)
+            await update.message.reply_text("❎ Broadcast cancelled.")
 
     async def admin_command(self, update: Update, context):
         if not update.message:
@@ -12725,7 +12770,9 @@ def main():
     
         # Add handlers
         application.add_handler(CommandHandler("start", bot.start_command))
-        application.add_handler(CommandHandler("admin", bot.admin_command))
+        application.add_handler(CommandHandler("admin_status", bot.admin_command))
+        application.add_handler(CommandHandler("broadcast_all", bot.broadcast_all_command))
+        application.add_handler(CommandHandler("cancel_broadcast", bot.cancel_broadcast_command))
         application.add_handler(CallbackQueryHandler(bot.handle_callback_query))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
         

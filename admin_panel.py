@@ -9,8 +9,10 @@ from datetime import datetime, timedelta
 from database import get_db_manager, User, RegisteredDomain, Order, WalletTransaction
 from payment_service import get_payment_service
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from nomadly_clean.config import Config
 
 logger = logging.getLogger(__name__)
+
 
 
 class AdminPanel:
@@ -19,16 +21,15 @@ class AdminPanel:
     def __init__(self):
         self.db = get_db_manager()
         self.payment_service = get_payment_service()
-
-        # Admin user IDs (telegram IDs of authorized admins)
-        self.admin_users = {
-            123456789,  # Replace with actual admin telegram IDs
-            987654321,  # Add more admin IDs as needed
-        }
+        self.admin_users = Config.load_admin_ids()
 
     def is_admin(self, telegram_id: int) -> bool:
         """Check if user is authorized admin"""
         return telegram_id in self.admin_users
+
+    # def refresh_admins_from_env(self):
+    #     """Reload admin user IDs from environment or config"""
+    #     self.admin_users = load_admin_ids()
 
     async def show_admin_dashboard(self, query):
         """Show main admin dashboard"""
