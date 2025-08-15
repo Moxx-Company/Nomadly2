@@ -16,6 +16,9 @@ from datetime import datetime, timedelta
 import os, json, asyncio
 from telegram.ext import ContextTypes
 from telegram.error import Forbidden, RetryAfter, TimedOut, NetworkError
+from telegram import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
+from telegram.error import BadRequest
+
 # Optional Sentry integration (graceful fallback if not installed)
 try:
     import sentry_sdk
@@ -122,6 +125,18 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 print('++++++++++++++++++++++++++++++++++++')
 print(BOT_TOKEN)
 print('++++++++++++++++++++++++++++++++++++')
+
+USER_COMMANDS = [
+    BotCommand("start", "Start / Main menu"),
+]
+
+ADMIN_COMMANDS = USER_COMMANDS + [
+    BotCommand("admin_status", "Admin dashboard / status"),
+    BotCommand("broadcast_all", "Broadcast to all users"),
+    BotCommand("cancel_broadcast", "Cancel pending broadcast"),
+]
+
+
 
 class NomadlyCleanBot:
     """Clean Nomadly bot with user-friendly interface - Cross-Platform Optimized"""
@@ -396,6 +411,22 @@ class NomadlyCleanBot:
         try:
             user = update.effective_user
             user_id = user.id if user else 0  # <-- define early
+
+            # Give the right command menu per chat
+            try:
+                if self.admin_panel.is_admin(user_id):
+                    await context.bot.set_my_commands(
+                        ADMIN_COMMANDS,
+                        scope=BotCommandScopeChat(chat_id=user_id),
+                    )
+                else:
+                    await context.bot.set_my_commands(
+                        USER_COMMANDS,
+                        scope=BotCommandScopeChat(chat_id=user_id),
+                    )
+            except BadRequest as e:
+                # Happens if user hasn’t opened a 1:1 chat yet or other transient issues
+                logger.warning(f"set_my_commands failed for {user_id}: {e}")
 
             if user:
                 # Save/ensure user exists in DB (this also ensures tables lazily)
@@ -12775,7 +12806,8 @@ def main():
         application.add_handler(CommandHandler("cancel_broadcast", bot.cancel_broadcast_command))
         application.add_handler(CallbackQueryHandler(bot.handle_callback_query))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
-        
+
+                
         logger.info("✅ Nomadly Clean Bot ready for users!")
         
         # Connect payment monitor after everything is set up
