@@ -12542,8 +12542,8 @@ Todas las consultas WHOIS muestran el servicio de privacidad {os.getenv('PROJECT
         # Otherwise enter compose mode (next message becomes the broadcast)
         self.admin_compose_mode.add(admin_id)
         await update.message.reply_text(
-            "✍️ *Send your broadcast message now.*\n\n"
-            "_Your next text message will be sent to all users._\n"
+            "✍️ Send your broadcast message now.\n\n"
+            "Your next text message will be sent to all users.\n"
             "Use /cancel_broadcast to abort."
         )
     
