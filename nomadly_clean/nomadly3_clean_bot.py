@@ -18,6 +18,7 @@ from telegram.ext import ContextTypes
 from telegram.error import Forbidden, RetryAfter, TimedOut, NetworkError
 from telegram import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
 from telegram.error import BadRequest
+from collections import Counter
 
 # Optional Sentry integration (graceful fallback if not installed)
 try:
@@ -376,10 +377,9 @@ class NomadlyCleanBot:
 
         return ids
 
-
     async def _broadcast_to_all(self, text: str) -> tuple[int, int]:
         sent = failed = 0
-        recipients = self._collect_recipient_ids()
+        recipients = self.db.get_all_user_ids()
         if not recipients:
             return (0, 0)
 
@@ -12548,35 +12548,59 @@ Todas las consultas WHOIS muestran el servicio de privacidad {os.getenv('PROJECT
             logger.error(f"Error in show_dns_records_view: {e}")
             await query.edit_message_text("🚧 Service temporarily unavailable.")
     
-    async def broadcast_all_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Admin-only: /broadcast_all [text] -> broadcast; no text -> compose mode."""
+    # async def broadcast_all_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    #     """Admin-only: /broadcast_all [text] -> broadcast; no text -> compose mode."""
+    #     if not update.message or not update.effective_user:
+    #         return
+
+    #     admin_id = update.effective_user.id
+    #     if not self._is_admin(admin_id):
+    #         await update.message.reply_text("⚠️ Unauthorized.")
+    #         return
+
+    #     # If message has text after the command, send immediately
+    #     text_arg = None
+    #     if update.message.text:
+    #         parts = update.message.text.split(" ", 1)
+    #         if len(parts) > 1 and parts[1].strip():
+    #             text_arg = parts[1].strip()
+
+    #     if text_arg:
+    #         sent, failed = await self._broadcast_to_all(text_arg)
+    #         await update.message.reply_text(f"📢 Broadcast: sent **{sent}**, failed **{failed}**.", parse_mode="Markdown")
+    #         return
+
+    #     # Otherwise enter compose mode (next message becomes the broadcast)
+    #     self.admin_compose_mode.add(admin_id)
+    #     await update.message.reply_text(
+    #         "✍️ Send your broadcast message now.\n\n"
+    #         "Your next text message will be sent to all users.\n"
+    #         "Use /cancel_broadcast to abort."
+    #     )
+    
+    async def broadcast_all_command(self, update, context):
         if not update.message or not update.effective_user:
             return
-
         admin_id = update.effective_user.id
         if not self._is_admin(admin_id):
             await update.message.reply_text("⚠️ Unauthorized.")
             return
 
-        # If message has text after the command, send immediately
-        text_arg = None
-        if update.message.text:
-            parts = update.message.text.split(" ", 1)
-            if len(parts) > 1 and parts[1].strip():
-                text_arg = parts[1].strip()
+        parts = update.message.text.split(" ", 1)
+        text_arg = parts[1].strip() if len(parts) > 1 else None
 
         if text_arg:
-            sent, failed = await self._broadcast_to_all(text_arg)
-            await update.message.reply_text(f"📢 Broadcast: sent **{sent}**, failed **{failed}**.", parse_mode="Markdown")
+            sent, failed, reasons = await self._broadcast_to_all(text_arg)
+            summary = " | ".join(f"{k}: {v}" for k, v in reasons.items()) or "none"
+            await update.message.reply_text(f"📢 Broadcast done — Sent: {sent}, Failed: {failed}\n{summary}")
             return
 
-        # Otherwise enter compose mode (next message becomes the broadcast)
+        # compose mode fallback
         self.admin_compose_mode.add(admin_id)
         await update.message.reply_text(
-            "✍️ Send your broadcast message now.\n\n"
-            "Your next text message will be sent to all users.\n"
-            "Use /cancel_broadcast to abort."
+            "✍️ Send your broadcast message now.\nYour next text will be sent to all users.\nUse /cancel_broadcast to abort."
         )
+
     
     async def show_add_dns_record_menu(self, query, domain):
         """Show menu to add DNS record"""

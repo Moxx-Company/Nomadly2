@@ -523,18 +523,27 @@ class DatabaseManager:
             return False
         finally:
             session.close()
+
     
-    def get_all_user_ids(self):
-        """Get all user IDs for broadcasting"""
-        session = self.get_session()
+    def get_all_user_ids(self) -> list[int]:
+        """Return all telegram IDs for broadcast (no chat_id column)."""
+        self.ensure_tables()
+        s = self.get_session()
         try:
-            user_ids = session.query(User.telegram_id).all()
-            return [user_id[0] for user_id in user_ids]
-        except Exception as e:
-            logger.error(f"Error getting all user IDs: {e}")
-            return []
+            rows = s.query(User.telegram_id).filter(User.telegram_id.isnot(None)).all()
+            ids = []
+            for (uid,) in rows:
+                try:
+                    ids.append(int(uid))
+                except Exception:
+                    logger.warning(f"Skipping non-numeric telegram_id: {uid!r}")
+            # de-dup in case the table ever gets odd data
+            ids = list({i for i in ids if i > 0})
+            logger.info(f"Broadcast targets from DB: {len(ids)} users")
+            return ids
         finally:
-            session.close()
+            s.close()
+
 
     def get_user_technical_email(self, telegram_id: int) -> Optional[str]:
         """Get user's stored technical email"""
