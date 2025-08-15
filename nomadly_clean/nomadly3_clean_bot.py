@@ -15,10 +15,10 @@ import time
 from datetime import datetime, timedelta
 import os, json, asyncio
 from telegram.ext import ContextTypes
-from telegram.error import Forbidden, RetryAfter, TimedOut, NetworkError
-from telegram import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
-from telegram.error import BadRequest
-from collections import Counter
+from telegram import BotCommand, BotCommandScopeChat
+from aiolimiter import AsyncLimiter
+from telegram.error import RetryAfter, Forbidden, BadRequest, TimedOut, NetworkError
+import asyncio, logging, random
 
 # Optional Sentry integration (graceful fallback if not installed)
 try:
@@ -46,6 +46,8 @@ from dotenv import load_dotenv
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from admin_panel import get_admin_panel
 from nomadly_clean.database import get_db_manager
+
+limiter = AsyncLimiter(15, 1)  # gentle rate, 15 msg per second
 
 # Simple caching for speed optimization
 response_cache = {}
@@ -344,66 +346,51 @@ class NomadlyCleanBot:
         }
 
 
-    def _collect_recipient_ids(self) -> set[int]:
-        ids: set[int] = set()
-
-        # 1) Primary source: DB (persisted users)
-        try:
-            self.db.ensure_tables()
-            ids.update(self.db.get_all_user_ids())
-        except Exception as e:
-            logger.warning(f"DB user fetch failed: {e}")
-
-        # 2) Fallbacks: in-memory sessions + JSON cache
-        try:
-            ids.update(int(uid) for uid in self.user_sessions.keys())
-        except Exception:
-            pass
-
-        try:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            path = os.path.join(base_dir, "user_sessions.json")
-            if os.path.exists(path):
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    if isinstance(data, dict):
-                        for k, sess in data.items():
-                            # prefer a telegram user id if present; else chat_id
-                            uid = sess.get("telegram_id") or sess.get("chat_id") or sess.get("telegram_chat_id")
-                            if isinstance(uid, int):
-                                ids.add(uid)
-        except Exception as e:
-            logger.warning(f"Failed to read user_sessions.json: {e}")
-
-        return ids
-
-    async def _broadcast_to_all(self, text: str) -> tuple[int, int]:
+    async def _broadcast_to_all(self, text: str) -> tuple[int, int, dict]:
+        
         sent = failed = 0
+        reasons = {"blocked": 0, "bad_request": 0, "timeout": 0, "other": 0}
         recipients = self.db.get_all_user_ids()
         if not recipients:
-            return (0, 0)
+            return 0, 0, reasons
 
         for uid in recipients:
+            await limiter.acquire()
             try:
-                await self.application.bot.send_message(chat_id=uid, text=text, parse_mode="Markdown")
+                await self.application.bot.send_message(
+                    chat_id=uid,
+                    text=text,
+                    parse_mode=None  # or "HTML" if you control formatting
+                )
                 sent += 1
-                await asyncio.sleep(0.05)  # small throttle helps
-            except Forbidden:
-                failed += 1  # user blocked bot / never started
             except RetryAfter as e:
                 await asyncio.sleep(e.retry_after + 1)
                 try:
-                    await self.application.bot.send_message(chat_id=uid, text=text, parse_mode="Markdown")
+                    await self.application.bot.send_message(chat_id=uid, text=text, parse_mode=None)
                     sent += 1
-                except Exception:
+                except Exception as e2:
                     failed += 1
-            except (TimedOut, NetworkError):
+                    reasons["other"] += 1
+                    logging.warning("RetryAfter second attempt failed for %s, %s", uid, e2)
+            except Forbidden as e:
                 failed += 1
+                reasons["blocked"] += 1
+            except BadRequest as e:
+                failed += 1
+                reasons["bad_request"] += 1
+                logging.warning("BadRequest for %s, %s", uid, e)
+            except (TimedOut, NetworkError) as e:
+                failed += 1
+                reasons["timeout"] += 1
             except Exception as e:
                 failed += 1
-                logger.warning(f"Broadcast to {uid} failed: {e}")
+                reasons["other"] += 1
+                logging.warning("Broadcast to %s failed, %s", uid, e)
 
-        return (sent, failed)
+            await asyncio.sleep(0.01 + random.random() * 0.02)  # tiny jitter
+
+        logging.info("Broadcast results, sent=%s failed=%s breakdown=%s", sent, failed, reasons)
+        return sent, failed, reasons
 
 
     async def start_command(self, update: Update, context): 
@@ -4983,16 +4970,11 @@ class NomadlyCleanBot:
             if user_id in self.admin_compose_mode and self.admin_panel.is_admin(user_id):
                 self.admin_compose_mode.discard(user_id)
                 await update.message.reply_text("🚀 Sending broadcast…")
-                # Use the DB-backed sender (rename yours or use the _text version)
-                sent, failed = await self._broadcast_to_all(text)
-                await update.message.reply_text(f"✅ Sent: {sent}  |  ❌ Failed: {failed}")
+
+                sent, failed, reasons = await self._broadcast_to_all(text)
+                await update.message.reply_text(f"✅ Sent {sent}, ❌ Failed {failed}, {reasons}")
                 return
             
-            # if update.message and update.message.text:
-            #     text = update.message.text.strip()
-            #     user_id = update.message.from_user.id if update.message.from_user else 0
-            #     logger.info(f"👤 User {user_id} sent message: {text}")
-
             # --- One-time keyboard removal per user ---
             session = self.user_sessions.setdefault(user_id, {})
             if not session.get("keyboard_cleared"):
@@ -12548,35 +12530,6 @@ Todas las consultas WHOIS muestran el servicio de privacidad {os.getenv('PROJECT
             logger.error(f"Error in show_dns_records_view: {e}")
             await query.edit_message_text("🚧 Service temporarily unavailable.")
     
-    # async def broadcast_all_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    #     """Admin-only: /broadcast_all [text] -> broadcast; no text -> compose mode."""
-    #     if not update.message or not update.effective_user:
-    #         return
-
-    #     admin_id = update.effective_user.id
-    #     if not self._is_admin(admin_id):
-    #         await update.message.reply_text("⚠️ Unauthorized.")
-    #         return
-
-    #     # If message has text after the command, send immediately
-    #     text_arg = None
-    #     if update.message.text:
-    #         parts = update.message.text.split(" ", 1)
-    #         if len(parts) > 1 and parts[1].strip():
-    #             text_arg = parts[1].strip()
-
-    #     if text_arg:
-    #         sent, failed = await self._broadcast_to_all(text_arg)
-    #         await update.message.reply_text(f"📢 Broadcast: sent **{sent}**, failed **{failed}**.", parse_mode="Markdown")
-    #         return
-
-    #     # Otherwise enter compose mode (next message becomes the broadcast)
-    #     self.admin_compose_mode.add(admin_id)
-    #     await update.message.reply_text(
-    #         "✍️ Send your broadcast message now.\n\n"
-    #         "Your next text message will be sent to all users.\n"
-    #         "Use /cancel_broadcast to abort."
-    #     )
     
     async def broadcast_all_command(self, update, context):
         if not update.message or not update.effective_user:
