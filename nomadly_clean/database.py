@@ -524,6 +524,47 @@ class DatabaseManager:
         finally:
             session.close()
 
+    def get_all_user_ids(self) -> list[int]:
+        """Return all telegram IDs for broadcast."""
+        self.ensure_tables()
+        s = self.get_session()
+        try:
+            rows = s.query(User.telegram_id).filter(User.telegram_id.isnot(None)).all()
+            ids = [uid for (uid,) in rows]                 # already Python ints from BIGINT
+            ids = [cid for cid in ids if cid > 0]          # only user DMs, skip groups
+            # de-dup without losing order
+            seen = set()
+            uniq = []
+            for cid in ids:
+                if cid not in seen:
+                    seen.add(cid)
+                    uniq.append(cid)
+            logger.info("Broadcast targets from DB, %s users", len(uniq))
+            return uniq
+        finally:
+            s.close()
+
+    
+    # def get_all_user_ids(self) -> list[int]:
+    #     """Return all telegram IDs for broadcast (no chat_id column)."""
+    #     self.ensure_tables()
+    #     s = self.get_session()
+    #     try:
+    #         rows = s.query(User.telegram_id).filter(User.telegram_id.isnot(None)).all()
+    #         ids = []
+    #         for (uid,) in rows:
+    #             try:
+    #                 ids.append(int(uid))
+    #             except Exception:
+    #                 logger.warning(f"Skipping non-numeric telegram_id: {uid!r}")
+    #         # de-dup in case the table ever gets odd data
+    #         ids = list({i for i in ids if i > 0})
+    #         logger.info(f"Broadcast targets from DB: {len(ids)} users")
+    #         return ids
+    #     finally:
+    #         s.close()
+
+
     def get_user_technical_email(self, telegram_id: int) -> Optional[str]:
         """Get user's stored technical email"""
         session = self.get_session()

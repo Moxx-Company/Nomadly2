@@ -13,6 +13,13 @@ import json
 import random
 import time
 from datetime import datetime, timedelta
+import os, json, asyncio
+from telegram.ext import ContextTypes
+from telegram import BotCommand, BotCommandScopeChat
+from aiolimiter import AsyncLimiter
+from telegram.error import RetryAfter, Forbidden, BadRequest, TimedOut, NetworkError
+import asyncio, logging, random
+
 # Optional Sentry integration (graceful fallback if not installed)
 try:
     import sentry_sdk
@@ -26,6 +33,7 @@ except ImportError:
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from telegram.request._httpxrequest import HTTPXRequest
+from telegram import ReplyKeyboardRemove
 from api_services import OpenProviderAPI
 from apis.fastforex import FastForexAPI
 from trustee_service_manager import TrusteeServiceManager
@@ -34,6 +42,12 @@ from ui_cleanup_manager import ui_cleanup
 from new_dns_ui import NewDNSUI
 from dns_propagation_checker import propagation_checker
 from dotenv import load_dotenv
+# allow importing admin_panel from project root
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from admin_panel import get_admin_panel
+from nomadly_clean.database import get_db_manager
+
+limiter = AsyncLimiter(15, 1)  # gentle rate, 15 msg per second
 
 # Simple caching for speed optimization
 response_cache = {}
@@ -115,13 +129,28 @@ print('++++++++++++++++++++++++++++++++++++')
 print(BOT_TOKEN)
 print('++++++++++++++++++++++++++++++++++++')
 
+USER_COMMANDS = [
+    BotCommand("start", "Start / Main menu"),
+]
+
+ADMIN_COMMANDS = USER_COMMANDS + [
+    BotCommand("admin_status", "Admin dashboard / status"),
+    BotCommand("broadcast_all", "Broadcast to all users"),
+    BotCommand("cancel_broadcast", "Cancel pending broadcast"),
+]
+
+
+
 class NomadlyCleanBot:
     """Clean Nomadly bot with user-friendly interface - Cross-Platform Optimized"""
     
     def __init__(self):
         # Load user sessions first to restore language preferences
         self.load_user_sessions()
-        
+
+        self.db = get_db_manager()
+        self.user_sessions = {}
+
         # Cross-platform optimizations
         self.mobile_button_width = 28  # Optimal for mobile touch
         self.desktop_button_width = 45 # Wider for desktop
@@ -133,6 +162,9 @@ class NomadlyCleanBot:
             'desktop': {'max_buttons_per_row': 3, 'button_text_length': 45, 'show_extended_info': True},
             'web': {'max_buttons_per_row': 2, 'button_text_length': 32, 'show_extended_info': True}
         }
+        self.admin_panel = get_admin_panel()
+        self.admin_compose_mode = set()  # telegram user IDs currently composing a broadcast
+
         # Initialize Nomadly service for dynamic pricing
         openprovider_username = os.getenv("OPENPROVIDER_USERNAME")
         openprovider_password = os.getenv("OPENPROVIDER_PASSWORD")
@@ -194,6 +226,13 @@ class NomadlyCleanBot:
                         logger.info(f"Re-added existing payment {address} to monitoring")
         except Exception as e:
             logger.warning(f"Could not connect to payment monitor: {e}")
+
+    # -- admin-only helper
+    def _is_admin(self, user_id: int) -> bool:
+        try:
+            return self.admin_panel.is_admin(user_id)
+        except Exception:
+            return False
     
     def load_user_sessions(self):
         """Load user sessions from file with enhanced error handling"""
@@ -305,46 +344,154 @@ class NomadlyCleanBot:
             "has_custom_email": has_custom_email,
             "has_custom_ns": has_custom_ns
         }
+
+
+    async def _broadcast_to_all(self, text: str) -> tuple[int, int, dict]:
         
-    async def start_command(self, update: Update, context):
-        """Handle /start command with language persistence"""
+        sent = failed = 0
+        reasons = {"blocked": 0, "bad_request": 0, "timeout": 0, "other": 0}
+        recipients = self.db.get_all_user_ids()
+        if not recipients:
+            return 0, 0, reasons
+
+        for uid in recipients:
+            await limiter.acquire()
+            try:
+                await self.application.bot.send_message(
+                    chat_id=uid,
+                    text=text,
+                    parse_mode=None  # or "HTML" if you control formatting
+                )
+                sent += 1
+            except RetryAfter as e:
+                await asyncio.sleep(e.retry_after + 1)
+                try:
+                    await self.application.bot.send_message(chat_id=uid, text=text, parse_mode=None)
+                    sent += 1
+                except Exception as e2:
+                    failed += 1
+                    reasons["other"] += 1
+                    logging.warning("RetryAfter second attempt failed for %s, %s", uid, e2)
+            except Forbidden as e:
+                failed += 1
+                reasons["blocked"] += 1
+            except BadRequest as e:
+                failed += 1
+                reasons["bad_request"] += 1
+                logging.warning("BadRequest for %s, %s", uid, e)
+            except (TimedOut, NetworkError) as e:
+                failed += 1
+                reasons["timeout"] += 1
+            except Exception as e:
+                failed += 1
+                reasons["other"] += 1
+                logging.warning("Broadcast to %s failed, %s", uid, e)
+
+            await asyncio.sleep(0.01 + random.random() * 0.02)  # tiny jitter
+
+        logging.info("Broadcast results, sent=%s failed=%s breakdown=%s", sent, failed, reasons)
+        return sent, failed, reasons
+
+
+    async def start_command(self, update: Update, context): 
+        """Handle /start command with language persistence"""       
         try:
-            user_id = update.effective_user.id if update.effective_user else 0
-            logger.info(f"👤 User {user_id} started bot")
-            
-            # Debug logging for session data
+            user = update.effective_user
+            user_id = user.id if user else 0  # <-- define early
+
+            # Give the right command menu per chat
+            try:
+                if self.admin_panel.is_admin(user_id):
+                    await context.bot.set_my_commands(
+                        ADMIN_COMMANDS,
+                        scope=BotCommandScopeChat(chat_id=user_id),
+                    )
+                else:
+                    await context.bot.set_my_commands(
+                        USER_COMMANDS,
+                        scope=BotCommandScopeChat(chat_id=user_id),
+                    )
+            except BadRequest as e:
+                # Happens if user hasn’t opened a 1:1 chat yet or other transient issues
+                logger.warning(f"set_my_commands failed for {user_id}: {e}")
+
+            if user:
+                # Save/ensure user exists in DB (this also ensures tables lazily)
+                self.db.get_or_create_user(
+                    telegram_id=user.id,
+                    username=user.username,
+                    first_name=user.first_name,
+                    last_name=user.last_name,
+                )
+                # Optionally stash chat_id for later broadcasts
+                if update.effective_chat:
+                    sess = self.user_sessions.setdefault(user.id, {})
+                    sess["chat_id"] = update.effective_chat.id
+
+            # Ensure any stale ReplyKeyboard is hidden (only once per user)
+            if update.message:
+                session = self.user_sessions.setdefault(user_id, {})
+                if not session.get("keyboard_cleared"):
+                    await update.message.reply_text("Updating menu…", reply_markup=ReplyKeyboardRemove())
+                    session["keyboard_cleared"] = True
+
+            # existing logic…
+            user_id = user.id if user else 0
             user_session = self.user_sessions.get(user_id, {})
-            user_language = user_session.get("language")
-            logger.info(f"🔍 User {user_id} session check: language={user_language}, session_exists={user_id in self.user_sessions}")
-    
-            # Check if user already has a language preference
-            if user_id in self.user_sessions and "language" in self.user_sessions[user_id]:
-                # User has used bot before, get their language and show main menu
-                saved_language = self.user_sessions[user_id]["language"]
-                logger.info(f"✅ User {user_id} has saved language: {saved_language}")
-                
-                # Directly show main menu for returning users
+            if user_id in self.user_sessions and "language" in user_session:
                 if update.message:
                     await self.show_main_menu_returning_user(update.message, user_id)
             else:
-                # New user, show language selection with greetings in all languages
                 await self.show_multilingual_welcome(update)
-
         except Exception as e:
             logger.error(f"Error in start_command: {e}")
             if update.message:
                 await update.message.reply_text("🚧 Service temporarily unavailable. Please try again.")
+
 
     async def handle_callback_query(self, update: Update, context):
         """Handle all callback queries"""
         logger.info(f"🎯 CALLBACK HANDLER REACHED")
         try:
             query = update.callback_query
+            data = query.data or ""
             logger.info(f"🎯 QUERY OBJECT: {query}")
             if query:
                 # Immediate acknowledgment with relevant feedback
                 if query.data and query.data.startswith("lang_"):
                     await query.answer("✅ Selected")
+                
+
+                # Only admins can use admin callbacks
+                elif query.data.startswith("admin_"):
+                    uid = query.from_user.id if query.from_user else 0
+                    if not self.admin_panel.is_admin(uid):
+                        await query.answer("⚠️ Unauthorized", show_alert=True)
+                        return
+
+                    if data == "admin_dashboard":
+                        await self.admin_panel.show_admin_dashboard(query)
+                        return
+
+                    if data == "admin_broadcast":
+                        await self.admin_panel.send_broadcast_message(query)
+                        return
+
+                    if data == "admin_compose_broadcast":
+                        # Put this admin into compose mode
+                        self.admin_compose_mode.add(uid)
+                        await query.edit_message_text(
+                            "✍️ *Send your broadcast message now.*\n\n"
+                            "_Your next text message will be sent to all users._",
+                            parse_mode="Markdown",
+                            reply_markup=InlineKeyboardMarkup(
+                                [[InlineKeyboardButton("⬅️ Back", callback_data="admin_broadcast")]]
+                            ),
+                        )
+                        return
+
+                    # (optionally: handle other admin_* callbacks ...)
+
                 elif query.data == "main_menu":
                     await query.answer("🏴‍☠️ Loading...")
                 elif query.data == "search_domain":
@@ -4811,66 +4958,90 @@ class NomadlyCleanBot:
     async def handle_message(self, update: Update, context):
         """Handle text messages for domain search"""
         try:
-            if update.message and update.message.text:
-                text = update.message.text.strip()
-                user_id = update.message.from_user.id if update.message.from_user else 0
-                logger.info(f"👤 User {user_id} sent message: {text}")
+            if not (update.message and update.message.text):
+                return
+            
+            text = update.message.text.strip()
+            user = update.message.from_user
+            user_id = user.id if user else 0
+            logger.info(f"👤 User {user_id} sent message: {text}")
 
-                # Check if user is waiting for specific input
-                session = self.user_sessions.get(user_id, {})
+            # --- Admin compose mode (first so it wins) ---
+            if user_id in self.admin_compose_mode and self.admin_panel.is_admin(user_id):
+                self.admin_compose_mode.discard(user_id)
+                await update.message.reply_text("🚀 Sending broadcast…")
 
-                if "waiting_for_dns_input" in session and session.get("dns_workflow_step") == "field_input":
-                    # Handle new DNS field validation workflow - PRIORITY: Check this first
-                    logger.info(f"DEBUG: Routing to DNS field validation handler for user {user_id}")
-                    await self.handle_dns_field_input(update.message, text)
-                elif "waiting_for_dns_input" in session:
-                    # Handle legacy DNS record input - PRIORITY: Check this first to prevent domain search confusion
-                    logger.info(f"DEBUG: Routing to DNS record input handler for user {user_id}")
-                    await self.handle_dns_record_input(update.message, text)
-                elif "waiting_for_dns_edit" in session:
-                    # Handle DNS record edit input
-                    await self.handle_dns_edit_input(update.message, text)
-                elif "waiting_for_nameservers" in session:
-                    # Handle custom nameserver list input
-                    await self.process_nameserver_input(update.message, text, session["waiting_for_nameservers"])
-                elif "waiting_for_email" in session:
-                    # Handle custom email input
-                    await self.handle_custom_email_input(update.message, text, session["waiting_for_email"])
-                elif "waiting_for_ns" in session:
-                    # Handle custom nameserver input
-                    await self.handle_custom_nameserver_input(update.message, text, session["waiting_for_ns"])
-                elif self.is_valid_email(text):
-                    # User sent an email but we're not expecting one - provide guidance
-                    await update.message.reply_text(
-                        f"📧 **Email Address Detected**\n\n"
-                        f"I see you've entered an email address: `{text}`\n\n"
-                        f"**To set this as your technical contact email:**\n"
-                        f"1. Start domain registration by searching for a domain\n"
-                        f"2. Use the \"📧 Change Email\" button during registration\n\n"
-                        f"**Or use the main menu to navigate:**",
-                        parse_mode='Markdown',
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("🔍 Search Domain", callback_data="search_domain")],
-                            [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
-                        ])
-                    )
-                elif text and not text.startswith('/') and self.looks_like_domain(text):
-                    # Only treat as domain search if it looks like a domain
-                    await self.handle_text_domain_search(update.message, text)
-                else:
-                    # Unknown text input - provide guidance
-                    await update.message.reply_text(
-                        f"🤔 **Not sure what to do with:** `{text}`\n\n"
-                        f"**Here's what I can help with:**\n"
-                        f"• **Domain search** - Type a domain name (e.g., `example.com`)\n"
-                        f"• **Navigation** - Use the menu buttons below\n\n"
-                        f"**Or try these common actions:**",
-                        parse_mode='Markdown',
-                        reply_markup=InlineKeyboardMarkup([
-                            [InlineKeyboardButton("🔍 Search Domain", callback_data="search_domain")],
-                            [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
-                        ])
-                    )
+                sent, failed, reasons = await self._broadcast_to_all(text)
+                await update.message.reply_text(f"✅ Sent {sent}, ❌ Failed {failed}, {reasons}")
+                return
+            
+            # --- One-time keyboard removal per user ---
+            session = self.user_sessions.setdefault(user_id, {})
+            if not session.get("keyboard_cleared"):
+                await update.message.reply_text("OK.", reply_markup=ReplyKeyboardRemove())
+                session["keyboard_cleared"] = True
+
+
+            if "waiting_for_dns_input" in session and session.get("dns_workflow_step") == "field_input":
+                # Handle new DNS field validation workflow - PRIORITY: Check this first
+                logger.info(f"DEBUG: Routing to DNS field validation handler for user {user_id}")
+                await self.handle_dns_field_input(update.message, text)
+                return
+            if "waiting_for_dns_input" in session:
+                # Handle legacy DNS record input - PRIORITY: Check this first to prevent domain search confusion
+                logger.info(f"DEBUG: Routing to DNS record input handler for user {user_id}")
+                await self.handle_dns_record_input(update.message, text)
+                return
+            if "waiting_for_dns_edit" in session:
+                # Handle DNS record edit input
+                await self.handle_dns_edit_input(update.message, text)
+                return
+            if "waiting_for_nameservers" in session:
+                # Handle custom nameserver list input
+                await self.process_nameserver_input(update.message, text, session["waiting_for_nameservers"])
+                return
+            if "waiting_for_email" in session:
+                # Handle custom email input
+                await self.handle_custom_email_input(update.message, text, session["waiting_for_email"])
+                return
+            if "waiting_for_ns" in session:
+                # Handle custom nameserver input
+                await self.handle_custom_nameserver_input(update.message, text, session["waiting_for_ns"])
+                return
+            if self.is_valid_email(text):
+                # User sent an email but we're not expecting one - provide guidance
+                await update.message.reply_text(
+                    f"📧 **Email Address Detected**\n\n"
+                    f"I see you've entered an email address: `{text}`\n\n"
+                    f"**To set this as your technical contact email:**\n"
+                    f"1. Start domain registration by searching for a domain\n"
+                    f"2. Use the \"📧 Change Email\" button during registration\n\n"
+                    f"**Or use the main menu to navigate:**",
+                    parse_mode='Markdown',
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🔍 Search Domain", callback_data="search_domain")],
+                        [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
+                    ])
+                )
+                return
+            if text and not text.startswith('/') and self.looks_like_domain(text):
+                # Only treat as domain search if it looks like a domain
+                await self.handle_text_domain_search(update.message, text)
+                return
+            
+            # Unknown text input - provide guidance
+            await update.message.reply_text(
+                f"🤔 **Not sure what to do with:** `{text}`\n\n"
+                f"**Here's what I can help with:**\n"
+                f"• **Domain search** - Type a domain name (e.g., `example.com`)\n"
+                f"• **Navigation** - Use the menu buttons below\n\n"
+                f"**Or try these common actions:**",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔍 Search Domain", callback_data="search_domain")],
+                    [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
+                ])
+            )
 
         except Exception as e:
             logger.error(f"Error in handle_message: {e}")
@@ -12359,6 +12530,31 @@ Todas las consultas WHOIS muestran el servicio de privacidad {os.getenv('PROJECT
             logger.error(f"Error in show_dns_records_view: {e}")
             await query.edit_message_text("🚧 Service temporarily unavailable.")
     
+    
+    async def broadcast_all_command(self, update, context):
+        if not update.message or not update.effective_user:
+            return
+        admin_id = update.effective_user.id
+        if not self._is_admin(admin_id):
+            await update.message.reply_text("⚠️ Unauthorized.")
+            return
+
+        parts = update.message.text.split(" ", 1)
+        text_arg = parts[1].strip() if len(parts) > 1 else None
+
+        if text_arg:
+            sent, failed, reasons = await self._broadcast_to_all(text_arg)
+            summary = " | ".join(f"{k}: {v}" for k, v in reasons.items()) or "none"
+            await update.message.reply_text(f"📢 Broadcast done — Sent: {sent}, Failed: {failed}\n{summary}")
+            return
+
+        # compose mode fallback
+        self.admin_compose_mode.add(admin_id)
+        await update.message.reply_text(
+            "✍️ Send your broadcast message now.\nYour next text will be sent to all users.\nUse /cancel_broadcast to abort."
+        )
+
+    
     async def show_add_dns_record_menu(self, query, domain):
         """Show menu to add DNS record"""
         try:
@@ -12538,12 +12734,35 @@ Todas las consultas WHOIS muestran el servicio de privacidad {os.getenv('PROJECT
         except Exception as e:
             logger.error(f"Error in handle_security_settings: {e}")
             await query.edit_message_text("🚧 Service temporarily unavailable.")
+    
+    async def cancel_broadcast_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if update.message and update.effective_user:
+            self.admin_compose_mode.discard(update.effective_user.id)
+            await update.message.reply_text("❎ Broadcast cancelled.")
+
+    async def admin_command(self, update: Update, context):
+        if not update.message:
+            return
+        uid = update.effective_user.id if update.effective_user else 0
+        if not self.admin_panel.is_admin(uid):
+            await update.message.reply_text("⚠️ Unauthorized.")
+            return
+
+        # Kick off with a button that loads the dashboard (AdminPanel expects a callback query)
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton("Open Admin Dashboard", callback_data="admin_dashboard")]])
+        await update.message.reply_text("🛠 Admin Panel", reply_markup=kb)
+
 
 
 def main():
     """Main bot function"""
     try:
         logger.info("🚀 Starting Nomadly Clean Bot...")
+
+        # Ensure DB schema exists
+        db = get_db_manager()
+        db.ensure_tables()
+        logger.info("🗄️ Database tables ensured.")
         
         # Create bot instance
         bot = NomadlyCleanBot()
@@ -12556,12 +12775,16 @@ def main():
         
         # Connect payment monitor to bot instance after handlers are added
         logger.info("🔗 Setting up payment monitor connection...")
-        
+    
         # Add handlers
         application.add_handler(CommandHandler("start", bot.start_command))
+        application.add_handler(CommandHandler("admin_status", bot.admin_command))
+        application.add_handler(CommandHandler("broadcast_all", bot.broadcast_all_command))
+        application.add_handler(CommandHandler("cancel_broadcast", bot.cancel_broadcast_command))
         application.add_handler(CallbackQueryHandler(bot.handle_callback_query))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
-        
+
+                
         logger.info("✅ Nomadly Clean Bot ready for users!")
         
         # Connect payment monitor after everything is set up
@@ -12577,13 +12800,13 @@ def main():
             logger.error(f"⚠️ Failed to connect payment monitor: {e}")
         
         # Start the bot
-        #application.run_polling()
-        application.run_webhook(
-            listen="0.0.0.0",
-            port=8443,
-            url_path="/webhook",
-            webhook_url=os.getenv("BOT_WEBHOOK")
-        )
+        application.run_polling()
+        # application.run_webhook(
+        #     listen="0.0.0.0",
+        #     port=8443,
+        #     url_path="/webhook",
+        #     webhook_url=os.getenv("BOT_WEBHOOK")
+        # )
         
     except Exception as e:
         logger.exception(f"❌ Error starting bot: {e}")
