@@ -12800,13 +12800,13 @@ def main():
             logger.error(f"⚠️ Failed to connect payment monitor: {e}")
         
         # Start the bot
-        application.run_polling()
-        # application.run_webhook(
-        #     listen="0.0.0.0",
-        #     port=8443,
-        #     url_path="/webhook",
-        #     webhook_url=os.getenv("BOT_WEBHOOK")
-        # )
+        # application.run_polling()
+        application.run_webhook(
+            listen="0.0.0.0",
+            port=8443,
+            url_path="/webhook",
+            webhook_url=os.getenv("BOT_WEBHOOK")
+        )
         
     except Exception as e:
         logger.exception(f"❌ Error starting bot: {e}")
