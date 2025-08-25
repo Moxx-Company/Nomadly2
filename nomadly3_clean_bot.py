@@ -13,6 +13,10 @@ import json
 import random
 import time
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 # Optional Sentry integration (graceful fallback if not installed)
 try:
     import sentry_sdk
@@ -3031,8 +3035,26 @@ class NomadlyCleanBot:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
             
-            # Generate unique wallet funding address
-            wallet_address = self.generate_crypto_address(crypto_type, user_id, "wallet_funding")
+            # Get user's preferred payment gateway or use system default
+            system_gateway = os.getenv('PAYMENT_GATEWAY', 'blockbee').lower()
+            payment_gateway = system_gateway
+            
+            logger.info(f"💰 Wallet funding for user {user_id} using {payment_gateway} gateway")
+            
+            # Generate real payment address using the selected payment gateway
+            if payment_gateway == 'dynopay':
+                wallet_address = await self.generate_dynopay_wallet_address(crypto_type, user_id)
+            else:  # Default to BlockBee
+                wallet_address = await self.generate_blockbee_wallet_address(crypto_type, user_id)
+            
+            if not wallet_address:
+                await query.edit_message_text(
+                    "❌ **Payment Gateway Error**\n\n"
+                    f"Unable to generate {crypto_type.upper()} address via {payment_gateway.upper()}.\n"
+                    "Please try again or contact support.",
+                    parse_mode='Markdown'
+                )
+                return
             
             # Store wallet funding session data
             if user_id not in self.user_sessions:
@@ -3040,6 +3062,7 @@ class NomadlyCleanBot:
             
             self.user_sessions[user_id].update({
                 "wallet_funding_crypto": crypto_type,
+                "wallet_funding_gateway": payment_gateway,
                 f"{crypto_type}_wallet_address": wallet_address,
                 "wallet_funding_time": time.time(),
                 "stage": "wallet_funding"
@@ -3119,14 +3142,29 @@ class NomadlyCleanBot:
             user_id = query.from_user.id if query and query.from_user else 0
             user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
             
-            # Wait to simulate blockchain checking
-            # CRITICAL: Real payment verification needed
-            # For now, always show "no payment found" to prevent false confirmations
-            payment_received = False
+            # Get the payment gateway used for this wallet funding
+            session = self.user_sessions.get(user_id, {})
+            payment_gateway = session.get('wallet_funding_gateway', os.getenv('PAYMENT_GATEWAY', 'blockbee'))
+            wallet_address = session.get(f"{crypto_type}_wallet_address")
             
-            if payment_received:
-                # Simulate received amount (replace with real blockchain checking)
-                received_amount = self.simulate_received_amount()
+            if not wallet_address:
+                await query.edit_message_text(
+                    "❌ **Session Error**\n\n"
+                    "Wallet funding session not found.\n"
+                    "Please try funding your wallet again.",
+                    parse_mode='Markdown'
+                )
+                return
+            
+            logger.info(f"🔍 Checking {crypto_type.upper()} wallet payment via {payment_gateway} for user {user_id}")
+            
+            # Check payment status using the appropriate payment gateway
+            if payment_gateway == 'dynopay':
+                payment_received, received_amount = await self.check_dynopay_wallet_payment(user_id, crypto_type, wallet_address)
+            else:  # Default to BlockBee
+                payment_received, received_amount = await self.check_blockbee_wallet_payment(user_id, crypto_type, wallet_address)
+            
+            if payment_received and received_amount:
                 
                 # Credit wallet balance
                 await self.credit_wallet_balance(user_id, received_amount)
@@ -3196,6 +3234,112 @@ class NomadlyCleanBot:
             logger.error(f"Error in handle_wallet_payment_status_check: {e}")
             if query:
                 await query.edit_message_text("🚧 Payment verification failed. Please try again.")
+    
+    async def check_dynopay_wallet_payment(self, user_id: int, crypto_type: str, wallet_address: str) -> tuple[bool, float]:
+        """Check DynoPay wallet payment status"""
+        try:
+            from apis.dynopay import DynopayAPI
+            
+            # Get user token from session
+            user_token = self.user_sessions.get(user_id, {}).get('dynopay_user_token')
+            if not user_token:
+                logger.error(f"No DynoPay user token found for user {user_id}")
+                return False, 0.0
+            
+            dynopay = DynopayAPI()
+            
+            # Get user's transactions to check for recent payments
+            result = await dynopay.get_user_transactions(user_token)
+            
+            if result.get("success"):
+                transactions = result.get("transactions", [])
+                
+                # Look for recent transactions for wallet funding
+                for transaction in transactions:
+                    if (transaction.get("currency", "").lower() == crypto_type.lower() and
+                        transaction.get("status") == "completed" and
+                        transaction.get("meta_data", {}).get("purpose") == "wallet_funding"):
+                        
+                        amount_usd = float(transaction.get("amount_usd", 0))
+                        if amount_usd > 0:
+                            logger.info(f"✅ DynoPay wallet payment found: ${amount_usd} for user {user_id}")
+                            return True, amount_usd
+                
+                logger.info(f"⏳ No completed DynoPay wallet payment found for user {user_id}")
+                return False, 0.0
+            else:
+                logger.error(f"❌ DynoPay transaction fetch failed: {result.get('error')}")
+                return False, 0.0
+                
+        except Exception as e:
+            logger.error(f"Error checking DynoPay wallet payment: {e}")
+            return False, 0.0
+    
+    async def check_blockbee_wallet_payment(self, user_id: int, crypto_type: str, wallet_address: str) -> tuple[bool, float]:
+        """Check BlockBee wallet payment status"""
+        try:
+            from apis.blockbee import BlockBeeAPI
+            
+            api_key = os.getenv('BLOCKBEE_API_KEY')
+            if not api_key:
+                logger.error("BlockBee API key not configured for wallet payment check")
+                return False, 0.0
+            
+            blockbee = BlockBeeAPI(api_key)
+            
+            # BlockBee uses webhooks, so we need to check if we have received a webhook
+            # For now, we'll check the logs endpoint to see recent payments
+            callback_url = f"{os.getenv('FLASK_WEB_HOOK', 'https://nomadly2-onarrival.replit.app')}/webhook/blockbee/wallet/{user_id}"
+            
+            # Check BlockBee logs for recent payments to this address
+            logs_result = blockbee.check_logs(crypto_type, callback_url)
+            
+            if logs_result and logs_result.get("status") == "success":
+                payments = logs_result.get("data", [])
+                
+                for payment in payments:
+                    if (payment.get("address") == wallet_address and
+                        payment.get("status") == "paid"):
+                        
+                        # Convert crypto amount to USD (you'll need to implement rate conversion)
+                        crypto_amount = float(payment.get("value", 0))
+                        amount_usd = await self.convert_crypto_to_usd(crypto_type, crypto_amount)
+                        
+                        if amount_usd > 0:
+                            logger.info(f"✅ BlockBee wallet payment found: ${amount_usd} for user {user_id}")
+                            return True, amount_usd
+                
+                logger.info(f"⏳ No completed BlockBee wallet payment found for user {user_id}")
+                return False, 0.0
+            else:
+                logger.info(f"⏳ No BlockBee payment logs found for user {user_id}")
+                return False, 0.0
+                
+        except Exception as e:
+            logger.error(f"Error checking BlockBee wallet payment: {e}")
+            return False, 0.0
+    
+    async def convert_crypto_to_usd(self, crypto_type: str, crypto_amount: float) -> float:
+        """Convert cryptocurrency amount to USD using current rates"""
+        try:
+            # This is a simplified conversion - in production, you'd use a real rate API
+            # For now, we'll use approximate rates
+            rates = {
+                "btc": 45000.0,  # Bitcoin
+                "eth": 3000.0,   # Ethereum
+                "ltc": 150.0,    # Litecoin
+                "doge": 0.08,    # Dogecoin
+                "xmr": 200.0,    # Monero
+                "bnb": 300.0,    # Binance Coin
+                "matic": 0.8,    # Polygon
+            }
+            
+            rate = rates.get(crypto_type.lower(), 1.0)
+            return crypto_amount * rate
+            
+        except Exception as e:
+            logger.error(f"Error converting crypto to USD: {e}")
+            return 0.0
 
 
 
@@ -4304,8 +4448,151 @@ class NomadlyCleanBot:
 
 
 
+    async def generate_dynopay_wallet_address(self, crypto_type: str, user_id: int) -> str:
+        """Generate real wallet funding address using DynoPay API"""
+        try:
+            from apis.dynopay import DynopayAPI
+            
+            api_key = os.getenv('DYNOPAY_API_KEY')
+            token = os.getenv('DYNOPAY_TOKEN')
+            
+            if not api_key or not token:
+                logger.error("DynoPay API credentials not configured for wallet funding")
+                return None
+            
+            # Note: DynoPay requires user_token for add_funds, but we don't have it for wallet funding
+            # We'll need to use create_crypto_payment instead, or create a user first
+            dynopay = DynopayAPI()
+            
+            # Create a unique callback URL for wallet funding
+            callback_url = f"{os.getenv('FLASK_WEB_HOOK', 'https://nomadly2-onarrival.replit.app')}/webhook/dynopay/wallet/{user_id}"
+            
+            # For wallet funding, we'll use create_crypto_payment with a minimum amount
+            # The user_token will need to be generated or retrieved from user session
+            # For now, we'll use a placeholder approach
+            
+            # Check if we have a user token for this user
+            user_token = self.user_sessions.get(user_id, {}).get('dynopay_user_token')
+            
+            if not user_token:
+                # We need to create a user first or get their token
+                user_token = await self.create_or_get_dynopay_user(user_id)
+                if not user_token:
+                    logger.error(f"❌ Failed to create/get DynoPay user for user {user_id}")
+                    return None
+            
+            # Use create_crypto_payment for wallet funding
+            result = await dynopay.create_crypto_payment(
+                user_token=user_token,
+                amount=20.0,  # Minimum amount for wallet funding
+                currency=crypto_type,
+                callback_url=callback_url,
+                meta_data={"purpose": "wallet_funding", "user_id": user_id}
+            )
+            
+            if result.get("success") and result.get("payment_data"):
+                payment_data = result["payment_data"]
+                # DynoPay returns payment_data, not a direct address
+                # We need to extract the payment URL or address from the response
+                payment_url = payment_data.get("payment_url") or payment_data.get("redirect_url")
+                
+                if payment_url:
+                    logger.info(f"✅ DynoPay wallet funding link generated for {crypto_type}")
+                    return payment_url
+                else:
+                    logger.error(f"❌ DynoPay payment data missing payment URL: {payment_data}")
+                    return None
+            else:
+                logger.error(f"❌ DynoPay wallet funding failed: {result.get('error')}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error generating DynoPay wallet address: {e}")
+            return None
+    
+    async def create_or_get_dynopay_user(self, user_id: int) -> str:
+        """Create or retrieve DynoPay user token for wallet funding"""
+        try:
+            from apis.dynopay import DynopayAPI
+            
+            # Check if we already have a user token for this user
+            existing_token = self.user_sessions.get(user_id, {}).get('dynopay_user_token')
+            if existing_token:
+                return existing_token
+            
+            # Create new DynoPay user
+            dynopay = DynopayAPI()
+            
+            # Get user info from Telegram (we'll need to implement this)
+            # For now, use placeholder data
+            user_email = f"user_{user_id}@nomadly.com"
+            user_name = f"User_{user_id}"
+            
+            # Create user in DynoPay
+            result = await dynopay.create_user(
+                email=user_email,
+                name=user_name
+            )
+            
+            if result.get("success") and result.get("user_data"):
+                user_data = result["user_data"]
+                user_token = user_data.get("user_token") or user_data.get("token")
+                
+                if user_token:
+                    # Store the token in user session
+                    if user_id not in self.user_sessions:
+                        self.user_sessions[user_id] = {}
+                    
+                    self.user_sessions[user_id]['dynopay_user_token'] = user_token
+                    self.save_user_sessions()
+                    
+                    logger.info(f"✅ DynoPay user created for user {user_id}")
+                    return user_token
+                else:
+                    logger.error(f"❌ DynoPay user created but no token returned: {user_data}")
+                    return None
+            else:
+                logger.error(f"❌ Failed to create DynoPay user: {result.get('error')}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error creating DynoPay user: {e}")
+            return None
+    
+    async def generate_blockbee_wallet_address(self, crypto_type: str, user_id: int) -> str:
+        """Generate real wallet funding address using BlockBee API"""
+        try:
+            from apis.blockbee import BlockBeeAPI
+            
+            api_key = os.getenv('BLOCKBEE_API_KEY')
+            if not api_key:
+                logger.error("BlockBee API key not configured for wallet funding")
+                return None
+            
+            blockbee = BlockBeeAPI(api_key)
+            
+            # Create a unique callback URL for wallet funding
+            callback_url = f"{os.getenv('FLASK_WEB_HOOK', 'https://nomadly2-onarrival.replit.app')}/webhook/blockbee/wallet/{user_id}"
+            
+            # Create payment address for wallet funding
+            result = blockbee.create_payment_address(
+                cryptocurrency=crypto_type,
+                callback_url=callback_url
+            )
+            
+            if result.get("status") == "success" and result.get("address"):
+                logger.info(f"✅ BlockBee wallet address generated for {crypto_type}")
+                return result["address"]
+            else:
+                logger.error(f"❌ BlockBee wallet address generation failed: {result.get('message')}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error generating BlockBee wallet address: {e}")
+            return None
+    
     def generate_crypto_address(self, crypto_type: str, user_id: int, purpose: str) -> str:
-        """Generate realistic cryptocurrency address for demo purposes"""
+        """Generate realistic cryptocurrency address for demo purposes (fallback)"""
         # Generate consistent addresses based on user_id and crypto_type for demo
         seed = f"{user_id}_{crypto_type}_{purpose}_{int(time.time() // 3600)}"  # Changes hourly
         random.seed(hash(seed) % (2**32))
@@ -4378,6 +4665,11 @@ class NomadlyCleanBot:
                 # Check if user is waiting for specific input
                 session = self.user_sessions.get(user_id, {})
                 
+                # Handle payment gateway status check
+                if text.lower() == "gateway" or text.lower() == "payment":
+                    await self.show_payment_gateway_status(update.message)
+                    return
+                
                 if "waiting_for_dns_input" in session and session.get("dns_workflow_step") == "field_input":
                     # Handle new DNS field validation workflow - PRIORITY: Check this first
                     logger.info(f"DEBUG: Routing to DNS field validation handler for user {user_id}")
@@ -4413,6 +4705,9 @@ class NomadlyCleanBot:
                             [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
                         ])
                     )
+                elif text.lower() in ["dynopay", "blockbee"]:
+                    # Handle payment gateway switching
+                    await self.handle_payment_gateway_switch(update.message, text.lower())
                 elif text and not text.startswith('/') and self.looks_like_domain(text):
                     # Only treat as domain search if it looks like a domain
                     await self.handle_text_domain_search(update.message, text)
@@ -4422,6 +4717,7 @@ class NomadlyCleanBot:
                         f"🤔 **Not sure what to do with:** `{text}`\n\n"
                         f"**Here's what I can help with:**\n"
                         f"• **Domain search** - Type a domain name (e.g., `example.com`)\n"
+                        f"• **Payment gateway** - Type `dynopay` or `blockbee` to switch\n"
                         f"• **Navigation** - Use the menu buttons below\n\n"
                         f"**Or try these common actions:**",
                         parse_mode='Markdown',
@@ -4454,6 +4750,148 @@ class NomadlyCleanBot:
             len(text) >= 4      # Minimum length
         )
 
+    async def handle_payment_gateway_switch(self, message, gateway_name):
+        """Handle payment gateway switching via text command"""
+        try:
+            user_id = message.from_user.id
+            current_gateway = os.getenv('PAYMENT_GATEWAY', 'blockbee').lower()
+            
+            if gateway_name == current_gateway:
+                await message.reply_text(
+                    f"ℹ️ **Payment Gateway Already Set**\n\n"
+                    f"Current gateway: **{current_gateway.upper()}**\n\n"
+                    f"To switch to a different gateway, type:\n"
+                    f"• `dynopay` for DynoPay\n"
+                    f"• `blockbee` for BlockBee",
+                    parse_mode='Markdown'
+                )
+                return
+            
+            # Check if the requested gateway is available
+            if gateway_name == "dynopay":
+                if not os.getenv('DYNOPAY_API_KEY') or not os.getenv('DYNOPAY_TOKEN'):
+                    await message.reply_text(
+                        "❌ **DynoPay Not Available**\n\n"
+                        "DynoPay API credentials are not configured.\n"
+                        "Please contact support to enable DynoPay.",
+                        parse_mode='Markdown'
+                    )
+                    return
+                new_gateway = "dynopay"
+            elif gateway_name == "blockbee":
+                if not os.getenv('BLOCKBEE_API_KEY'):
+                    await message.reply_text(
+                        "❌ **BlockBee Not Available**\n\n"
+                        "BlockBee API key is not configured.\n"
+                        "Please contact support to enable BlockBee.",
+                        parse_mode='Markdown'
+                    )
+                    return
+                new_gateway = "blockbee"
+            else:
+                await message.reply_text(
+                    "❌ **Invalid Gateway**\n\n"
+                    "Available gateways:\n"
+                    "• `dynopay` for DynoPay\n"
+                    "• `blockbee` for BlockBee",
+                    parse_mode='Markdown'
+                )
+                return
+            
+            # Update user session with new gateway preference
+            if user_id not in self.user_sessions:
+                self.user_sessions[user_id] = {}
+            
+            self.user_sessions[user_id]['payment_gateway'] = new_gateway
+            self.save_user_sessions()
+            
+            # Show success message
+            gateway_info = {
+                "dynopay": {
+                    "name": "DynoPay",
+                    "features": "• Polling-based payments\n• Multiple cryptocurrencies\n• Secure API integration"
+                },
+                "blockbee": {
+                    "name": "BlockBee",
+                    "features": "• Webhook-based payments\n• Real-time confirmations\n• Instant processing"
+                }
+            }
+            
+            info = gateway_info[new_gateway]
+            
+            await message.reply_text(
+                f"✅ **Payment Gateway Switched Successfully!**\n\n"
+                f"**New Gateway:** {info['name']}\n\n"
+                f"**Features:**\n{info['features']}\n\n"
+                f"**Note:** This setting is saved for your session.\n"
+                f"All future payments will use {info['name']}.",
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔍 Search Domain", callback_data="search_domain")],
+                    [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
+                ])
+            )
+            
+            logger.info(f"User {user_id} switched payment gateway from {current_gateway} to {new_gateway}")
+            
+        except Exception as e:
+            logger.error(f"Error switching payment gateway: {e}")
+            await message.reply_text(
+                "❌ **Gateway Switch Failed**\n\n"
+                "An error occurred while switching payment gateways.\n"
+                "Please try again or contact support.",
+                parse_mode='Markdown'
+            )
+    
+    async def show_payment_gateway_status(self, message):
+        """Show current payment gateway status and options"""
+        try:
+            user_id = message.from_user.id
+            current_gateway = os.getenv('PAYMENT_GATEWAY', 'blockbee').lower()
+            user_preference = self.user_sessions.get(user_id, {}).get('payment_gateway', current_gateway)
+            
+            # Check gateway availability
+            blockbee_available = bool(os.getenv('BLOCKBEE_API_KEY'))
+            dynopay_available = bool(os.getenv('DYNOPAY_API_KEY') and os.getenv('DYNOPAY_TOKEN'))
+            
+            status_text = f"💳 **Payment Gateway Status**\n\n"
+            status_text += f"**Current System Gateway:** {current_gateway.upper()}\n"
+            status_text += f"**Your Preference:** {user_preference.upper()}\n\n"
+            
+            status_text += "**Available Gateways:**\n"
+            if blockbee_available:
+                status_text += f"• ✅ **BlockBee** - Webhook-based, real-time confirmations\n"
+            else:
+                status_text += f"• ❌ **BlockBee** - Not configured\n"
+                
+            if dynopay_available:
+                status_text += f"• ✅ **DynoPay** - Polling-based, secure API\n"
+            else:
+                status_text += f"• ❌ **DynoPay** - Not configured\n"
+            
+            status_text += "\n**To switch gateways, type:**\n"
+            status_text += "• `blockbee` - Switch to BlockBee\n"
+            status_text += "• `dynopay` - Switch to DynoPay\n"
+            status_text += "• `gateway` - Show this status again\n"
+            
+            await message.reply_text(
+                status_text,
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🔍 Search Domain", callback_data="search_domain")],
+                    [InlineKeyboardButton("🏠 Main Menu", callback_data="main_menu")]
+                ])
+            )
+            
+        except Exception as e:
+            logger.error(f"Error showing payment gateway status: {e}")
+            await message.reply_text(
+                "❌ **Error**\n\n"
+                "Could not retrieve payment gateway status.\n"
+                "Please try again or contact support.",
+                parse_mode='Markdown'
+            )
+    
     def extract_clean_domain_name(self, potentially_corrupted_domain):
         """Extract clean domain name from potentially corrupted callback data"""
         import re

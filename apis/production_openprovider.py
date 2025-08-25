@@ -312,7 +312,9 @@ class OpenProviderAPI:
                 "gender": "M"
             }
 
-            if tld.lower() == "us":
+            # TLD-specific contact requirements
+            if tld and tld.lower() == "us":
+                # US domains - US nexus requirements
                 data["extension_additional_data"] = [
                     {
                         "name": "us",
@@ -322,6 +324,32 @@ class OpenProviderAPI:
                         }
                     }
                 ]
+            elif tld and tld.lower() == "eu":
+                # EU domains - EU citizenship requirements for non-EU residents
+                # Since our contact is US-based, we need to specify EU citizenship
+                data["extension_additional_data"] = [
+                    {
+                        "name": "eu",
+                        "data": {
+                            "eu_registrant_citizenship": "NL",  # Netherlands citizenship
+                            "eu_accept_trustee_tac": 1,         # Accept trustee service
+                            "eu_contact_country": "NL"          # EU contact country
+                        }
+                    }
+                ]
+                logger.info("🇪🇺 Applied EU citizenship requirements for .eu domain contact")
+            elif tld and tld.lower() in ["fr", "de", "it", "es", "nl"]:
+                # Other EU country domains - similar requirements
+                data["extension_additional_data"] = [
+                    {
+                        "name": tld.lower(),
+                        "data": {
+                            f"{tld.lower()}_accept_trustee_tac": 1,
+                            f"{tld.lower()}_contact_country": "NL"  # Use Netherlands as EU country
+                        }
+                    }
+                ]
+                logger.info(f"🇪🇺 Applied EU requirements for .{tld} domain contact")
 
             # Enhanced timeout for customer creation
             response = requests.post(
@@ -333,17 +361,29 @@ class OpenProviderAPI:
                 handle = result.get("data", {}).get("handle")
                 if handle:
                     logger.info(f"✅ Official format customer handle created: {handle}")
-                    # Validate it matches actual OpenProvider format: CC######-CC
+                    
+                    # Enhanced handle validation for OpenProvider format
                     if "-" in handle and len(handle.split("-")) == 2:
                         prefix, suffix = handle.split("-")
-                        if (len(prefix) >= 2 and prefix[:2].isalpha() and 
-                            len(suffix) == 2 and suffix.isalpha() and
+                        
+                        # Validate prefix: should be 2+ letters followed by numbers
+                        if (len(prefix) >= 2 and 
+                            prefix[:2].isalpha() and 
                             any(c.isdigit() for c in prefix)):
-                            logger.info(f"✅ Handle format validation passed: {handle} (Country-specific format)")
+                            
+                            # Validate suffix: should be 2 letters (country code)
+                            if len(suffix) == 2 and suffix.isalpha():
+                                logger.info(f"✅ Handle format validation passed: {handle} (Valid OpenProvider format)")
+                                return handle
+                            else:
+                                logger.warning(f"⚠️ Invalid suffix format: {suffix} in handle {handle}")
                         else:
-                            logger.warning(f"⚠️ Unexpected handle format: {handle}")
+                            logger.warning(f"⚠️ Invalid prefix format: {prefix} in handle {handle}")
                     else:
-                        logger.warning(f"⚠️ Invalid handle format: {handle}")
+                        logger.warning(f"⚠️ Invalid handle format: {handle} (should be PREFIX-SUFFIX)")
+                    
+                    # Even if format is unexpected, return the handle if OpenProvider provided it
+                    logger.info(f"⚠️ Returning handle despite format concerns: {handle}")
                     return handle
                 else:
                     logger.error(f"❌ No handle returned in response: {result}")
@@ -496,6 +536,22 @@ class OpenProviderAPI:
                 error_text = response.text
                 error_msg = f"HTTP {response.status_code}: {error_text}"
                 logger.error(f"Domain registration HTTP error: {error_msg}")
+                
+                # ENHANCED: Handle specific OpenProvider errors
+                if "Incorrect contact's details" in error_text:
+                    logger.error("🚨 CONTACT DETAILS ERROR DETECTED")
+                    logger.error("   This usually means the contact doesn't meet TLD requirements")
+                    
+                    if "Citizenship must be specified for residents outside EU" in error_text:
+                        logger.error("   🔍 ISSUE: EU citizenship not specified for non-EU contact")
+                        logger.error("   💡 SOLUTION: Contact creation needs EU citizenship data")
+                        logger.error("   📋 CHECK: Verify contact has proper EU extension_additional_data")
+                    
+                    if "JP988013-US" in error_text:
+                        logger.error("   🔍 ISSUE: Contact handle format may be incorrect")
+                        logger.error("   💡 SOLUTION: Verify contact handle validation")
+                    
+                    return False, None, f"Contact details error: {error_text}"
                 
                 # ENHANCED: Handle duplicate domain gracefully - return special indicator instead of exception
                 if "duplicate domain" in error_text.lower() or "cannot add duplicate domain" in error_text.lower() or '"code":346' in error_text:
