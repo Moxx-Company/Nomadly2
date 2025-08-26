@@ -3255,17 +3255,17 @@ class NomadlyCleanBot:
                 transactions = result.get("transactions", [])
                 
                 # Look for recent transactions for wallet funding
+                # Since we're using add_funds, look for completed fund additions
                 for transaction in transactions:
-                    if (transaction.get("currency", "").lower() == crypto_type.lower() and
-                        transaction.get("status") == "completed" and
-                        transaction.get("meta_data", {}).get("purpose") == "wallet_funding"):
+                    if (transaction.get("status") == "completed" and
+                        transaction.get("type") in ["add_funds", "wallet_funding", "deposit"]):
                         
                         amount_usd = float(transaction.get("amount_usd", 0))
                         if amount_usd > 0:
-                            logger.info(f"✅ DynoPay wallet payment found: ${amount_usd} for user {user_id}")
+                            logger.info(f"✅ DynoPay wallet funding found: ${amount_usd} for user {user_id}")
                             return True, amount_usd
                 
-                logger.info(f"⏳ No completed DynoPay wallet payment found for user {user_id}")
+                logger.info(f"⏳ No completed DynoPay wallet funding found for user {user_id}")
                 return False, 0.0
             else:
                 logger.error(f"❌ DynoPay transaction fetch failed: {result.get('error')}")
@@ -4471,40 +4471,63 @@ class NomadlyCleanBot:
             # The user_token will need to be generated or retrieved from user session
             # For now, we'll use a placeholder approach
             
-            # Check if we have a user token for this user
-            user_token = self.user_sessions.get(user_id, {}).get('dynopay_user_token')
-            
+            # Always force user recreation to ensure we have a valid token
+            logger.info(f"🔄 Force recreating DynoPay user for user {user_id} to ensure valid token")
+            user_token = await self.create_or_get_dynopay_user(user_id)
             if not user_token:
-                # We need to create a user first or get their token
-                user_token = await self.create_or_get_dynopay_user(user_id)
-                if not user_token:
-                    logger.error(f"❌ Failed to create/get DynoPay user for user {user_id}")
-                    return None
+                logger.error(f"❌ Failed to create/get DynoPay user for user {user_id}")
+                logger.error(f"❌ All email variations are taken - user needs unique email")
+                return None
             
-            # Use create_crypto_payment for wallet funding
-            result = await dynopay.create_crypto_payment(
+            # Use add_funds for wallet funding (this is the correct endpoint)
+            logger.info(f"💰 Creating DynoPay wallet funding for {crypto_type} - ${20.0}")
+            result = await dynopay.add_funds(
                 user_token=user_token,
                 amount=20.0,  # Minimum amount for wallet funding
-                currency=crypto_type,
-                callback_url=callback_url,
-                meta_data={"purpose": "wallet_funding", "user_id": user_id}
+                redirect_uri=callback_url
             )
             
-            if result.get("success") and result.get("payment_data"):
-                payment_data = result["payment_data"]
-                # DynoPay returns payment_data, not a direct address
-                # We need to extract the payment URL or address from the response
-                payment_url = payment_data.get("payment_url") or payment_data.get("redirect_url")
-                
-                if payment_url:
-                    logger.info(f"✅ DynoPay wallet funding link generated for {crypto_type}")
-                    return payment_url
-                else:
-                    logger.error(f"❌ DynoPay payment data missing payment URL: {payment_data}")
-                    return None
+            if result.get("success") and result.get("redirect_url"):
+                payment_url = result["redirect_url"]
+                logger.info(f"✅ DynoPay wallet funding link generated for {crypto_type}")
+                return payment_url
             else:
-                logger.error(f"❌ DynoPay wallet funding failed: {result.get('error')}")
-                return None
+                error_msg = result.get('error', '')
+                if "Authentication Expired" in error_msg or "403" in str(result.get('statusCode', '')):
+                    logger.error(f"❌ DynoPay authentication failed: {error_msg}")
+                    logger.error(f"❌ Token appears to be invalid, clearing and retrying...")
+                    
+                    # Clear the invalid token and retry once
+                    if user_id in self.user_sessions:
+                        if 'dynopay_user_token' in self.user_sessions[user_id]:
+                            del self.user_sessions[user_id]['dynopay_user_token']
+                        if 'dynopay_user_email' in self.user_sessions[user_id]:
+                            del self.user_sessions[user_id]['dynopay_user_email']
+                        self.save_user_sessions()
+                    
+                    logger.info(f"🔄 Retrying with fresh user creation...")
+                    user_token = await self.create_or_get_dynopay_user(user_id)
+                    if user_token:
+                        # Try again with new token
+                        result = await dynopay.add_funds(
+                            user_token=user_token,
+                            amount=20.0,
+                            redirect_uri=callback_url
+                        )
+                        
+                        if result.get("success") and result.get("redirect_url"):
+                            payment_url = result["redirect_url"]
+                            logger.info(f"✅ DynoPay wallet funding link generated on retry for {crypto_type}")
+                            return payment_url
+                        else:
+                            logger.error(f"❌ DynoPay wallet funding failed on retry: {result.get('error')}")
+                            return None
+                    else:
+                        logger.error(f"❌ Failed to create new DynoPay user on retry")
+                        return None
+                else:
+                    logger.error(f"❌ DynoPay wallet funding failed: {error_msg}")
+                    return None
                 
         except Exception as e:
             logger.error(f"Error generating DynoPay wallet address: {e}")
@@ -4515,45 +4538,81 @@ class NomadlyCleanBot:
         try:
             from apis.dynopay import DynopayAPI
             
-            # Check if we already have a user token for this user
-            existing_token = self.user_sessions.get(user_id, {}).get('dynopay_user_token')
-            if existing_token:
-                return existing_token
+            # Always create a new user to ensure fresh token
+            logger.info(f"🔄 Always creating new DynoPay user for user {user_id} to ensure fresh token")
+            
+            # Clear any existing invalid tokens
+            if user_id in self.user_sessions:
+                if 'dynopay_user_token' in self.user_sessions[user_id]:
+                    del self.user_sessions[user_id]['dynopay_user_token']
+                if 'dynopay_user_email' in self.user_sessions[user_id]:
+                    del self.user_sessions[user_id]['dynopay_user_email']
+                self.save_user_sessions()
             
             # Create new DynoPay user
             dynopay = DynopayAPI()
             
-            # Get user info from Telegram (we'll need to implement this)
-            # For now, use placeholder data
-            user_email = f"user_{user_id}@nomadly.com"
-            user_name = f"User_{user_id}"
+            # Try multiple email variations to avoid conflicts
+            email_variations = [
+                f"user_{user_id}@nomadly.com",
+                f"user_{user_id}_{int(time.time())}@nomadly.com",
+                f"user_{user_id}_{user_id}@nomadly.com",
+                f"nomadly_user_{user_id}@nomadly.com"
+            ]
             
-            # Create user in DynoPay
-            result = await dynopay.create_user(
-                email=user_email,
-                name=user_name
-            )
-            
-            if result.get("success") and result.get("user_data"):
-                user_data = result["user_data"]
-                user_token = user_data.get("user_token") or user_data.get("token")
+            for user_email in email_variations:
+                user_name = f"User_{user_id}"
                 
-                if user_token:
-                    # Store the token in user session
-                    if user_id not in self.user_sessions:
-                        self.user_sessions[user_id] = {}
+                logger.info(f"👤 Attempting to create DynoPay user: {user_email}")
+                
+                # Create user in DynoPay
+                result = await dynopay.create_user(
+                    email=user_email,
+                    name=user_name
+                )
+                
+                # Log the full response for debugging
+                logger.info(f"📊 DynoPay create_user response: {result}")
+                
+                if result.get("success"):
+                    # User created successfully
+                    # DynoPay API returns token in result["token"], not in user_data
+                    user_token = result.get("token")
                     
-                    self.user_sessions[user_id]['dynopay_user_token'] = user_token
-                    self.save_user_sessions()
-                    
-                    logger.info(f"✅ DynoPay user created for user {user_id}")
-                    return user_token
+                    if user_token:
+                        # Store the token in user session
+                        if user_id not in self.user_sessions:
+                            self.user_sessions[user_id] = {}
+                        
+                        self.user_sessions[user_id]['dynopay_user_token'] = user_token
+                        self.user_sessions[user_id]['dynopay_user_email'] = user_email
+                        self.save_user_sessions()
+                        
+                        logger.info(f"✅ DynoPay user created for user {user_id} with email {user_email}")
+                        logger.info(f"✅ User token: {user_token[:10]}...")
+                        return user_token
+                    else:
+                        logger.error(f"❌ DynoPay user created but no token returned in result: {result}")
+                        continue
                 else:
-                    logger.error(f"❌ DynoPay user created but no token returned: {user_data}")
-                    return None
-            else:
-                logger.error(f"❌ Failed to create DynoPay user: {result.get('error')}")
-                return None
+                    # Check if user already exists
+                    error_msg = result.get('error', '')
+                    if "Account Already Exists" in error_msg or result.get('statusCode') == 503:
+                        logger.info(f"🔄 DynoPay user already exists for {user_email}, trying next variation")
+                        continue
+                    else:
+                        logger.error(f"❌ Failed to create DynoPay user: {error_msg}")
+                        continue
+            
+            # Clear any invalid tokens from user session
+            if user_id in self.user_sessions:
+                if 'dynopay_user_token' in self.user_sessions[user_id]:
+                    del self.user_sessions[user_id]['dynopay_user_token']
+                if 'dynopay_user_email' in self.user_sessions[user_id]:
+                    del self.user_sessions[user_id]['dynopay_user_email']
+                self.save_user_sessions()
+            
+            return None
                 
         except Exception as e:
             logger.error(f"Error creating DynoPay user: {e}")
@@ -4580,11 +4639,17 @@ class NomadlyCleanBot:
                 callback_url=callback_url
             )
             
-            if result.get("status") == "success" and result.get("address"):
-                logger.info(f"✅ BlockBee wallet address generated for {crypto_type}")
-                return result["address"]
+            if result.get("status") == "success":
+                # BlockBee returns 'address_in' for the payment address
+                address = result.get("address_in")
+                if address:
+                    logger.info(f"✅ BlockBee wallet address generated for {crypto_type}: {address[:10]}...")
+                    return address
+                else:
+                    logger.error(f"❌ BlockBee response missing address_in: {result}")
+                    return None
             else:
-                logger.error(f"❌ BlockBee wallet address generation failed: {result.get('message')}")
+                logger.error(f"❌ BlockBee wallet address generation failed: {result.get('message', 'Unknown error')}")
                 return None
                 
         except Exception as e:
