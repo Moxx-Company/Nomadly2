@@ -32,6 +32,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from telegram.request._httpxrequest import HTTPXRequest
 from api_services import OpenProviderAPI
 from apis.fastforex import FastForexAPI
+from apis.dynopay import DynopayAPI
 from trustee_service_manager import TrusteeServiceManager
 from unified_dns_manager import unified_dns_manager, UnifiedDNSManager
 from ui_cleanup_manager import ui_cleanup
@@ -41,6 +42,9 @@ from dns_propagation_checker import propagation_checker
 # Simple caching for speed optimization
 response_cache = {}
 cache_timeouts = {}
+
+# Global DynoPay instance for consistent usage
+dynopay_instance = None
 
 def get_cached_data(key, default_value, timeout_seconds=300):
     """Get cached value or return default for speed"""
@@ -52,6 +56,13 @@ def get_cached_data(key, default_value, timeout_seconds=300):
     response_cache[key] = default_value
     cache_timeouts[key] = time.time() + timeout_seconds
     return default_value
+
+def get_dynopay_instance():
+    """Get or create DynoPay instance"""
+    global dynopay_instance
+    if dynopay_instance is None:
+        dynopay_instance = DynopayAPI()
+    return dynopay_instance
 
 # COMPATIBILITY FIX: Patch HTTPXRequest to remove proxy parameter
 _original_build_client = HTTPXRequest._build_client
@@ -150,6 +161,17 @@ class NomadlyCleanBot:
         else:
             logger.warning("⚠️ FastForex API key not found, using fallback conversion")
             self.fastforex = None
+        
+        # Initialize DynoPay API for wallet funding
+        dynopay_api_key = os.getenv("DYNOPAY_API_KEY")
+        dynopay_token = os.getenv("DYNOPAY_TOKEN")
+        if dynopay_api_key and dynopay_token:
+            # Initialize global DynoPay instance
+            global dynopay_instance
+            dynopay_instance = DynopayAPI()
+            logger.info("✅ DynoPay API initialized")
+        else:
+            logger.warning("⚠️ DynoPay API credentials not found, wallet funding will fail")
         
         # Initialize trustee service manager
         self.trustee_manager = TrusteeServiceManager()
@@ -3238,15 +3260,13 @@ class NomadlyCleanBot:
     async def check_dynopay_wallet_payment(self, user_id: int, crypto_type: str, wallet_address: str) -> tuple[bool, float]:
         """Check DynoPay wallet payment status"""
         try:
-            from apis.dynopay import DynopayAPI
-            
             # Get user token from session
             user_token = self.user_sessions.get(user_id, {}).get('dynopay_user_token')
             if not user_token:
                 logger.error(f"No DynoPay user token found for user {user_id}")
                 return False, 0.0
             
-            dynopay = DynopayAPI()
+            dynopay = get_dynopay_instance()
             
             # Get user's transactions to check for recent payments
             result = await dynopay.get_user_transactions(user_token)
@@ -4451,8 +4471,6 @@ class NomadlyCleanBot:
     async def generate_dynopay_wallet_address(self, crypto_type: str, user_id: int) -> str:
         """Generate real wallet funding address using DynoPay API"""
         try:
-            from apis.dynopay import DynopayAPI
-            
             api_key = os.getenv('DYNOPAY_API_KEY')
             token = os.getenv('DYNOPAY_TOKEN')
             
@@ -4462,7 +4480,7 @@ class NomadlyCleanBot:
             
             # Note: DynoPay requires user_token for add_funds, but we don't have it for wallet funding
             # We'll need to use create_crypto_payment instead, or create a user first
-            dynopay = DynopayAPI()
+            dynopay = get_dynopay_instance()
             
             # Create a unique callback URL for wallet funding
             callback_url = f"{os.getenv('FLASK_WEB_HOOK', 'https://nomadly2-onarrival.replit.app')}/webhook/dynopay/wallet/{user_id}"
@@ -4536,8 +4554,6 @@ class NomadlyCleanBot:
     async def create_or_get_dynopay_user(self, user_id: int) -> str:
         """Create or retrieve DynoPay user token for wallet funding"""
         try:
-            from apis.dynopay import DynopayAPI
-            
             # Always create a new user to ensure fresh token
             logger.info(f"🔄 Always creating new DynoPay user for user {user_id} to ensure fresh token")
             
@@ -4550,7 +4566,7 @@ class NomadlyCleanBot:
                 self.save_user_sessions()
             
             # Create new DynoPay user
-            dynopay = DynopayAPI()
+            dynopay = get_dynopay_instance()
             
             # Try multiple email variations to avoid conflicts
             email_variations = [
