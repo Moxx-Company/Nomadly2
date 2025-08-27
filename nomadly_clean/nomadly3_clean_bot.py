@@ -3119,8 +3119,15 @@ class NomadlyCleanBot:
                 last_name=user_info.last_name if user_info else None
             )
 
+            logger.info(f"🔧 Starting wallet funding for user {user_id} with {crypto_type}")
+            
             # Generate unique wallet funding address
-            wallet_address = self.generate_crypto_address(crypto_type, user_id, "wallet_funding")
+            try:
+                wallet_address = self.generate_crypto_address(crypto_type, user_id, "wallet_funding")
+                logger.info(f"✅ Generated wallet address: {wallet_address[:10]}...")
+            except Exception as address_error:
+                logger.error(f"❌ Failed to generate crypto address: {address_error}")
+                raise Exception(f"Failed to generate {crypto_type.upper()} address: {str(address_error)}")
 
             # Store wallet funding session data
             if user_id not in self.user_sessions:
@@ -3685,7 +3692,7 @@ class NomadlyCleanBot:
                     formatted_date = None
 
                 if getattr(domain, "transaction_type", None) == 'DEBIT':
-                    description = f"🛒 Domain purchase -- {getattr(domain, "domain_name", None)}\n {getattr(domain, "order_name", None)}"
+                    description = f"🛒 Domain purchase -- {getattr(domain, 'domain_name', None)}\n {getattr(domain, 'order_name', None)}"
                 else:
                     coin = {
                     "btc": "₿",
@@ -3698,7 +3705,7 @@ class NomadlyCleanBot:
                     "ustcr": "₮",
                     "usdt": "₮",
                     }
-                    description = f"{coin[getattr(domain, "crypto_currency", "₿")]} Crypto deposit -- {getattr(domain, "trans_name", None)}"
+                    description = f"{coin[getattr(domain, 'crypto_currency', 'BTC')]} Crypto deposit -- {getattr(domain, 'trans_name', None)}"
                 domain_dict = {
                     "transaction_type": getattr(domain, "transaction_type", ""),
                     "amount_usd": getattr(domain, "amount_usd", None),
@@ -4633,6 +4640,7 @@ class NomadlyCleanBot:
         logger.info(f"✅ ✅ ✅ Generating Address for: {crypto_type}")
 
         patment_gateway = os.getenv('PAYMENT_GATEWAY')
+        logger.info(f"🔧 Payment Gateway: {patment_gateway}")
         payment_address = None
 
         if  patment_gateway == 'dynopay':
@@ -4641,21 +4649,33 @@ class NomadlyCleanBot:
 
             api_key = os.getenv('DYNOPAY_API_KEY')
             token = os.getenv('DYNOPAY_TOKEN')
+            
+            logger.info(f"🔧 DynoPay API Key: {'Set' if api_key else 'Missing'}")
+            logger.info(f"🔧 DynoPay Token: {'Set' if token else 'Missing'}")
 
-            callback_url = f"{os.getenv('FLASK_WEB_HOOK')}topup/dynopay/{user_id}"
+            if not api_key or not token:
+                logger.warning("⚠️ DynoPay configuration incomplete - falling back to BlockBee")
+                patment_gateway = 'blockbee'  # Fallback to BlockBee
+            else:
+                try:
+                    callback_url = f"{os.getenv('FLASK_WEB_HOOK')}topup/dynopay/{user_id}"
 
-            # Generate real payment address for this transaction
-            address_response = dynopay.create_payment_address(
-                cryptocurrency=crypto_type,
-                callback_url=callback_url,
-                amount=1
-            )
+                    # Generate real payment address for this transaction
+                    dynopay = DynopayAPI(api_key, token)
+                    address_response = dynopay.create_payment_address(
+                        cryptocurrency=crypto_type,
+                        callback_url=callback_url,
+                        amount=1
+                    )
 
-            if address_response.get('message') == 'Payment Created!' and address_response.get('data'):
-                payment_address = address_response.get('data', {}).get('address')
+                    if address_response.get('message') == 'Payment Created!' and address_response.get('data'):
+                        payment_address = address_response.get('data', {}).get('address')
+                except Exception as dynopay_error:
+                    logger.error(f"❌ DynoPay error: {dynopay_error} - falling back to BlockBee")
+                    patment_gateway = 'blockbee'  # Fallback to BlockBee
 
-        else:
-
+        # Use BlockBee if DynoPay failed or was not configured
+        if patment_gateway != 'dynopay' or payment_address is None:
             from apis.blockbee import BlockBeeAPI
 
             api_key = os.getenv('BLOCKBEE_API_KEY')
