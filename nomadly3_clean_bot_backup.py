@@ -414,9 +414,7 @@ class NomadlyCleanBot:
             
             # NOTE: check_payment_ is handled later with proper crypto_type parsing
             
-            elif data and data.startswith("check_wallet_payment_"):
-                crypto_type = data.replace("check_wallet_payment_", "")
-                await self.check_wallet_funding_status(query, crypto_type)
+
             
             # Additional nameserver handlers
             elif data and data.startswith("update_custom_ns_"):

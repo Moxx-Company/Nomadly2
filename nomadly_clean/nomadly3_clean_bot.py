@@ -340,7 +340,7 @@ class NomadlyCleanBot:
         logger.info(f"🎯 CALLBACK HANDLER REACHED")
         try:
             query = update.callback_query
-            logger.info(f"🎯 QUERY OBJECT: {query}")
+            # logger.info(f"🎯 QUERY OBJECT: {query}")
             if query:
                 # Immediate acknowledgment with relevant feedback
                 if query.data and query.data.startswith("lang_"):
@@ -519,9 +519,7 @@ class NomadlyCleanBot:
             
             # NOTE: check_payment_ is handled later with proper crypto_type parsing
             
-            elif data and data.startswith("check_wallet_payment_"):
-                crypto_type = data.replace("check_wallet_payment_", "")
-                await self.check_wallet_funding_status(query, crypto_type)
+
             
             # Additional nameserver handlers
             elif data and data.startswith("update_custom_ns_"):
@@ -753,11 +751,7 @@ class NomadlyCleanBot:
             elif data and data.startswith("fund_crypto_"):
                 crypto_type = data.replace("fund_crypto_", "")
                 await self.handle_wallet_crypto_funding(query, crypto_type)
-            elif data and data.startswith("check_wallet_payment_"):
-                parts = data.split("_", 3)
-                if len(parts) >= 4:
-                    crypto_type = parts[3]
-                    await self.handle_wallet_payment_status_check(query, crypto_type)
+
 
             # Domain management handlers
             elif data and data.startswith("manage_domain_"):
@@ -3160,7 +3154,7 @@ class NomadlyCleanBot:
                 "en": {
                     "title": f"💰 **Fund Wallet - {crypto_names[crypto_type]['en']}**",
                     "instructions": f"💳 **Send any amount to this address:**\n\n`{wallet_address}`\n\n💡 **Recommended:** $20+ for multiple domain registrations\n⚡ **Any amount accepted** - even $1 gets credited\n🔄 **Instant processing** after blockchain confirmation",
-                    "check_payment": "✅ I've Sent Payment - Check Status",
+
                     "switch_crypto": "🔄 Switch Cryptocurrency",
                     "back_wallet": "← Back to Wallet",
                     "qr_code": "📱 QR Code"
@@ -3168,7 +3162,7 @@ class NomadlyCleanBot:
                 "fr": {
                     "title": f"💰 **Financer Portefeuille - {crypto_names[crypto_type]['fr']}**",
                     "instructions": f"💳 **Envoyez n'importe quel montant à cette adresse:**\n\n`{wallet_address}`\n\n💡 **Recommandé:** $20+ pour plusieurs enregistrements de domaines\n⚡ **Tout montant accepté** - même $1 est crédité\n🔄 **Traitement instantané** après confirmation blockchain",
-                    "check_payment": "✅ J'ai Envoyé le Paiement - Vérifier Statut",
+
                     "switch_crypto": "🔄 Changer Cryptomonnaie",
                     "back_wallet": "← Retour au Portefeuille",
                     "qr_code": "📱 Code QR"
@@ -3176,7 +3170,7 @@ class NomadlyCleanBot:
                 "hi": {
                     "title": f"💰 **वॉलेट फंड करें - {crypto_names[crypto_type]['hi']}**",
                     "instructions": f"💳 **इस पते पर कोई भी राशि भेजें:**\n\n`{wallet_address}`\n\n💡 **अनुशंसित:** $20+ कई डोमेन पंजीकरण के लिए\n⚡ **कोई भी राशि स्वीकार** - यहां तक कि $1 भी क्रेडिट हो जाता है\n🔄 **तत्काल प्रसंस्करण** ब्लॉकचेन पुष्टि के बाद",
-                    "check_payment": "✅ मैंने भुगतान भेजा है - स्थिति जांचें",
+
                     "switch_crypto": "🔄 क्रिप्टोकरेंसी बदलें",
                     "back_wallet": "← वॉलेट पर वापस",
                     "qr_code": "📱 QR कोड"
@@ -3184,7 +3178,7 @@ class NomadlyCleanBot:
                 "zh": {
                     "title": f"💰 **充值钱包 - {crypto_names[crypto_type]['zh']}**",
                     "instructions": f"💳 **向此地址发送任何金额:**\n\n`{wallet_address}`\n\n💡 **推荐:** $20+ 用于多个域名注册\n⚡ **接受任何金额** - 即使 $1 也会被记入\n🔄 **即时处理** 区块链确认后",
-                    "check_payment": "✅ 我已发送付款 - 检查状态",
+
                     "switch_crypto": "🔄 切换加密货币",
                     "back_wallet": "← 返回钱包",
                     "qr_code": "📱 二维码"
@@ -3192,7 +3186,7 @@ class NomadlyCleanBot:
                 "es": {
                     "title": f"💰 **Financiar Billetera - {crypto_names[crypto_type]['es']}**",
                     "instructions": f"💳 **Envía cualquier cantidad a esta dirección:**\n\n`{wallet_address}`\n\n💡 **Recomendado:** $20+ para múltiples registros de dominios\n⚡ **Cualquier cantidad aceptada** - incluso $1 se acredita\n🔄 **Procesamiento instantáneo** tras confirmación blockchain",
-                    "check_payment": "✅ He Enviado el Pago - Verificar Estado",
+
                     "switch_crypto": "🔄 Cambiar Criptomoneda",
                     "back_wallet": "← Volver a Billetera",
                     "qr_code": "📱 Código QR"
@@ -3223,97 +3217,11 @@ class NomadlyCleanBot:
             if query:
                 await query.edit_message_text("🚧 Wallet funding failed. Please try again.")
 
-    async def handle_wallet_payment_status_check(self, query, crypto_type):
-        """Check wallet funding payment status and credit wallet"""
-        try:
-            user_id = query.from_user.id if query and query.from_user else 0
-            user_lang = self.user_sessions.get(user_id, {}).get("language", "en")
-
-            # Wait to simulate blockchain checking
-            # CRITICAL: Real payment verification needed
-            # For now, always show "no payment found" to prevent false confirmations
-            payment_received = False
-
-            if payment_received:
-                # Simulate received amount (replace with real blockchain checking)
-                received_amount = self.simulate_received_amount()
-
-                # Credit wallet balance
-                await self.credit_wallet_balance(user_id, received_amount)
-
-                # Multilingual success messages
-                success_texts = {
-                    "en": {
-                        "title": "✅ **Wallet Funded Successfully!**",
-                        "details": f"💰 **Amount Credited:** ${received_amount:.2f} USD\n💳 **New Balance:** ${received_amount:.2f} USD\n\n🎉 **Ready for domain registration!**\n💎 Your funds are safely stored and ready for instant domain purchases.",
-                        "register_domain": "🔍 Register Domain Now",
-                        "back_wallet": "← Back to Wallet"
-                    },
-                    "fr": {
-                        "title": "✅ **Portefeuille Financé avec Succès!**",
-                        "details": f"💰 **Montant Crédité:** ${received_amount:.2f} USD\n💳 **Nouveau Solde:** ${received_amount:.2f} USD\n\n🎉 **Prêt pour l'enregistrement de domaine!**\n💎 Vos fonds sont stockés en sécurité et prêts pour des achats de domaines instantanés.",
-                        "register_domain": "🔍 Enregistrer Domaine Maintenant",
-                        "back_wallet": "← Retour au Portefeuille"
-                    },
-                    "hi": {
-                        "title": "✅ **वॉलेट सफलतापूर्वक फंड किया गया!**",
-                        "details": f"💰 **क्रेडिट की गई राशि:** ${received_amount:.2f} USD\n💳 **नया बैलेंस:** ${received_amount:.2f} USD\n\n🎉 **डोमेन पंजीकरण के लिए तैयार!**\n💎 आपके फंड सुरक्षित रूप से संग्रहीत हैं और तत्काल डोमेन खरीदारी के लिए तैयार हैं।",
-                        "register_domain": "🔍 अब डोमेन पंजीकृत करें",
-                        "back_wallet": "← वॉलेट पर वापस"
-                    },
-                    "zh": {
-                        "title": "✅ **钱包充值成功！**",
-                        "details": f"💰 **记入金额:** ${received_amount:.2f} USD\n💳 **新余额:** ${received_amount:.2f} USD\n\n🎉 **准备好域名注册！**\n💎 您的资金安全存储，可随时进行域名购买。",
-                        "register_domain": "🔍 立即注册域名",
-                        "back_wallet": "← 返回钱包"
-                    },
-                    "es": {
-                        "title": "✅ **¡Billetera Financiada Exitosamente!**",
-                        "details": f"💰 **Cantidad Acreditada:** ${received_amount:.2f} USD\n💳 **Nuevo Saldo:** ${received_amount:.2f} USD\n\n🎉 **¡Listo para registro de dominio!**\n💎 Sus fondos están almacenados de forma segura y listos para compras instantáneas de dominios.",
-                        "register_domain": "🔍 Registrar Dominio Ahora",
-                        "back_wallet": "← Volver a Billetera"
-                    }
-                }
-
-                texts = success_texts.get(user_lang, success_texts["en"])
-
-                success_text = (
-                    f"{texts['title']}\n\n"
-                    f"{texts['details']}"
-                )
-
-                keyboard = [
-                    [InlineKeyboardButton(texts["register_domain"], callback_data="search_domain")],
-                    [InlineKeyboardButton(texts["back_wallet"], callback_data="wallet")]
-                ]
-
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                await query.edit_message_text(success_text, reply_markup=reply_markup, parse_mode='Markdown')
-
-            else:
-                # Payment not yet received - show waiting message
-                waiting_texts = {
-                    "en": "⏳ **Payment not detected yet**\n\n🔍 Checking blockchain...\n⚡ Please wait for confirmation (usually 10-20 minutes)\n\n💡 **Tip:** Send payment first, then check status",
-                    "fr": "⏳ **Paiement non détecté pour le moment**\n\n🔍 Vérification de la blockchain...\n⚡ Veuillez attendre la confirmation (généralement 10-20 minutes)\n\n💡 **Conseil:** Envoyez le paiement d'abord, puis vérifiez le statut",
-                    "hi": "⏳ **भुगतान अभी तक नहीं मिला**\n\n🔍 ब्लॉकचेन की जांच...\n⚡ कृपया पुष्टि की प्रतीक्षा करें (आमतौर पर 10-20 मिनट)\n\n💡 **सुझाव:** पहले भुगतान भेजें, फिर स्थिति जांचें",
-                    "zh": "⏳ **尚未检测到付款**\n\n🔍 检查区块链中...\n⚡ 请等待确认（通常10-20分钟）\n\n💡 **提示:** 先发送付款，然后检查状态",
-                    "es": "⏳ **Pago aún no detectado**\n\n🔍 Verificando blockchain...\n⚡ Por favor espere la confirmación (usualmente 10-20 minutos)\n\n💡 **Consejo:** Envíe el pago primero, luego verifique el estado"
-                }
-
-                await query.answer(waiting_texts.get(user_lang, waiting_texts["en"]))
-
-        except Exception as e:
-            logger.error(f"Error in handle_wallet_payment_status_check: {e}")
-            if query:
-                await query.edit_message_text("🚧 Payment verification failed. Please try again.")
 
 
 
-    def simulate_received_amount(self):
-        """Simulate received crypto amount (replace with real blockchain checking)"""
-        # Simulate various amounts users might send
-        amounts = [5.50, 10.25, 20.00, 25.75, 50.00, 75.25, 100.00]
-        return random.choice(amounts)
+
+
 
     async def handle_wallet_payment_for_domain(self, query, domain):
         """Handle wallet payment for domain registration with balance checking"""
