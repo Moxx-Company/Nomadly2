@@ -4639,11 +4639,11 @@ class NomadlyCleanBot:
 
         logger.info(f"✅ ✅ ✅ Generating Address for: {crypto_type}")
 
-        patment_gateway = os.getenv('PAYMENT_GATEWAY')
-        logger.info(f"🔧 Payment Gateway: {patment_gateway}")
+        payment_gateway = os.getenv('PAYMENT_GATEWAY')
+        logger.info(f"🔧 Payment Gateway: {payment_gateway}")
         payment_address = None
 
-        if  patment_gateway == 'dynopay':
+        if payment_gateway == 'dynopay':
 
             from apis.dynopay import DynopayAPI
 
@@ -4654,28 +4654,32 @@ class NomadlyCleanBot:
             logger.info(f"🔧 DynoPay Token: {'Set' if token else 'Missing'}")
 
             if not api_key or not token:
-                logger.warning("⚠️ DynoPay configuration incomplete - falling back to BlockBee")
-                patment_gateway = 'blockbee'  # Fallback to BlockBee
-            else:
-                try:
-                    callback_url = f"{os.getenv('FLASK_WEB_HOOK')}topup/dynopay/{user_id}"
+                logger.error("❌ DynoPay configuration incomplete - cannot proceed")
+                raise Exception("DynoPay configuration incomplete: missing API_KEY or TOKEN")
+            
+            try:
+                callback_url = f"{os.getenv('FLASK_WEB_HOOK')}topup/dynopay/{user_id}"
 
-                    # Generate real payment address for this transaction
-                    dynopay = DynopayAPI(api_key, token)
-                    address_response = dynopay.create_payment_address(
-                        cryptocurrency=crypto_type,
-                        callback_url=callback_url,
-                        amount=1
-                    )
+                # Generate real payment checkout URL for this transaction
+                dynopay = DynopayAPI(api_key, token)
+                address_response = dynopay.create_payment_address(
+                    cryptocurrency=crypto_type,
+                    callback_url=callback_url,
+                    amount=1
+                )
 
-                    if address_response.get('message') == 'Payment Created!' and address_response.get('data'):
-                        payment_address = address_response.get('data', {}).get('address')
-                except Exception as dynopay_error:
-                    logger.error(f"❌ DynoPay error: {dynopay_error} - falling back to BlockBee")
-                    patment_gateway = 'blockbee'  # Fallback to BlockBee
+                if address_response.get('message') == 'Payment Created!' and address_response.get('data'):
+                    payment_address = address_response.get('data', {}).get('address')
+                    logger.info(f"✅ DynoPay checkout URL created: {payment_address}")
+                else:
+                    logger.error(f"❌ DynoPay payment creation failed: {address_response.get('error', 'Unknown error')}")
+                    raise Exception(f"DynoPay payment creation failed: {address_response.get('error', 'Unknown error')}")
+                    
+            except Exception as dynopay_error:
+                logger.error(f"❌ DynoPay error: {dynopay_error}")
+                raise Exception(f"DynoPay payment creation failed: {dynopay_error}")
 
-        # Use BlockBee if DynoPay failed or was not configured
-        if patment_gateway != 'dynopay' or payment_address is None:
+        elif payment_gateway == 'blockbee':
             from apis.blockbee import BlockBeeAPI
 
             api_key = os.getenv('BLOCKBEE_API_KEY')
@@ -4694,6 +4698,12 @@ class NomadlyCleanBot:
 
             if address_response.get('status') == 'success' and address_response.get('address_in'):
                 payment_address = address_response['address_in']
+            else:
+                logger.error(f"❌ BlockBee payment creation failed: {address_response.get('error', 'Unknown error')}")
+                raise Exception(f"BlockBee payment creation failed: {address_response.get('error', 'Unknown error')}")
+        else:
+            logger.error(f"❌ Unsupported payment gateway: {payment_gateway}")
+            raise Exception(f"Unsupported payment gateway: {payment_gateway}")
 
         if payment_address is None:
             raise Exception("Payment address creation failed for Wallet topup")
@@ -5080,9 +5090,9 @@ class NomadlyCleanBot:
                 check_payment_flag = False
                 payment_address = None
                 transaction_id = None
-                patment_gateway = os.getenv('PAYMENT_GATEWAY')
+                payment_gateway = os.getenv('PAYMENT_GATEWAY')
 
-                if  patment_gateway == 'dynopay':
+                if payment_gateway == 'dynopay':
                     from apis.dynopay import DynopayAPI
 
                     api_key = os.getenv('DYNOPAY_API_KEY')
@@ -5152,14 +5162,14 @@ class NomadlyCleanBot:
                                     crypto_address = :crypto_address,
                                     crypto_currency = :crypto_currency,
                                     transaction_id = :transaction_id,
-                                    patment_gateway = :patment_gateway
+                                    payment_gateway = :payment_gateway
                                 WHERE order_id = :order_id AND telegram_id = :telegram_id
                             """)
                             db_session.execute(update_query, {
                                 'crypto_address': payment_address,
                                 'crypto_currency': crypto_type,
                                 'transaction_id': transaction_id,
-                                'patment_gateway': patment_gateway,
+                                'payment_gateway': payment_gateway,
                                 'order_id': order_id,
                                 'telegram_id': user_id
                             })
@@ -5169,8 +5179,8 @@ class NomadlyCleanBot:
                         logger.error(f"❌ Failed to update order with payment address: {db_error}")
 
                 else:
-                    logger.error(f"❌ {patment_gateway} API failed: {address_response}")
-                    raise Exception(f"{patment_gateway} API error: {address_response.get('message', 'Unknown error')}")
+                    logger.error(f"❌ {payment_gateway} API failed: {address_response}")
+                    raise Exception(f"{payment_gateway} API error: {address_response.get('message', 'Unknown error')}")
 
                 # Store payment address and timing info in session
                 import time

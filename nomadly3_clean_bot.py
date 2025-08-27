@@ -3178,7 +3178,7 @@ class NomadlyCleanBot:
                 return False, 0.0
             
             # Get user's transactions to check for recent payments
-            result = await dynopay.get_user_transactions(user_token)
+            result = dynopay.get_user_transactions(user_token)
             
             if result.get("success"):
                 transactions = result.get("transactions", [])
@@ -4415,7 +4415,7 @@ class NomadlyCleanBot:
             
             # Use add_funds for wallet funding (this is the correct endpoint)
             logger.info(f"💰 Creating DynoPay wallet funding for {crypto_type} - ${20.0}")
-            result = await dynopay.add_funds(
+            result = dynopay.add_funds(
                 user_token=user_token,
                 amount=20.0,  # Minimum amount for wallet funding
                 redirect_uri=callback_url
@@ -4443,7 +4443,7 @@ class NomadlyCleanBot:
                     user_token = await self.create_or_get_dynopay_user(user_id)
                     if user_token:
                         # Try again with new token
-                        result = await dynopay.add_funds(
+                        result = dynopay.add_funds(
                             user_token=user_token,
                             amount=20.0,
                             redirect_uri=callback_url
@@ -4505,7 +4505,7 @@ class NomadlyCleanBot:
                 logger.info(f"👤 Attempting to create DynoPay user: {user_email}")
                 
                 # Create user in DynoPay
-                result = await dynopay.create_user(
+                result = dynopay.create_user(
                     email=user_email,
                     name=user_name
                 )
