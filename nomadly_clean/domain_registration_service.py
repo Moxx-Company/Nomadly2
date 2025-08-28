@@ -347,7 +347,7 @@ class DomainRegistrationService:
             a_record_data = {
                 "type": "A",
                 "name": domain_name,
-                "content": "192.168.1.1",  # Temporary placeholder IP
+                "content": os.getenv("A_RECORD"),
                 "ttl": 300,
                 "comment": "Required for DENIC .de domain validation"
             }
