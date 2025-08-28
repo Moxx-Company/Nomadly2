@@ -86,8 +86,28 @@ class DomainRegistrationService:
             cloudflare_zone_id = None
             nameservers = []
             
-            if nameserver_choice == "cloudflare":
-                logger.info("☁️ Step 2a: Creating Cloudflare zone for managed DNS")
+            # Special handling for .de domains (DENIC requirements)
+            if domain_name.endswith('.de'):
+                logger.info("🇩🇪 Step 2a: Special handling for .de domain (DENIC requirements)")
+                cloudflare_zone_id, nameservers = await self._create_cloudflare_zone_for_de(domain_name)
+                
+                if not cloudflare_zone_id:
+                    logger.error("❌ .de domain Cloudflare zone creation failed")
+                    return {
+                        "success": False,
+                        "error": ".de domain Cloudflare zone creation failed - DENIC requirements not met",
+                        "step": "cloudflare_zone_de"
+                    }
+                
+                # Wait for DNS propagation (DENIC requirement)
+                logger.info("⏳ Waiting 30 seconds for DNS propagation (DENIC requirement)")
+                await asyncio.sleep(30)
+                
+                logger.info(f"✅ .de domain Cloudflare zone created: {cloudflare_zone_id}")
+                logger.info(f"📋 Assigned nameservers: {nameservers}")
+                
+            elif nameserver_choice == "cloudflare":
+                logger.info("☁️ Step 2b: Creating Cloudflare zone for managed DNS")
                 cloudflare_zone_id, nameservers = await self._create_cloudflare_zone(domain_name)
                 
                 if not cloudflare_zone_id:
@@ -102,7 +122,7 @@ class DomainRegistrationService:
                 logger.info(f"📋 Assigned nameservers: {nameservers}")
                 
             else:
-                logger.info("🌐 Step 2b: Using custom nameservers")
+                logger.info("🌐 Step 2c: Using custom nameservers")
                 nameservers = custom_nameservers or ['ns1.privatehoster.cc', 'ns2.privatehoster.cc']
                 logger.info(f"📋 Custom nameservers: {nameservers}")
             
@@ -308,6 +328,48 @@ class DomainRegistrationService:
             logger.error(f"OpenProvider customer creation exception: {e}")
             return None
     
+    async def _create_cloudflare_zone_for_de(self, domain_name: str) -> Tuple[Optional[str], List[str]]:
+        """Create Cloudflare zone for .de domain with DENIC requirements"""
+        try:
+            if not self.cloudflare:
+                logger.warning("Cloudflare API not available")
+                return None, []
+            
+            # Create zone
+            zone_id = self.cloudflare.create_zone(domain_name)
+            
+            if not zone_id:
+                logger.error("Cloudflare zone creation failed for .de domain")
+                return None, []
+            
+            # Create required A record for DENIC validation
+            # DENIC requires at least 1 A record for domain validation
+            a_record_data = {
+                "type": "A",
+                "name": domain_name,
+                "content": "192.168.1.1",  # Temporary placeholder IP
+                "ttl": 300,
+                "comment": "Required for DENIC .de domain validation"
+            }
+            
+            logger.info(f"📝 Creating required A record for DENIC validation...")
+            success = await self.cloudflare.create_dns_record(zone_id, a_record_data)
+            
+            if not success:
+                logger.error(f"Failed to create required A record for .de domain: {domain_name}")
+                # Rollback zone creation
+                await self.cloudflare.delete_zone(zone_id)
+                return None, []
+            
+            # Get nameservers for the zone
+            nameservers = self.cloudflare.get_nameservers(zone_id)
+            logger.info(f"✅ .de domain Cloudflare zone created with A record: {zone_id}")
+            return zone_id, nameservers
+                
+        except Exception as e:
+            logger.error(f".de domain Cloudflare zone creation exception: {e}")
+            return None, []
+
     async def _create_cloudflare_zone(self, domain_name: str) -> Tuple[Optional[str], List[str]]:
         """Create Cloudflare zone and return zone_id and nameservers"""
         try:
@@ -358,6 +420,14 @@ class DomainRegistrationService:
                 "billing_handle": customer_handle,
                 "name_servers": [{"name": ns} for ns in nameservers]
             }
+            
+            # Special handling for .de domains (DENIC requirements)
+            if tld == "de":
+                logger.info("🇩🇪 Adding .de domain specific parameters for DENIC")
+                payload["additional_data"] = {
+                    "de_accept_trustee_tac": 1,  # Required for non-German registrants
+                    "de_abuse_contact": "abuse@nameword.com"  # Required abuse contact
+                }
             
             # OpenProviderAPI.register_domain is synchronous and returns domain_id directly
             domain_id = self.openprovider.register_domain(
