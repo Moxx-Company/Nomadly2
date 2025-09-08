@@ -115,7 +115,10 @@ class PaymentService:
             
             # Secondary: Try BlockBee API conversion
             try:
-                crypto_amount = self.api_manager.blockbee.convert_fiat_to_crypto(
+                from apis.blockbee import BlockBeeAPI
+                import os
+                blockbee = BlockBeeAPI(os.getenv('BLOCKBEE_API_KEY'))
+                crypto_amount = blockbee.convert_fiat_to_crypto(
                     amount, crypto_currency
                 )
                 if crypto_amount:
@@ -154,12 +157,26 @@ class PaymentService:
         service_type: str,
         service_details: Dict,
     ) -> Dict:
-        """Create cryptocurrency payment via BlockBee"""
+        """Create cryptocurrency payment via configured payment gateway"""
         try:
+            from config import Config
+            payment_validation = Config.validate_payment_gateway_config()
+            
+            if not payment_validation["is_valid"]:
+                logger.error(f"❌ Payment Gateway Configuration Error: {payment_validation['message']}")
+                return {
+                    "success": False,
+                    "error": f"Payment gateway configuration error: {payment_validation['message']}",
+                    "order_id": None
+                }
+            
+            payment_gateway = Config.PAYMENT_GATEWAY
+            
             logger.info(
                 f"🔄 Creating crypto payment: {crypto_currency.upper()} for ${amount}"
             )
             logger.info(f"📝 Service: {service_type}, Telegram ID: {telegram_id}")
+            logger.info(f"🔧 Payment Gateway: {payment_gateway}")
 
             # Create order first
             order = self.db.create_order(
@@ -171,6 +188,95 @@ class PaymentService:
             )
             logger.info(f"✅ Order created: {order.order_id}")
 
+            # Route to appropriate payment gateway
+            if payment_gateway == 'dynopay':
+                return await self._create_dynopay_payment(order, crypto_currency, amount)
+            else:
+                return await self._create_blockbee_payment(order, crypto_currency, amount)
+                
+        except Exception as e:
+            logger.error(f"❌ Payment creation error: {e}")
+            return {
+                "success": False,
+                "error": f"Payment creation failed: {str(e)}",
+                "order_id": None
+            }
+
+    async def _create_dynopay_payment(self, order, crypto_currency: str, amount: float) -> Dict:
+        """Create payment via DynoPay"""
+        try:
+            import os
+            from apis.dynopay import DynopayAPI
+            
+            api_key = os.getenv('DYNOPAY_API_KEY')
+            token = os.getenv('DYNOPAY_TOKEN')
+            
+            if not api_key or not token:
+                logger.error("❌ DynoPay credentials not configured")
+                return {
+                    "success": False,
+                    "error": "DynoPay not configured",
+                    "order_id": order.order_id
+                }
+            
+            logger.info(f"🌐 Creating DynoPay payment for {crypto_currency.upper()}")
+            
+            # Create DynoPay user if not exists
+            dynopay = DynopayAPI(api_key, token)
+            user_email = f"user_{order.telegram_id}@nomadly.com"
+            user_name = f"User_{order.telegram_id}"
+            
+            try:
+                dynopay_user = dynopay.create_user(
+                    email=user_email,
+                    name=user_name
+                )
+                logger.info(f"✅ DynoPay user created/verified: {user_email}")
+            except Exception as e:
+                logger.warning(f"⚠️ DynoPay user creation warning: {e}")
+            
+            # Create payment address (returns checkout URL)
+            callback_url = f"https://{self.get_webhook_domain()}/webhook/dynopay/{order.order_id}"
+            payment_result = dynopay.create_payment_address(
+                cryptocurrency=crypto_currency.upper(),
+                callback_url=callback_url,
+                amount=amount
+            )
+            
+            if payment_result and payment_result.get('success') and payment_result.get('redirect_url'):
+                checkout_url = payment_result['redirect_url']
+                logger.info(f"✅ DynoPay checkout URL generated: {checkout_url}")
+                
+                return {
+                    "success": True,
+                    "order_id": order.order_id,
+                    "payment_address": checkout_url,  # This is actually a checkout URL
+                    "payment_method": f"crypto_{crypto_currency}",
+                    "amount_usd": amount,
+                    "cryptocurrency": crypto_currency.upper(),
+                    "gateway": "dynopay",
+                    "checkout_url": checkout_url,
+                    "expires_at": (datetime.utcnow() + timedelta(hours=24)).isoformat()
+                }
+            else:
+                logger.error(f"❌ DynoPay payment creation failed: {payment_result}")
+                return {
+                    "success": False,
+                    "error": "DynoPay payment creation failed",
+                    "order_id": order.order_id
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ DynoPay payment error: {e}")
+            return {
+                "success": False,
+                "error": f"DynoPay error: {str(e)}",
+                "order_id": order.order_id
+            }
+
+    async def _create_blockbee_payment(self, order, crypto_currency: str, amount: float) -> Dict:
+        """Create payment via BlockBee (fallback)"""
+        try:
             # Get crypto payment address from BlockBee (Mystery milestone compatible)
             callback_url = (
                 f"https://{self.get_webhook_domain()}/webhook/blockbee/{order.order_id}"
@@ -248,53 +354,26 @@ class PaymentService:
                 logger.error("❌ Payment creation failed - cannot proceed")
                 crypto_amount = float(amount)
 
-            payment_result = {
+            return {
                 "success": success,
-                "data": {
-                    "address": payment_address,
-                    "crypto_amount": crypto_amount,
-                    "payment_id": order.order_id,
-                    "qr_code": qr_code,
-                },
+                "order_id": order.order_id,
+                "payment_address": payment_address,
+                "payment_method": f"crypto_{crypto_currency}",
+                "amount_usd": amount,
+                "amount_crypto": crypto_amount,
+                "cryptocurrency": crypto_currency.upper(),
+                "gateway": "blockbee",
+                "qr_code": qr_code,
+                "expires_at": (datetime.utcnow() + timedelta(hours=24)).isoformat()
             }
-
-            if payment_result.get("success"):
-                payment_data = payment_result.get("data", {})
-                payment_address = payment_data.get("address")
-                crypto_amount = payment_data.get("crypto_amount")
-                blockbee_payment_id = payment_data.get("payment_id")
-
-                # Update order with payment details
-                self.db.update_order_payment(
-                    order_id=order.order_id,
-                    payment_address=payment_address,
-                    crypto_currency=crypto_currency,
-                    crypto_amount=str(crypto_amount),
-                    blockbee_payment_id=blockbee_payment_id,
-                    payment_status="pending",
-                )
-
-                return {
-                    "success": True,
-                    "order_id": order.order_id,
-                    "payment_address": payment_address,
-                    "crypto_amount": crypto_amount,
-                    "crypto_currency": crypto_currency.upper(),
-                    "amount_usd": amount,
-                    "expires_at": (datetime.now() + timedelta(hours=24)).isoformat(),
-                }
-            else:
-                logger.error(
-                    f"BlockBee payment creation failed: success={success}, address={payment_address}"
-                )
-                return {
-                    "success": False,
-                    "error": "Cryptocurrency payment system requires configuration. Please contact support or use balance payment.",
-                }
-
+            
         except Exception as e:
-            logger.error(f"Error creating crypto payment: {e}")
-            return {"success": False, "error": "Payment system temporarily unavailable"}
+            logger.error(f"❌ BlockBee payment error: {e}")
+            return {
+                "success": False,
+                "error": f"BlockBee error: {str(e)}",
+                "order_id": order.order_id
+            }
 
     def process_balance_payment(
         self,
@@ -2819,6 +2898,12 @@ def get_payment_service():
     if _payment_service is None:
         _payment_service = PaymentService()
     return _payment_service
+
+def reset_payment_service():
+    """Reset global payment service instance (for testing/updates)"""
+    global _payment_service
+    _payment_service = None
+    logger.info("🔄 Payment service instance reset")
 
     async def _get_real_cloudflare_nameservers(self, domain_name: str, cloudflare_zone_id: str) -> List[str]:
         """Get real nameservers from Cloudflare for domain"""

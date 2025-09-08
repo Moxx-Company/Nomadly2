@@ -25,6 +25,11 @@ class Config:
     BLOCKBEE_API_KEY = os.getenv("BLOCKBEE_API_KEY")
     FASTFOREX_API_KEY = os.getenv("FASTFOREX_API_KEY")
     
+    # Payment Gateway Configuration
+    PAYMENT_GATEWAY = os.getenv("PAYMENT_GATEWAY", "blockbee").lower()
+    DYNOPAY_API_KEY = os.getenv("DYNOPAY_API_KEY")
+    DYNOPAY_TOKEN = os.getenv("DYNOPAY_TOKEN")
+    
     # Email Service (Brevo)
     BREVO_API_KEY = os.getenv("BREVO_API_KEY")
     BREVO_SMTP_KEY = os.getenv("BREVO_SMTP_KEY")
@@ -116,10 +121,107 @@ class Config:
 
         return missing
 
+    @classmethod
+    def validate_payment_gateway_config(cls) -> Dict[str, Any]:
+        """Validate payment gateway configuration and return status"""
+        # Get fresh values from environment
+        payment_gateway = os.getenv("PAYMENT_GATEWAY", "blockbee").lower()
+        dynopay_api_key = os.getenv("DYNOPAY_API_KEY")
+        dynopay_token = os.getenv("DYNOPAY_TOKEN")
+        blockbee_api_key = os.getenv("BLOCKBEE_API_KEY")
+        
+        validation_result = {
+            "is_valid": True,
+            "gateway": payment_gateway,
+            "missing_vars": [],
+            "warnings": [],
+            "message": ""
+        }
+        
+        # Check if PAYMENT_GATEWAY is explicitly set
+        payment_gateway_env = os.getenv("PAYMENT_GATEWAY")
+        if not payment_gateway_env:
+            validation_result["is_valid"] = False
+            validation_result["missing_vars"].append("PAYMENT_GATEWAY")
+            validation_result["message"] = "❌ PAYMENT_GATEWAY environment variable is required but not set!"
+            return validation_result
+        
+        # Validate DynoPay configuration if selected
+        if payment_gateway == "dynopay":
+            if not dynopay_api_key:
+                validation_result["is_valid"] = False
+                validation_result["missing_vars"].append("DYNOPAY_API_KEY")
+                validation_result["message"] = "❌ DynoPay selected but DYNOPAY_API_KEY is not set!"
+            elif not dynopay_token:
+                validation_result["is_valid"] = False
+                validation_result["missing_vars"].append("DYNOPAY_TOKEN")
+                validation_result["message"] = "❌ DynoPay selected but DYNOPAY_TOKEN is not set!"
+            else:
+                validation_result["message"] = "✅ DynoPay configuration is valid"
+        
+        # Validate BlockBee configuration if selected
+        elif payment_gateway == "blockbee":
+            if not blockbee_api_key:
+                validation_result["is_valid"] = False
+                validation_result["missing_vars"].append("BLOCKBEE_API_KEY")
+                validation_result["message"] = "❌ BlockBee selected but BLOCKBEE_API_KEY is not set!"
+            else:
+                validation_result["message"] = "✅ BlockBee configuration is valid"
+        
+        # Handle unknown payment gateway
+        else:
+            validation_result["is_valid"] = False
+            validation_result["warnings"].append(f"Unknown payment gateway: {payment_gateway}")
+            validation_result["message"] = f"❌ Unknown payment gateway: {payment_gateway}. Supported: dynopay, blockbee"
+        
+        return validation_result
+
 
 def get_server_ip() -> str:
     """Get server IP address for A records"""
     return Config.SERVER_PUBLIC_IP or "93.184.216.34"  # Example IP fallback
+
+
+def send_payment_gateway_error_message(bot, chat_id: int) -> None:
+    """Send payment gateway configuration error message to user"""
+    try:
+        validation = Config.validate_payment_gateway_config()
+        
+        if not validation["is_valid"]:
+            error_message = f"""
+🚨 **Payment Gateway Configuration Error**
+
+{validation['message']}
+
+**Missing Environment Variables:**
+{chr(10).join(f"• {var}" for var in validation['missing_vars'])}
+
+**Required Setup:**
+1. Set `PAYMENT_GATEWAY` in your `.env` file
+2. Choose either:
+   - `PAYMENT_GATEWAY=dynopay` (requires `DYNOPAY_API_KEY` and `DYNOPAY_TOKEN`)
+   - `PAYMENT_GATEWAY=blockbee` (requires `BLOCKBEE_API_KEY`)
+
+**Example .env configuration:**
+```
+PAYMENT_GATEWAY=dynopay
+DYNOPAY_API_KEY=your_api_key_here
+DYNOPAY_TOKEN=your_token_here
+```
+
+Please contact the administrator to fix this configuration issue.
+            """
+            
+            bot.send_message(
+                chat_id=chat_id,
+                text=error_message,
+                parse_mode='Markdown'
+            )
+            
+    except Exception as e:
+        # Fallback error message if bot is not available
+        print(f"❌ Payment Gateway Configuration Error: {e}")
+        print(f"❌ {validation.get('message', 'Unknown configuration error')}")
 
 
 # Configuration instance

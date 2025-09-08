@@ -77,7 +77,7 @@ class BlockBeeAPI:
 
             if response.status_code == 200:
                 result = response.json()
-                logger.info(f"BlockBee response for {cryptocurrency}: {result}")
+                logger.info(f"BlockBee response for -- {cryptocurrency}: {result}")
                 return result
 
             logger.error(f"BlockBee API error {response.status_code}: {response.text}")

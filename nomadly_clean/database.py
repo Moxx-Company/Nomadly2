@@ -1145,11 +1145,12 @@ class DatabaseManager:
             
             # Create a simple order object to return
             class SimpleOrder:
-                def __init__(self, order_id, db_id):
+                def __init__(self, order_id, db_id, telegram_id):
                     self.order_id = order_id
                     self.id = db_id
+                    self.telegram_id = telegram_id
                     
-            return SimpleOrder(order_id, order_db_id)
+            return SimpleOrder(order_id, order_db_id, telegram_id)
             
         finally:
             session.close()

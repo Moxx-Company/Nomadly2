@@ -5114,90 +5114,62 @@ class NomadlyCleanBot:
                     )
                 return
             
-            # Generate real payment address using BlockBee API
+            # Generate real payment address using payment service (supports DynoPay/BlockBee)
             try:
-                from apis.blockbee import BlockBeeAPI
-                import os
+                from payment_service import get_payment_service
+                payment_service = get_payment_service()
                 
-                api_key = os.getenv('BLOCKBEE_API_KEY')
-                if not api_key:
-                    raise Exception("BLOCKBEE_API_KEY not found in environment variables")
-                
-                blockbee = BlockBeeAPI(api_key)
-                
-                # Create callback URL for payment monitoring
-                callback_url = f"https://nomadly2-onarrival.replit.app/webhook/blockbee/{order_id}"
-                
-                # Generate real payment address for this transaction
-                address_response = blockbee.create_payment_address(
-                    cryptocurrency=crypto_type,
-                    callback_url=callback_url,
-                    amount=usd_amount
+                # Create payment using payment service (will route to DynoPay or BlockBee based on config)
+                payment_result = await payment_service.create_crypto_payment(
+                    telegram_id=user_id,
+                    amount=usd_amount,
+                    crypto_currency=crypto_type,
+                    service_type='domain_registration',
+                    service_details=service_details
                 )
                 
-                # Check if we got a valid response with address
-                if address_response.get('status') == 'success' and address_response.get('address_in'):
-                    payment_address = address_response['address_in']
-                    logger.info(f"✅ Generated real {crypto_type.upper()} address: {payment_address}")
+                if payment_result.get('success'):
+                    payment_address = payment_result.get('payment_address')
+                    gateway = payment_result.get('gateway', 'unknown')
                     
-                    # ✅ CRITICAL: UPDATE ORDER WITH PAYMENT ADDRESS IN DATABASE
-                    try:
-                        from sqlalchemy import text
-                        with db.get_session() as db_session:
-                            update_query = text("""
-                                UPDATE orders SET 
-                                    crypto_address = :crypto_address,
-                                    crypto_currency = :crypto_currency
-                                WHERE order_id = :order_id AND telegram_id = :telegram_id
-                            """)
-                            db_session.execute(update_query, {
-                                'crypto_address': payment_address,
-                                'crypto_currency': crypto_type,
-                                'order_id': order_id,
-                                'telegram_id': user_id
-                            })
-                            db_session.commit()
-                            logger.info(f"✅ Updated order {order_id} with payment address {payment_address}")
-                    except Exception as db_error:
-                        logger.error(f"❌ Failed to update order with payment address: {db_error}")
-                        
-                else:
-                    logger.error(f"❌ BlockBee API failed: {address_response}")
-                    raise Exception(f"BlockBee API error: {address_response.get('message', 'Unknown error')}")
-                
-                # Store payment address and timing info in session
-                import time
-                if user_id in self.user_sessions:
-                    self.user_sessions[user_id][f'{crypto_type}_address'] = payment_address
-                    self.user_sessions[user_id]['payment_generated_time'] = time.time()
-                    self.user_sessions[user_id]['payment_amount_usd'] = usd_amount
-                    self.user_sessions[user_id]['blockbee_callback_url'] = callback_url
-                    self.save_user_sessions()
+                    logger.info(f"✅ Generated {crypto_type.upper()} payment via {gateway}: {payment_address}")
                     
-                    # ✅ ADD TO REAL PAYMENT MONITOR VIA BACKGROUND SERVICE
-                    try:
-                        # Import the background payment monitor
-                        import background_payment_monitor
+                    # Store payment address and timing info in session
+                    import time
+                    if user_id in self.user_sessions:
+                        self.user_sessions[user_id][f'{crypto_type}_address'] = payment_address
+                        self.user_sessions[user_id]['payment_generated_time'] = time.time()
+                        self.user_sessions[user_id]['payment_amount_usd'] = usd_amount
+                        self.user_sessions[user_id]['payment_gateway'] = gateway
+                        self.save_user_sessions()
                         
-                        # Add payment address to the real monitoring system
-                        success = background_payment_monitor.add_payment_address(
-                            payment_address,
-                            user_id,
-                            order_id,
-                            crypto_type,
-                            usd_amount
-                        )
-                        if success:
-                            logger.info(f"✅ Added {payment_address} to background payment monitor")
-                        else:
-                            logger.warning("⚠️ Failed to add payment to monitor queue")
+                        # ✅ ADD TO REAL PAYMENT MONITOR VIA BACKGROUND SERVICE
+                        try:
+                            # Import the background payment monitor
+                            import background_payment_monitor
                             
-                    except Exception as e:
-                        logger.error(f"❌ Failed to add payment to background monitor: {e}")
+                            # Add payment address to the real monitoring system
+                            success = background_payment_monitor.add_payment_address(
+                                payment_address,
+                                user_id,
+                                order_id,
+                                crypto_type,
+                                usd_amount
+                            )
+                            if success:
+                                logger.info(f"✅ Added {payment_address} to background payment monitor")
+                            else:
+                                logger.warning("⚠️ Failed to add payment to monitor queue")
+                                
+                        except Exception as e:
+                            logger.error(f"❌ Failed to add payment to background monitor: {e}")
+                else:
+                    error_msg = payment_result.get('error', 'Unknown payment error')
+                    logger.error(f"❌ Payment creation failed: {error_msg}")
+                    raise Exception(f"Payment creation failed: {error_msg}")
                     
             except Exception as e:
-                logger.warning(f"BlockBee API unavailable: {e}")
-                logger.info("Please ensure BLOCKBEE_API_KEY is set in environment variables")
+                logger.error(f"❌ Payment service unavailable: {e}")
                 
                 # Generate a valid-format test address for demonstration
                 # This generates properly formatted addresses that look real but are for testing only
@@ -12152,6 +12124,35 @@ def main():
     """Main bot function"""
     try:
         logger.info("🚀 Starting Nomadly Clean Bot...")
+        
+        # Validate payment gateway configuration
+        from config import Config, send_payment_gateway_error_message
+        payment_validation = Config.validate_payment_gateway_config()
+        
+        if not payment_validation["is_valid"]:
+            logger.error(f"❌ Payment Gateway Configuration Error: {payment_validation['message']}")
+            logger.error(f"❌ Missing variables: {payment_validation['missing_vars']}")
+            
+            # Create a minimal bot instance to send error message
+            try:
+                from telegram import Bot
+                error_bot = Bot(token=BOT_TOKEN or "")
+                
+                # Send error message to admin if available
+                admin_chat_id = Config.ADMIN_CHAT_ID
+                if admin_chat_id and admin_chat_id != 0:
+                    send_payment_gateway_error_message(error_bot, admin_chat_id)
+                    logger.info(f"📤 Payment gateway error message sent to admin: {admin_chat_id}")
+                else:
+                    logger.warning("⚠️ No admin chat ID configured, cannot send error message")
+                    
+            except Exception as e:
+                logger.error(f"❌ Failed to send payment gateway error message: {e}")
+            
+            # Exit with error
+            raise SystemExit(f"Payment gateway configuration invalid: {payment_validation['message']}")
+        else:
+            logger.info(f"✅ Payment Gateway Configuration: {payment_validation['message']}")
         
         # Create bot instance
         bot = NomadlyCleanBot()

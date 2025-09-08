@@ -404,29 +404,31 @@ class DynopayAPI:
                 "callback_url": callback_url,
                 "meta_data": {
                     "type": "wallet_funding",
-                    "cryptocurrency": cryptocurrency
+                    "cryptocurrency": cryptocurrency,
+                    "product_name": f"Domain Registration - {cryptocurrency.upper()} Payment"
                 }
             }
             
-            # Use the existing create_crypto_payment method
-            result = self.create_crypto_payment(
+            # Use the create_payment method instead of create_crypto_payment
+            result = self.create_payment(
                 user_token=self.token,
                 amount=amount,
-                currency=cryptocurrency,
-                callback_url=callback_url,
+                redirect_uri=callback_url,
                 meta_data=crypto_data["meta_data"]
             )
             
             if result["success"]:
-                payment_data = result.get("payment_data", {})
-                # DynoPay returns a checkout URL, not a crypto address
-                checkout_url = payment_data.get("checkout_url") or payment_data.get("redirect_url")
+                logger.info(f"🔍 DynoPay response: {result}")
+                
+                # DynoPay create_payment returns redirect_url directly
+                checkout_url = result.get("redirect_url")
                 
                 if checkout_url:
                     logger.info(f"✅ DynoPay checkout URL created: {checkout_url}")
                     return {
                         "success": True,
                         "message": "Payment Created!",
+                        "redirect_url": checkout_url,  # Return URL directly as redirect_url for payment service
                         "data": {
                             "address": checkout_url,  # Return URL as "address" for compatibility
                             "checkout_url": checkout_url,
