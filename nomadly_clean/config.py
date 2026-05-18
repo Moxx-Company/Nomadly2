@@ -3,16 +3,32 @@ Configuration management for Nomadly2 Bot
 Centralizes environment variables and configuration settings
 """
 
-import os
+import os, re
 from typing import List, Dict, Any
 from dotenv import load_dotenv
 
 # Load environment variables from .env file (override system environment)
 load_dotenv(override=True)
-
+import logging
+logger = logging.getLogger(__name__)
 
 class Config:
     """Centralized configuration for the bot"""
+
+    @staticmethod
+    def load_admin_ids(env_var: str = "ADMIN_IDS") -> set[int]:
+        raw = os.getenv(env_var, "")
+        ids: set[int] = set()
+        for piece in re.split(r"[,\s]+", raw.strip()):
+            if not piece:
+                continue
+            try:
+                ids.add(int(piece))
+            except ValueError:
+                logger.warning("Ignoring non-integer ADMIN_IDS entry: %r", piece)
+        if not ids:
+            logger.warning("ADMIN_IDS is empty; admin features will be locked down.")
+        return ids
 
     # API Credentials
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
